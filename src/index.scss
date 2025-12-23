@@ -1,0 +1,159 @@
+@font-face {
+  font-family: 'Cousine';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/cousine_5.2.7/webfonts/cousine-latin-400-normal.woff2') format('woff2'),
+       url('./assets/fonts/cousine_5.2.7/webfonts/cousine-latin-400-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Cousine';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/cousine_5.2.7/webfonts/cousine-latin-700-normal.woff2') format('woff2'),
+  url('./assets/fonts/cousine_5.2.7/webfonts/cousine-latin-700-normal.woff') format('woff');
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+#root {
+  min-height: 100%;
+}
+
+:root {
+  font-family: Cousine, monospace;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+
+  // Base colors
+  --color: #0f0f0f;
+  --color-dimmed: #6a6a6a;
+  --background-color: #f6f6f6;
+  
+  // Link colors
+  --link-color: #646cff;
+  --link-hover-color: #535bf2;
+  
+  // Accent / border colors
+  --border-color: #396cd8;
+  --hover-border-color: #396cd8;
+  --active-border-color: #396cd8;
+  --active-background-color: #e8e8e8;
+  
+  // Surface colors (for subtle backgrounds)
+  --surface-subtle: #f1f1f1;
+  --surface-muted: #efefef;
+  --surface-hover: #ededed;
+  
+  // Border shades
+  --border-subtle: #eaeaea;
+  --border-muted: #e3e3e3;
+  --border-soft: #dedede;
+  
+  // Error colors
+  --error-color: #c0392b;
+  --error-bg: #fbeae8;
+  --error-border: #e6a9a3;
+  
+  // Accent backgrounds
+  --accent-bg: #e3ebf7;
+  --accent-bg-active: #d0ddef;
+
+  color: var(--color);
+  background-color: var(--background-color);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+a {
+  font-weight: 500;
+  color: var(--link-color);
+  text-decoration: inherit;
+
+  &:hover {
+    color: var(--link-hover-color);
+  }
+}
+
+
+input,
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  color: #0f0f0f;
+  background-color: #ffffff;
+  transition: border-color 0.25s;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--hover-border-color);
+}
+button:active {
+  border-color: var(--active-border-color);
+  background-color: var(--active-background-color);
+}
+
+input,
+button {
+  outline: none;
+}
+
+a:hover {
+  color: var(--link-hover-color);
+}
+
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    // Base colors
+    --color: #fefefe;
+    --color-dimmed: #9a9a9a;
+    --background-color: #1a1a1a;
+    
+    // Link colors
+    --link-hover-color: #24c8db;
+    
+    // Surface colors (for subtle backgrounds)
+    --surface-subtle: #1f1f1f;
+    --surface-muted: #222222;
+    --surface-hover: #252525;
+    
+    // Border shades
+    --border-subtle: #282828;
+    --border-muted: #2f2f2f;
+    --border-soft: #353535;
+    
+    // Error colors
+    --error-color: #e74c3c;
+    --error-bg: #2d1f1e;
+    --error-border: #5c2a25;
+    
+    // Accent backgrounds
+    --accent-bg: #1e2a3d;
+    --accent-bg-active: #253652;
+  }
+}
