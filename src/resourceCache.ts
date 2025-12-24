@@ -20,12 +20,14 @@ export function getCacheKey(
   return `${CACHE_PREFIX}${sanitize(context)}:${sanitize(namespace)}:${sanitize(resourceType)}`;
 }
 
+export type CachedTimestampedResources = { data: ResourceListResponse; timestamp: number }
+
 /**
  * Get cached resource data with timestamp
  */
-export function getCachedResources(
+export function loadCachedResources(
   key: string
-): { data: ResourceListResponse; timestamp: number } | null {
+): CachedTimestampedResources | null {
   try {
     const cached = localStorage.getItem(key);
     if (!cached) {
@@ -51,7 +53,7 @@ export function getCachedResources(
 /**
  * Store resource data in cache with current timestamp
  */
-export function setCachedResources(
+export function saveCachedResources(
   key: string,
   data: ResourceListResponse
 ): void {
@@ -70,7 +72,10 @@ export function setCachedResources(
 /**
  * Format cache age as a human-readable string
  */
-export function getCacheAge(timestamp: number): string {
+export function getCacheAge(timestamp: number | null): string {
+  if (timestamp === null) {
+    return "∞";
+  }
   const now = Date.now();
   const diffMs = now - timestamp;
   const diffSeconds = Math.floor(diffMs / 1000);

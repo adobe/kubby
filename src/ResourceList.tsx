@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback, useRef } from "preact/hooks";
-import { invoke } from "@tauri-apps/api/core";
-import classes from "./ResourceList.module.scss";
+import {useEffect, useState, useCallback, useRef} from 'preact/hooks'
+import {invoke} from '@tauri-apps/api/core'
+import classes from './ResourceList.module.scss'
 import {
   getCacheKey,
-  getCachedResources,
-  setCachedResources,
-  getCacheAge,
-} from "./resourceCache";
+  loadCachedResources,
+  saveCachedResources,
+  getCacheAge, CachedTimestampedResources,
+} from './resourceCache'
 
 // Column configuration for each resource type
 interface ColumnConfig {
@@ -21,12 +21,13 @@ interface ResourceTypeConfig {
 // Default config for unknown resource types
 const DEFAULT_RESOURCE_CONFIG: ResourceTypeConfig = {
   columns: [
-    { name: "AGE", jsonPath: ".metadata.creationTimestamp" },
+    {name: 'AGE', jsonPath: '.metadata.creationTimestamp'},
   ],
-};
+}
 
 interface ResourceItem {
   name: string;
+
   [key: string]: string | number | null;
 }
 
@@ -43,149 +44,104 @@ interface ResourceListProps {
 }
 
 
-export function ResourceList({ context, namespace, resourceType, onBack }: ResourceListProps) {
-  const cacheKey = getCacheKey(context, namespace, resourceType);
-  
-  // Initialize state from cache synchronously if available
-  const cachedData = getCachedResources(cacheKey);
-  const initialResources = cachedData?.data.items || [];
-  const initialColumnConfig = cachedData?.data.columns 
-    ? { columns: cachedData.data.columns }
-    : DEFAULT_RESOURCE_CONFIG;
-  const initialLoading = cachedData === null;
-  const initialCacheTimestamp = cachedData?.timestamp || null;
-  
-  const [resources, setResources] = useState<ResourceItem[]>(initialResources);
-  const [loading, setLoading] = useState(initialLoading);
-  const [error, setError] = useState<string | null>(null);
-  const [columnConfig, setColumnConfig] = useState<ResourceTypeConfig>(initialColumnConfig);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(initialCacheTimestamp);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  
-  const fetchResources = useCallback(async (skipCache: boolean = false, isBackground: boolean = false) => {
-    // Cancel any in-flight request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+export function ResourceList({context, namespace, resourceType, onBack}: ResourceListProps) {
+  const cacheKey = getCacheKey(context, namespace, resourceType)
+  const isMountedRef = useRef(true)
+
+  const [cachedData, setCachedData] = useState<CachedTimestampedResources | null>(null)
+
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [columnConfig, setColumnConfig] = useState<ResourceTypeConfig>(DEFAULT_RESOURCE_CONFIG)
+  const [resources, setResources] = useState<ResourceItem[]>([])
+
+  // Async function to fetch and update resources
+  const loadResources = useCallback(async () => {
+    if (!isMountedRef.current) return
     
-    // Check if we have cached data
-    const cached = getCachedResources(cacheKey);
-    const hasCachedData = !skipCache && cached !== null;
+    setIsRefreshing(true)
+    // Don't clear error here - only clear it on successful fetch
+    // This preserves any existing error state until we have new data
     
-    // Set loading state only if this is NOT a background refresh AND we don't have cache
-    // NEVER set loading to true if we have cached data or if this is a background refresh
-    if (!isBackground && !hasCachedData) {
-      setLoading(true);
-    } else if (hasCachedData || isBackground) {
-      // Ensure loading is false when we have cache or doing background refresh
-      setLoading(false);
-    }
-    
-    // Always show refresh indicator for background refreshes or manual refreshes
-    if (isBackground || skipCache) {
-      setIsRefreshing(true);
-    }
-    // Clear error when starting a new fetch (only if we have cached data, otherwise keep error for initial load)
-    if (hasCachedData) {
-      setError(null);
-    }
-    
-    // Create new abort controller for this request
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    
+    // Wait for React to flush state updates and re-render before starting async operation
+    // Use requestAnimationFrame twice to ensure UI has updated
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve()
+        })
+      })
+    })
+
+    if (!isMountedRef.current) return
+
     try {
-      const response = await invoke<ResourceListResponse>("get_resources", {
+      const result = await invoke<ResourceListResponse>('get_resources', {
         resourceType,
         context,
         namespace,
-      });
+      })
       
-      // Check if request was aborted
-      if (abortController.signal.aborted) {
-        if (isBackground || skipCache) {
-          setIsRefreshing(false);
-        }
-        return;
-      }
+      if (!isMountedRef.current) return
       
-      // Update cache and UI
-      setCachedResources(cacheKey, response);
-      setColumnConfig({ columns: response.columns });
-      setResources(response.items);
-      setCacheTimestamp(Date.now());
-      setError(null);
-      setLoading(false);
+      setResources(result.items)
+      setColumnConfig({ columns: result.columns })
+      saveCachedResources(cacheKey, result)
+      setCachedData({ data: result, timestamp: Date.now() })
+      setError(null) // Clear error only on successful fetch
     } catch (e) {
-      // Check if request was aborted
-      if (abortController.signal.aborted) {
-        if (isBackground || skipCache) {
-          setIsRefreshing(false);
-        }
-        return;
-      }
-      
-      // If we have cached data, show error but keep cached data visible
-      if (hasCachedData) {
-        setError(String(e));
-        setLoading(false);
-      } else {
-        // No cache, show error normally
-        setError(String(e));
-        setColumnConfig(DEFAULT_RESOURCE_CONFIG);
-        setLoading(false);
-      }
+      if (!isMountedRef.current) return
+      setError(String(e))
     } finally {
-      if (!abortController.signal.aborted && (isBackground || skipCache)) {
-        setIsRefreshing(false);
+      if (isMountedRef.current) {
+        setIsRefreshing(false)
       }
     }
-  }, [context, namespace, resourceType, cacheKey]);
-  
-  // Refresh handler - force refresh
-  const handleRefresh = useCallback(async () => {
-    setError(null);
-    setIsRefreshing(true);
-    await fetchResources(true, false);
-  }, [fetchResources]);
+  }, [cacheKey, context, namespace, resourceType])
 
-  // Fetch resources on mount and when dependencies change
+  // Load cached data immediately and trigger background fetch
   useEffect(() => {
-    const cached = getCachedResources(cacheKey);
+    isMountedRef.current = true
     
-    if (cached) {
-      // We already have cached data loaded in initial state
-      // Use requestAnimationFrame to ensure initial render completes first
-      // Then start background refresh
-      const rafId = requestAnimationFrame(() => {
-        setIsRefreshing(true);
-        // Start the background fetch in the next frame
-        requestAnimationFrame(() => {
-          fetchResources(false, true);
-        });
-      });
-      
-      // Cleanup
-      return () => {
-        cancelAnimationFrame(rafId);
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
-      };
+    const cached = loadCachedResources(cacheKey)
+    if (cached && cached.data) {
+      // Set all cached data state synchronously
+      setCachedData(cached)
+      setResources(cached.data.items || [])
+      setColumnConfig({ columns: cached.data.columns || [] })
+      setError(null) // Clear any previous errors when showing cached data
+      // Don't set isRefreshing here - let loadResources() handle it
+      // This allows cached data to display immediately
     } else {
-      // No cache, do a normal fetch (will show loading)
-      fetchResources(false, false);
-      
-      // Cleanup
-      return () => {
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
-      };
+      // If no cached data, show loading state immediately
+      setIsRefreshing(true)
     }
-  }, [cacheKey, fetchResources]);
-  
+    
+    // Defer background fetch to allow React to flush cached data updates first
+    // Use requestAnimationFrame to ensure UI renders before starting fetch
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        loadResources()
+      })
+    })
+
+    return () => {
+      isMountedRef.current = false
+      cancelAnimationFrame(rafId)
+    }
+  }, [cacheKey, loadResources])
+
+  const cacheTimestamp = cachedData?.timestamp ?? null
+
+  const handleRefresh = useCallback(() => {
+    // Defer to allow UI to update (button state, cursor, etc.) before starting async operation
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        loadResources()
+      })
+    })
+  }, [loadResources])
+
   return (
     <div class={classes.resourceList}>
       <header class={classes.header}>
@@ -198,75 +154,73 @@ export function ResourceList({ context, namespace, resourceType, onBack }: Resou
           <span class={classes.separator}>•</span>
           <span class={classes.namespace}>{namespace}</span>
         </div>
-        <button class={classes.refreshButton} onClick={handleRefresh} disabled={isRefreshing || loading}>
+        <button class={classes.refreshButton} onClick={handleRefresh} disabled={isRefreshing}>
           ↻ Refresh
         </button>
       </header>
-      
-      {loading && (
-        <div class={classes.loading}>
-          <span class={classes.spinner}>⟳</span>
-          Loading {resourceType}...
-        </div>
-      )}
-      
+
       {error && (
         <div class={classes.error}>
           <strong>Error:</strong> {error}
         </div>
       )}
-      
-      {!loading && !error && (
+
+      {!error && (
         <div class={classes.tableWrapper}>
           <table class={classes.table}>
             <thead>
-              <tr>
-                <th class={classes.nameColumn}>NAME</th>
-                {columnConfig.columns.map((col) => (
+            <tr>
+              <th class={classes.nameColumn}>NAME</th>
+              {columnConfig.columns.map((col) => (
                 <th key={col.name}>
                   {col.name}
                 </th>
-                ))}
-              </tr>
+              ))}
+            </tr>
             </thead>
             <tbody>
-              {resources.length === 0 ? (
-                <tr>
-                  <td colSpan={columnConfig.columns.length + 1} class={classes.emptyRow}>
-                    No resources found
-                  </td>
+            {resources.length === 0 ? (
+              <tr>
+                <td colSpan={columnConfig.columns.length + 1} class={classes.emptyRow}>
+                  No resources found
+                </td>
+              </tr>
+            ) : (
+              resources.map((resource) => (
+                <tr key={resource.name} class={classes.resourceRow}>
+                  <td class={classes.nameCell}>{resource.name}</td>
+                  {columnConfig.columns.map((col) => (
+                    <td key={col.name} class={classes.dataCell}>
+                      {resource[col.name] ?? '<none>'}
+                    </td>
+                  ))}
                 </tr>
-              ) : (
-                resources.map((resource) => (
-                  <tr key={resource.name} class={classes.resourceRow}>
-                    <td class={classes.nameCell}>{resource.name}</td>
-                    {columnConfig.columns.map((col) => (
-                      <td key={col.name} class={classes.dataCell}>
-                        {resource[col.name] ?? "<none>"}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
+              ))
+            )}
             </tbody>
           </table>
         </div>
       )}
-      
-      {!loading && !error && resources.length > 0 && (
+
+      {!error && resources.length > 0 && (
         <div class={classes.footer}>
-          {resources.length} item{resources.length !== 1 ? "s" : ""}
+          {resources.length} item{resources.length !== 1 ? 's' : ''}
         </div>
       )}
-      
-      {isRefreshing && cacheTimestamp ? (
+
+      {isRefreshing ? (
         <div class={classes.refreshIndicator}>
-          <span class={classes.refreshSpinner}>😎</span>
-          <span>Data from {getCacheAge(cacheTimestamp)}, refreshing...</span>
+          {cacheTimestamp ? (
+            <>
+              <span>Data from {getCacheAge(cacheTimestamp)}, refreshing...</span>
+            </>
+          ) : (
+            <span>Loading...</span>
+          )}
         </div>
       ) : null}
     </div>
-  );
+  )
 }
 
 
