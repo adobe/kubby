@@ -12,10 +12,12 @@
 }
 
 .backButton {
-  padding: 0.4em 0.8em;
+  padding: 0.05rem 0.5rem;
   font-size: 0.85rem;
   background: var(--surface-subtle);
-  border: 1px solid var(--border-soft);
+  color: var(--color);
+  border: 1px solid var(--surface-subtle);
+  margin: 0 0.5rem;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -79,10 +81,12 @@
 
 
 .refreshButton {
-  padding: 0.4em 0.8em;
+  padding: 0.05rem 0.5rem;
   font-size: 0.85rem;
   background: var(--surface-subtle);
-  border: 1px solid var(--border-soft);
+  color: var(--color);
+  border: 1px solid var(--surface-subtle);
+  margin: 0 0.5rem;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -108,20 +112,6 @@
   font-size: 0.9rem;
 }
 
-.spinner {
-  display: inline-block;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .error {
   color: var(--error-color);
   background: var(--error-bg);
@@ -135,18 +125,18 @@
 
 .tableWrapper {
   overflow-x: auto;
-  border: 1px solid var(--border-muted);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.75rem;
-  
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+
   th, td {
-    padding: 0.5rem 0.75rem;
+    padding: 0.05rem 0.5rem;
     text-align: left;
-    white-space: nowrap;
   }
   
   th {
@@ -202,7 +192,7 @@
 }
 
 .footer {
-  padding: 0.75rem 0;
+  padding: 0 0.5rem;
   font-size: 0.75rem;
   color: var(--color-dimmed);
   text-align: right;
