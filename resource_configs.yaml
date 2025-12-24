@@ -1,0 +1,238 @@
+# Resource column configurations for Kubernetes resources
+# This section should be added to your k0s_config.yaml file under 'resources:'
+resources:
+  pods:
+    columns:
+      - name: READY
+        jsonPath: ".status.containerStatuses[*].ready"
+      - name: STATUS
+        jsonPath: ".status.phase"
+      - name: RESTARTS
+        jsonPath: ".status.containerStatuses[0].restartCount"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  deployments:
+    columns:
+      - name: READY
+        jsonPath: ".status.readyReplicas/.spec.replicas"
+      - name: UP-TO-DATE
+        jsonPath: ".status.updatedReplicas"
+      - name: AVAILABLE
+        jsonPath: ".status.availableReplicas"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  services:
+    columns:
+      - name: TYPE
+        jsonPath: ".spec.type"
+      - name: CLUSTER-IP
+        jsonPath: ".spec.clusterIP"
+      - name: EXTERNAL-IP
+        jsonPath: ".status.loadBalancer.ingress[0].ip"
+      - name: PORT(S)
+        jsonPath: ".spec.ports[*]"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  configmaps:
+    columns:
+      - name: DATA
+        jsonPath: ".data"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  secrets:
+    columns:
+      - name: TYPE
+        jsonPath: ".type"
+      - name: DATA
+        jsonPath: ".data"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  nodes:
+    columns:
+      - name: STATUS
+        jsonPath: ".status.conditions[-1].type"
+      - name: ROLES
+        jsonPath: ".metadata.labels['node-role.kubernetes.io/']"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+      - name: VERSION
+        jsonPath: ".status.nodeInfo.kubeletVersion"
+  
+  namespaces:
+    columns:
+      - name: STATUS
+        jsonPath: ".status.phase"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  persistentvolumeclaims:
+    columns:
+      - name: STATUS
+        jsonPath: ".status.phase"
+      - name: VOLUME
+        jsonPath: ".spec.volumeName"
+      - name: CAPACITY
+        jsonPath: ".status.capacity.storage"
+      - name: ACCESS MODES
+        jsonPath: ".status.accessModes[*]"
+      - name: STORAGECLASS
+        jsonPath: ".spec.storageClassName"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  persistentvolumes:
+    columns:
+      - name: CAPACITY
+        jsonPath: ".spec.capacity.storage"
+      - name: ACCESS MODES
+        jsonPath: ".spec.accessModes[*]"
+      - name: RECLAIM POLICY
+        jsonPath: ".spec.persistentVolumeReclaimPolicy"
+      - name: STATUS
+        jsonPath: ".status.phase"
+      - name: CLAIM
+        jsonPath: ".spec.claimRef.name"
+      - name: STORAGECLASS
+        jsonPath: ".spec.storageClassName"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  ingresses:
+    columns:
+      - name: CLASS
+        jsonPath: ".spec.ingressClassName"
+      - name: HOSTS
+        jsonPath: ".spec.rules[*].host"
+      - name: ADDRESS
+        jsonPath: ".status.loadBalancer.ingress[0].ip"
+      - name: PORTS
+        jsonPath: ".spec.tls"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  statefulsets:
+    columns:
+      - name: READY
+        jsonPath: ".status.readyReplicas/.spec.replicas"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  daemonsets:
+    columns:
+      - name: DESIRED
+        jsonPath: ".status.desiredNumberScheduled"
+      - name: CURRENT
+        jsonPath: ".status.currentNumberScheduled"
+      - name: READY
+        jsonPath: ".status.numberReady"
+      - name: UP-TO-DATE
+        jsonPath: ".status.updatedNumberScheduled"
+      - name: AVAILABLE
+        jsonPath: ".status.numberAvailable"
+      - name: NODE SELECTOR
+        jsonPath: ".spec.template.spec.nodeSelector"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  replicasets:
+    columns:
+      - name: DESIRED
+        jsonPath: ".spec.replicas"
+      - name: CURRENT
+        jsonPath: ".status.replicas"
+      - name: READY
+        jsonPath: ".status.readyReplicas"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  jobs:
+    columns:
+      - name: COMPLETIONS
+        jsonPath: ".status.succeeded/.spec.completions"
+      - name: DURATION
+        jsonPath: ".status.completionTime"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  cronjobs:
+    columns:
+      - name: SCHEDULE
+        jsonPath: ".spec.schedule"
+      - name: SUSPEND
+        jsonPath: ".spec.suspend"
+      - name: ACTIVE
+        jsonPath: ".status.active"
+      - name: LAST SCHEDULE
+        jsonPath: ".status.lastScheduleTime"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  events:
+    columns:
+      - name: TYPE
+        jsonPath: ".type"
+      - name: REASON
+        jsonPath: ".reason"
+      - name: OBJECT
+        jsonPath: ".involvedObject.name"
+      - name: MESSAGE
+        jsonPath: ".message"
+  
+  serviceaccounts:
+    columns:
+      - name: SECRETS
+        jsonPath: ".secrets"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  roles:
+    columns:
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  rolebindings:
+    columns:
+      - name: ROLE
+        jsonPath: ".roleRef.name"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  clusterroles:
+    columns:
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  clusterrolebindings:
+    columns:
+      - name: ROLE
+        jsonPath: ".roleRef.name"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  horizontalpodautoscalers:
+    columns:
+      - name: REFERENCE
+        jsonPath: ".spec.scaleTargetRef.name"
+      - name: TARGETS
+        jsonPath: ".status.currentMetrics"
+      - name: MINPODS
+        jsonPath: ".spec.minReplicas"
+      - name: MAXPODS
+        jsonPath: ".spec.maxReplicas"
+      - name: REPLICAS
+        jsonPath: ".status.currentReplicas"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+  
+  networkpolicies:
+    columns:
+      - name: POD-SELECTOR
+        jsonPath: ".spec.podSelector.matchLabels"
+      - name: AGE
+        jsonPath: ".metadata.creationTimestamp"
+
