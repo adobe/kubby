@@ -7,6 +7,7 @@ import {
   saveCachedResources,
   getCacheAge, CachedTimestampedResources,
 } from './resourceCache'
+import {c} from 'vite/dist/node/moduleRunnerTransport.d-DJ_mE5sf'
 
 // Column configuration for each resource type
 interface ColumnConfig {
@@ -136,9 +137,7 @@ export function ResourceList({context, namespace, resourceType, onBack}: Resourc
   const handleRefresh = useCallback(() => {
     // Defer to allow UI to update (button state, cursor, etc.) before starting async operation
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
         loadResources()
-      })
     })
   }, [loadResources])
 
@@ -150,9 +149,14 @@ export function ResourceList({context, namespace, resourceType, onBack}: Resourc
         </button>
         <div class={classes.headerInfo}>
           <h1 class={classes.title}>{resourceType}</h1>
-          <span class={classes.context}>{context}</span>
-          <span class={classes.separator}>•</span>
-          <span class={classes.namespace}>{namespace}</span>
+          <span className={classes.context}>
+            <span className={classes.label}>Context</span>
+            <span className={classes.name}>{context}</span>
+          </span>
+          <span className={classes.namespace}>
+            <span className={classes.label}>Namespace</span>
+            <span className={classes.name}>{namespace}</span>
+          </span>
         </div>
         <button class={classes.refreshButton} onClick={handleRefresh} disabled={isRefreshing}>
           ↻ Refresh
