@@ -193,37 +193,26 @@
 
 .refreshIndicator {
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
+  bottom: 0.25rem;
+  right: 0.25rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-soft);
-  border-radius: 4px;
+  background: var(--surface-muted);
+  //border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem 0.15rem 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(8px);
   font-size: 0.75rem;
+  line-height: 1;
   color: var(--color-dimmed);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 10000;
-  pointer-events: none;
-  user-select: none;
 }
 
 .refreshSpinner {
   display: inline-block;
-  animation: spin 1s linear infinite;
-}
-
-.staleDataIndicator {
-  padding: 0.4rem 0.75rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.7rem;
-  color: var(--color-dimmed);
-  background: var(--surface-muted);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  display: inline-block;
+  //animation: spin 1s linear infinite;
 }
 
 .refreshError {

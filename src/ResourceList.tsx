@@ -203,12 +203,6 @@ export function ResourceList({ context, namespace, resourceType, onBack }: Resou
         </button>
       </header>
       
-      {cacheTimestamp && !isRefreshing && (
-        <div class={classes.staleDataIndicator}>
-          Data from {getCacheAge(cacheTimestamp)}
-        </div>
-      )}
-      
       {loading && (
         <div class={classes.loading}>
           <span class={classes.spinner}>⟳</span>
@@ -265,10 +259,10 @@ export function ResourceList({ context, namespace, resourceType, onBack }: Resou
         </div>
       )}
       
-      {isRefreshing ? (
+      {isRefreshing && cacheTimestamp ? (
         <div class={classes.refreshIndicator}>
-          <span class={classes.refreshSpinner}>⟳</span>
-          <span>Refreshing...</span>
+          <span class={classes.refreshSpinner}>😎</span>
+          <span>Data from {getCacheAge(cacheTimestamp)}, refreshing...</span>
         </div>
       ) : null}
     </div>
