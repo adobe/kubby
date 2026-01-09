@@ -32,7 +32,13 @@ interface UseResourceLoaderOptions {
  */
 export function useResourceLoader({ context, namespace, resourceType, labelSelectors }: UseResourceLoaderOptions) {
   const cacheKey = getCacheKey(context, namespace, resourceType, labelSelectors)
+  const baseCacheKey = getCacheKey(context, namespace, resourceType) // no labelSelectors
   const isMountedRef = useRef(true)
+  const prevCacheKeyRef = useRef(cacheKey)
+  const currentCacheKeyRef = useRef(cacheKey) // Track which cacheKey we expect results for
+  
+  // Keep currentCacheKeyRef in sync with cacheKey
+  currentCacheKeyRef.current = cacheKey
 
   // Initialize state lazily with cached data (runs synchronously before first render)
   const [state, setState] = useState<ResourceState>(() => {
@@ -55,8 +61,46 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
     }
   })
 
+  // Handle cacheKey changes after initial mount (e.g., when filters change)
+  useEffect(() => {
+    if (prevCacheKeyRef.current === cacheKey) return
+    prevCacheKeyRef.current = cacheKey
+
+    // Try loading from exact cache key first
+    let cached = loadCachedResources(cacheKey)
+
+    // If no cache for filtered key, try base (unfiltered) cache
+    if (!cached?.data && labelSelectors?.length) {
+      const baseCache = loadCachedResources(baseCacheKey)
+      if (baseCache?.data) {
+        // Filter items client-side
+        const filteredItems = baseCache.data.items.filter(item =>
+          labelSelectors.every(selector =>
+            item.labels?.some(l => l.key === selector.key && l.value === selector.value)
+          )
+        )
+        cached = {
+          data: { ...baseCache.data, items: filteredItems },
+          timestamp: baseCache.timestamp,
+        }
+      }
+    }
+
+    // Update state with cached data (or empty) and set refreshing
+    setState({
+      resources: cached?.data?.items || [],
+      columns: cached?.data?.columns || [],
+      cacheTimestamp: cached?.timestamp || null,
+      isRefreshing: true,
+      error: null,
+    })
+  }, [cacheKey, baseCacheKey, labelSelectors])
+
   // Fetch function - doesn't touch state except at the end
   const fetchResources = useCallback(async () => {
+    // Capture the cacheKey at fetch start to detect stale responses
+    const fetchCacheKey = cacheKey
+    
     try {
       const result = await invoke<ResourceListResponse>('get_resources', {
         resourceType,
@@ -65,7 +109,8 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         labelSelectors: labelSelectors || [],
       })
 
-      if (!isMountedRef.current) return
+      // Ignore stale results if cacheKey has changed (user navigated away)
+      if (currentCacheKeyRef.current !== fetchCacheKey) return
 
       // Save to cache
       saveCachedResources(cacheKey, result)
@@ -80,7 +125,8 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         error: null,
       }))
     } catch (e) {
-      if (!isMountedRef.current) return
+      // Ignore stale errors if cacheKey has changed (user navigated away)
+      if (currentCacheKeyRef.current !== fetchCacheKey) return
 
       setState(prev => ({
         ...prev,

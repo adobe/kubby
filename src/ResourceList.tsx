@@ -231,7 +231,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
             {resources.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + 1} class={classes.emptyRow}>
-                  No resources found
+                  {isRefreshing ? '...' : 'No resources found'}
                 </td>
               </tr>
             ) : (

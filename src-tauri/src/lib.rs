@@ -3,8 +3,11 @@ mod resource_columns;
 mod resource_list;
 
 use tokio::process::Command;
+use tokio::time::{timeout, Duration};
 
 use serde::{Serialize, Deserialize};
+
+const KUBECTL_TIMEOUT_SECS: u64 = 5;
 
 // Kubectl types
 #[derive(Serialize)]
@@ -51,11 +54,15 @@ pub struct ResourceListResponse {
 
 #[tauri::command]
 async fn kubectl(args: Vec<String>) -> Result<KubectlOutput, String> {
-    let output = Command::new("kubectl")
-        .args(&args)
-        .output()
-        .await
-        .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl timed out after {}s, check your network connection then click refresh to retry", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -88,11 +95,15 @@ async fn get_resource_types(context: String) -> Result<Vec<String>, String> {
         "name".to_string(),
     ];
     
-    let output = Command::new("kubectl")
-        .args(&args)
-        .output()
-        .await
-        .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl timed out after {}s, check your network connection then click refresh to retry", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
     
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

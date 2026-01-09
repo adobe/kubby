@@ -1,6 +1,9 @@
 use tokio::process::Command;
+use tokio::time::{timeout, Duration};
 
 use serde_json::Value;
+
+const KUBECTL_TIMEOUT_SECS: u64 = 5;
 
 use crate::{ResourceColumnConfig, ResourceItem, ResourceListResponse, LabelSelector};
 use crate::resource_columns;
@@ -357,12 +360,16 @@ pub async fn get_resources(
     args.push("-o".to_string());
     args.push("json".to_string());
     
-    // Execute kubectl command asynchronously (non-blocking)
-    let output = Command::new("kubectl")
-        .args(&args)
-        .output()
-        .await
-        .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    // Execute kubectl command asynchronously with timeout
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl timed out after {}s, check your network connection then click refresh to retry", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
     
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
