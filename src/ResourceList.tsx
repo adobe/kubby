@@ -51,13 +51,14 @@ interface ResourceListProps {
   namespace: string;
   resourceType: string;
   labelSelectors?: LabelSelector[];
+  backLabel: string;
   onBack: () => void;
   onResourceTypeChange?: (resourceType: string) => void;
   onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
   onRemoveFilter?: (index: number) => void;
 }
 
-export function ResourceList({context, namespace, resourceType, labelSelectors, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter}: ResourceListProps) {
+export function ResourceList({context, namespace, resourceType, labelSelectors, backLabel, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter}: ResourceListProps) {
   const isMountedRef = useRef(true)
 
   // Use the resource loader hook - handles caching and background refresh
@@ -154,7 +155,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
     <div class={classes.resourceList}>
       <header class={classes.header}>
         <button class={classes.backButton} onClick={onBack}>
-          ← Back
+          ← {backLabel}
         </button>
         <div class={classes.headerInfo}>
           <div class={classes.resourceTypeWrapper}>

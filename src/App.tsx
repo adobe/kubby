@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import classes from "./App.module.scss";
 import { ResourceList } from "./ResourceList";
 import type { LabelSelector } from "./resourceTypes";
+import type { NavigationNode } from "./navigationTypes";
+import { createNavigationNode, formatResourceTypeForDisplay } from "./navigationTypes";
 
 interface ContextGroup {
   name: string;
@@ -41,12 +43,7 @@ interface ParsedContext {
   cluster: string;
 }
 
-interface ResourceSelection {
-  context: string;
-  namespace: string;
-  resourceType: string;
-  labelSelectors?: LabelSelector[];
-}
+// ResourceSelection interface removed - using NavigationNode instead
 
 function parseContextName(contextName: string): ParsedContext {
   // Pattern: {env}-{region}-{cluster_name}
@@ -320,7 +317,7 @@ function App() {
   const [filter, setFilter] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [resourceSelection, setResourceSelection] = useState<ResourceSelection | null>(null);
+  const [navigationStack, setNavigationStack] = useState<NavigationNode[]>([]);
 
   useEffect(() => {
     async function fetchConfig() {
@@ -388,30 +385,45 @@ function App() {
   const filterWords = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
   const handleCellClick = (context: string, namespace: string) => {
-    setResourceSelection({
+    // Push initial navigation node - back button will show "Dashboard"
+    const initialNode = createNavigationNode(
       context,
       namespace,
-      resourceType: "deployments", // Default to deployments
-    });
+      "deployments", // Default to deployments
+      "Dashboard"
+    );
+    setNavigationStack([initialNode]);
   };
 
-  const handleBackToDashboard = () => {
-    setResourceSelection(null);
+  const handleBackNavigation = () => {
+    if (navigationStack.length <= 1) {
+      // Return to dashboard
+      setNavigationStack([]);
+    } else {
+      // Pop the current node, go back to previous
+      setNavigationStack(navigationStack.slice(0, -1));
+    }
   };
 
   const handleResourceClick = (resourceType: string, resourceName: string, labels: LabelSelector[]) => {
-    if (!resourceSelection) return;
+    if (navigationStack.length === 0) return;
+
+    const currentNode = navigationStack[navigationStack.length - 1];
 
     // For deployments -> pods routing
     if (resourceType === 'deployments') {
       // Find the app.kubernetes.io/name label
       const appLabel = labels.find(l => l.key === 'app.kubernetes.io/name');
       if (appLabel) {
-        setResourceSelection({
-          ...resourceSelection,
-          resourceType: 'pods',
-          labelSelectors: [appLabel],
-        });
+        // Push new navigation node for pods with filter
+        const newNode = createNavigationNode(
+          currentNode.context,
+          currentNode.namespace,
+          'pods',
+          formatResourceTypeForDisplay(resourceType), // "Deployments"
+          [appLabel]
+        );
+        setNavigationStack([...navigationStack, newNode]);
       } else {
         console.warn(`No app.kubernetes.io/name label found on deployment ${resourceName}`);
       }
@@ -420,31 +432,41 @@ function App() {
   };
 
   const handleRemoveFilter = (index: number) => {
-    if (!resourceSelection) return;
-    const newSelectors = [...(resourceSelection.labelSelectors || [])];
+    if (navigationStack.length === 0) return;
+    const currentNode = navigationStack[navigationStack.length - 1];
+    const newSelectors = [...(currentNode.labelSelectors || [])];
     newSelectors.splice(index, 1);
-    setResourceSelection({
-      ...resourceSelection,
+    
+    // Update the current node with new filters
+    const updatedNode: NavigationNode = {
+      ...currentNode,
       labelSelectors: newSelectors.length > 0 ? newSelectors : undefined,
-    });
+    };
+    setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
   };
 
-  // Show ResourceList when a selection is made
-  if (resourceSelection) {
+  // Show ResourceList when navigation stack is not empty
+  if (navigationStack.length > 0) {
+    const currentNode = navigationStack[navigationStack.length - 1];
+    // Determine back button label: if we have a previous node, use its displayName, otherwise "Dashboard"
+    const backLabel = currentNode.displayName;
+    
     return (
       <ResourceList
-        context={resourceSelection.context}
-        namespace={resourceSelection.namespace}
-        resourceType={resourceSelection.resourceType}
-        labelSelectors={resourceSelection.labelSelectors}
-        onBack={handleBackToDashboard}
+        context={currentNode.context}
+        namespace={currentNode.namespace}
+        resourceType={currentNode.resourceType}
+        labelSelectors={currentNode.labelSelectors}
+        backLabel={backLabel}
+        onBack={handleBackNavigation}
         onResourceTypeChange={(newResourceType) => {
           // Clear filters when resource type changes
-          setResourceSelection({
-            ...resourceSelection,
+          const updatedNode: NavigationNode = {
+            ...currentNode,
             resourceType: newResourceType,
             labelSelectors: undefined,
-          });
+          };
+          setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
         }}
         onResourceClick={handleResourceClick}
         onRemoveFilter={handleRemoveFilter}
