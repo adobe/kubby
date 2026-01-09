@@ -405,6 +405,12 @@ function App() {
         namespace={resourceSelection.namespace}
         resourceType={resourceSelection.resourceType}
         onBack={handleBackToDashboard}
+        onResourceTypeChange={(newResourceType) => {
+          setResourceSelection({
+            ...resourceSelection,
+            resourceType: newResourceType,
+          });
+        }}
       />
     );
   }
