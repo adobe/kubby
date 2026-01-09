@@ -1,4 +1,4 @@
-use std::process::Command;
+use tokio::process::Command;
 
 use serde_json::Value;
 
@@ -306,7 +306,7 @@ fn parse_kubectl_json(
 }
 
 #[tauri::command]
-pub fn get_resources(
+pub async fn get_resources(
     resource_type: String,
     context: String,
     namespace: String,
@@ -330,10 +330,11 @@ pub fn get_resources(
         "json".to_string(),
     ];
     
-    // Execute kubectl command
+    // Execute kubectl command asynchronously (non-blocking)
     let output = Command::new("kubectl")
         .args(&args)
         .output()
+        .await
         .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
     
     if !output.status.success() {

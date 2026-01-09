@@ -1,4 +1,4 @@
-import { ResourceListResponse } from "./ResourceList";
+import { ResourceListResponse } from "./resourceTypes";
 
 interface CachedResourceData {
   data: ResourceListResponse;

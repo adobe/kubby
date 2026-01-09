@@ -2,7 +2,7 @@ mod dashboard;
 mod resource_columns;
 mod resource_list;
 
-use std::process::Command;
+use tokio::process::Command;
 
 use serde::Serialize;
 
@@ -42,10 +42,11 @@ pub struct ResourceListResponse {
 
 
 #[tauri::command]
-fn kubectl(args: Vec<String>) -> Result<KubectlOutput, String> {
+async fn kubectl(args: Vec<String>) -> Result<KubectlOutput, String> {
     let output = Command::new("kubectl")
         .args(&args)
         .output()
+        .await
         .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -69,8 +70,8 @@ fn get_resource_columns(
 }
 
 #[tauri::command]
-fn get_resource_types(context: String) -> Result<Vec<String>, String> {
-    // Execute kubectl api-resources to get all resource types
+async fn get_resource_types(context: String) -> Result<Vec<String>, String> {
+    // Execute kubectl api-resources to get all resource types (async/non-blocking)
     let args = vec![
         "api-resources".to_string(),
         "--context".to_string(),
@@ -82,6 +83,7 @@ fn get_resource_types(context: String) -> Result<Vec<String>, String> {
     let output = Command::new("kubectl")
         .args(&args)
         .output()
+        .await
         .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
     
     if !output.status.success() {
