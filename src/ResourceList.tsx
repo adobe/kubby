@@ -5,6 +5,42 @@ import classes from './ResourceList.module.scss'
 import {getCacheAge} from './resourceCache'
 import {useResourceLoader} from './useResourceLoader'
 
+function sortByFilterRelevance(filterInput: string) {
+  const lowerInput = filterInput.toLowerCase()
+  
+  return (a: string, b: string) => {
+    const lowerA = a.toLowerCase()
+    const lowerB = b.toLowerCase()
+    
+    // Exact match comes first
+    const aExact = lowerA === lowerInput
+    const bExact = lowerB === lowerInput
+    if (aExact && !bExact) return -1
+    if (!aExact && bExact) return 1
+    
+    // Match without final 's' (singular/plural)
+    const aWithoutS = lowerA === lowerInput + 's'
+    const bWithoutS = lowerB === lowerInput + 's'
+    const aInputWithoutS = lowerA + 's' === lowerInput
+    const bInputWithoutS = lowerB + 's' === lowerInput
+    
+    const aSingularPlural = aWithoutS || aInputWithoutS
+    const bSingularPlural = bWithoutS || bInputWithoutS
+    
+    if (aSingularPlural && !bSingularPlural) return -1
+    if (!aSingularPlural && bSingularPlural) return 1
+    
+    // Starts with the input comes next
+    const aStarts = lowerA.startsWith(lowerInput)
+    const bStarts = lowerB.startsWith(lowerInput)
+    if (aStarts && !bStarts) return -1
+    if (!aStarts && bStarts) return 1
+    
+    // Otherwise maintain alphabetical order
+    return a.localeCompare(b)
+  }
+}
+
 // Re-export for backwards compatibility
 export type { ResourceListResponse } from './resourceTypes'
 
@@ -74,38 +110,7 @@ export function ResourceList({context, namespace, resourceType, onBack, onResour
         .filter(item => 
           item.toLowerCase().includes(filterInput.toLowerCase())
         )
-        .sort((a, b) => {
-          const lowerA = a.toLowerCase()
-          const lowerB = b.toLowerCase()
-          const lowerInput = filterInput.toLowerCase()
-          
-          // Exact match comes first
-          const aExact = lowerA === lowerInput
-          const bExact = lowerB === lowerInput
-          if (aExact && !bExact) return -1
-          if (!aExact && bExact) return 1
-          
-          // Match without final 's' (singular/plural)
-          const aWithoutS = lowerA === lowerInput + 's'
-          const bWithoutS = lowerB === lowerInput + 's'
-          const aInputWithoutS = lowerA + 's' === lowerInput
-          const bInputWithoutS = lowerB + 's' === lowerInput
-          
-          const aSingularPlural = aWithoutS || aInputWithoutS
-          const bSingularPlural = bWithoutS || bInputWithoutS
-          
-          if (aSingularPlural && !bSingularPlural) return -1
-          if (!aSingularPlural && bSingularPlural) return 1
-          
-          // Starts with the input comes next
-          const aStarts = lowerA.startsWith(lowerInput)
-          const bStarts = lowerB.startsWith(lowerInput)
-          if (aStarts && !bStarts) return -1
-          if (!aStarts && bStarts) return 1
-          
-          // Otherwise maintain alphabetical order
-          return a.localeCompare(b)
-        })
+        .sort(sortByFilterRelevance(filterInput))
     : resourceTypes
 
   // Downshift combobox setup
