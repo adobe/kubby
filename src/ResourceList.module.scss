@@ -251,10 +251,26 @@
 .nameCell {
   font-weight: 500;
   color: var(--link-color);
+}
+
+.nameButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--link-color);
   cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
   
   &:hover {
     text-decoration: underline;
+    color: var(--link-color-hover, var(--link-color));
+  }
+  
+  &:active {
+    opacity: 0.7;
   }
 }
 

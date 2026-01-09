@@ -4,13 +4,20 @@ mod resource_list;
 
 use tokio::process::Command;
 
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 // Kubectl types
 #[derive(Serialize)]
 struct KubectlOutput {
     stdout: String,
     stderr: String,
+}
+
+// Label selector for filtering resources
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LabelSelector {
+    pub key: String,
+    pub value: String,
 }
 
 // Frontend-facing column config
@@ -32,6 +39,7 @@ pub struct ResourceItem {
     name: String,
     #[serde(flatten)]
     columns: std::collections::HashMap<String, String>,
+    labels: Vec<LabelSelector>,
 }
 
 #[derive(Debug, Serialize)]

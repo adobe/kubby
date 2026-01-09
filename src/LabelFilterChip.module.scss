@@ -1,0 +1,60 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.25rem 0.4rem;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+}
+
+.labelKey {
+  font-weight: 600;
+  color: var(--color-emphasis);
+}
+
+.equals {
+  color: var(--color-muted);
+  font-weight: 500;
+  padding: 0 0.1rem;
+}
+
+.labelValue {
+  font-weight: 400;
+  color: var(--color);
+}
+
+.removeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.3rem;
+  padding: 0;
+  width: 1rem;
+  height: 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--color-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--surface-active);
+    color: var(--color-danger, #e74c3c);
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+}

@@ -5,7 +5,7 @@ import {
   loadCachedResources,
   saveCachedResources,
 } from './resourceCache'
-import { ResourceListResponse, ColumnConfig, ResourceItem } from './resourceTypes'
+import { ResourceListResponse, ColumnConfig, ResourceItem, LabelSelector } from './resourceTypes'
 
 export interface ResourceState {
   resources: ResourceItem[];
@@ -19,6 +19,7 @@ interface UseResourceLoaderOptions {
   context: string;
   namespace: string;
   resourceType: string;
+  labelSelectors?: LabelSelector[];
 }
 
 /**
@@ -29,8 +30,8 @@ interface UseResourceLoaderOptions {
  * 2. Start background refresh automatically
  * 3. Update state when fresh data arrives
  */
-export function useResourceLoader({ context, namespace, resourceType }: UseResourceLoaderOptions) {
-  const cacheKey = getCacheKey(context, namespace, resourceType)
+export function useResourceLoader({ context, namespace, resourceType, labelSelectors }: UseResourceLoaderOptions) {
+  const cacheKey = getCacheKey(context, namespace, resourceType, labelSelectors)
   const isMountedRef = useRef(true)
 
   // Initialize state lazily with cached data (runs synchronously before first render)
@@ -61,6 +62,7 @@ export function useResourceLoader({ context, namespace, resourceType }: UseResou
         resourceType,
         context,
         namespace,
+        labelSelectors: labelSelectors || [],
       })
 
       if (!isMountedRef.current) return
@@ -86,7 +88,7 @@ export function useResourceLoader({ context, namespace, resourceType }: UseResou
         error: String(e),
       }))
     }
-  }, [cacheKey, context, namespace, resourceType])
+  }, [cacheKey, context, namespace, resourceType, labelSelectors])
 
   // Start background fetch after mount
   useEffect(() => {

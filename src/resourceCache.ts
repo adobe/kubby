@@ -1,4 +1,4 @@
-import { ResourceListResponse } from "./resourceTypes";
+import { ResourceListResponse, LabelSelector } from "./resourceTypes";
 
 interface CachedResourceData {
   data: ResourceListResponse;
@@ -8,16 +8,28 @@ interface CachedResourceData {
 const CACHE_PREFIX = "resource_cache:";
 
 /**
- * Generate a cache key from context, namespace, and resource type
+ * Generate a cache key from context, namespace, resource type, and optional label selectors
  */
 export function getCacheKey(
   context: string,
   namespace: string,
-  resourceType: string
+  resourceType: string,
+  labelSelectors?: LabelSelector[]
 ): string {
   // Sanitize the key components to avoid issues with special characters
   const sanitize = (str: string) => str.replace(/[:]/g, "_");
-  return `${CACHE_PREFIX}${sanitize(context)}:${sanitize(namespace)}:${sanitize(resourceType)}`;
+  
+  let key = `${CACHE_PREFIX}${sanitize(context)}:${sanitize(namespace)}:${sanitize(resourceType)}`;
+  
+  // Include label selectors in cache key if provided
+  if (labelSelectors && labelSelectors.length > 0) {
+    const selectorString = labelSelectors
+      .map(ls => `${sanitize(ls.key)}=${sanitize(ls.value)}`)
+      .join(",");
+    key += `:labels:${selectorString}`;
+  }
+  
+  return key;
 }
 
 export type CachedTimestampedResources = { data: ResourceListResponse; timestamp: number }

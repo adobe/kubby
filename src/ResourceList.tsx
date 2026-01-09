@@ -4,6 +4,8 @@ import {useCombobox} from 'downshift'
 import classes from './ResourceList.module.scss'
 import {getCacheAge} from './resourceCache'
 import {useResourceLoader} from './useResourceLoader'
+import {FilterChipBar} from './FilterChipBar'
+import type {LabelSelector} from './resourceTypes'
 
 function sortByFilterRelevance(filterInput: string) {
   const lowerInput = filterInput.toLowerCase()
@@ -48,11 +50,14 @@ interface ResourceListProps {
   context: string;
   namespace: string;
   resourceType: string;
+  labelSelectors?: LabelSelector[];
   onBack: () => void;
   onResourceTypeChange?: (resourceType: string) => void;
+  onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
+  onRemoveFilter?: (index: number) => void;
 }
 
-export function ResourceList({context, namespace, resourceType, onBack, onResourceTypeChange}: ResourceListProps) {
+export function ResourceList({context, namespace, resourceType, labelSelectors, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter}: ResourceListProps) {
   const isMountedRef = useRef(true)
 
   // Use the resource loader hook - handles caching and background refresh
@@ -63,7 +68,7 @@ export function ResourceList({context, namespace, resourceType, onBack, onResour
     isRefreshing,
     error,
     refresh,
-  } = useResourceLoader({ context, namespace, resourceType })
+  } = useResourceLoader({ context, namespace, resourceType, labelSelectors })
 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
 
@@ -195,6 +200,13 @@ export function ResourceList({context, namespace, resourceType, onBack, onResour
         </button>
       </header>
 
+      {labelSelectors && labelSelectors.length > 0 && onRemoveFilter && (
+        <FilterChipBar 
+          labelSelectors={labelSelectors} 
+          onRemoveFilter={onRemoveFilter}
+        />
+      )}
+
       {error && (
         <div class={classes.error}>
           <strong>Error:</strong> {error}
@@ -224,7 +236,19 @@ export function ResourceList({context, namespace, resourceType, onBack, onResour
             ) : (
               resources.map((resource) => (
                 <tr key={resource.name} class={classes.resourceRow}>
-                  <td class={classes.nameCell}>{resource.name}</td>
+                  <td class={classes.nameCell}>
+                    {onResourceClick ? (
+                      <button 
+                        class={classes.nameButton}
+                        onClick={() => onResourceClick(resourceType, resource.name, resource.labels)}
+                        title={`View details for ${resource.name}`}
+                      >
+                        {resource.name}
+                      </button>
+                    ) : (
+                      resource.name
+                    )}
+                  </td>
                   {columns.map((col) => (
                     <td key={col.name} class={classes.dataCell}>
                       {resource[col.name] ?? '<none>'}

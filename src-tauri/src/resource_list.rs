@@ -2,7 +2,7 @@ use tokio::process::Command;
 
 use serde_json::Value;
 
-use crate::{ResourceColumnConfig, ResourceItem, ResourceListResponse};
+use crate::{ResourceColumnConfig, ResourceItem, ResourceListResponse, LabelSelector};
 use crate::resource_columns;
 
 fn format_age(timestamp: &str) -> String {
@@ -247,6 +247,20 @@ fn parse_kubectl_json(
             .unwrap_or("<unknown>")
             .to_string();
         
+        // Extract labels from metadata
+        let labels: Vec<LabelSelector> = item.get("metadata")
+            .and_then(|m| m.get("labels"))
+            .and_then(|l| l.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| LabelSelector {
+                        key: k.clone(),
+                        value: v.as_str().unwrap_or("").to_string(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        
         let mut columns = std::collections::HashMap::new();
         
         for col in &config.columns {
@@ -299,7 +313,7 @@ fn parse_kubectl_json(
             columns.insert(col.name.clone(), value);
         }
         
-        result.push(ResourceItem { name, columns });
+        result.push(ResourceItem { name, columns, labels });
     }
     
     Ok(result)
@@ -310,6 +324,7 @@ pub async fn get_resources(
     resource_type: String,
     context: String,
     namespace: String,
+    label_selectors: Vec<LabelSelector>,
 ) -> Result<ResourceListResponse, String> {
     // Get column configuration
     let column_config = resource_columns::get_resource_columns(
@@ -319,16 +334,28 @@ pub async fn get_resources(
     )?;
     
     // Build kubectl command args
-    let args = vec![
+    let mut args = vec![
         "get".to_string(),
         resource_type.clone(),
         "--context".to_string(),
         context,
         "-n".to_string(),
         namespace,
-        "-o".to_string(),
-        "json".to_string(),
     ];
+    
+    // Add label selector if provided
+    if !label_selectors.is_empty() {
+        let selector_string = label_selectors
+            .iter()
+            .map(|ls| format!("{}={}", ls.key, ls.value))
+            .collect::<Vec<String>>()
+            .join(",");
+        args.push("-l".to_string());
+        args.push(selector_string);
+    }
+    
+    args.push("-o".to_string());
+    args.push("json".to_string());
     
     // Execute kubectl command asynchronously (non-blocking)
     let output = Command::new("kubectl")

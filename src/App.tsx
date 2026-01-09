@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "preact/hooks";
 import { invoke } from "@tauri-apps/api/core";
 import classes from "./App.module.scss";
 import { ResourceList } from "./ResourceList";
+import type { LabelSelector } from "./resourceTypes";
 
 interface ContextGroup {
   name: string;
@@ -44,6 +45,7 @@ interface ResourceSelection {
   context: string;
   namespace: string;
   resourceType: string;
+  labelSelectors?: LabelSelector[];
 }
 
 function parseContextName(contextName: string): ParsedContext {
@@ -397,6 +399,36 @@ function App() {
     setResourceSelection(null);
   };
 
+  const handleResourceClick = (resourceType: string, resourceName: string, labels: LabelSelector[]) => {
+    if (!resourceSelection) return;
+
+    // For deployments -> pods routing
+    if (resourceType === 'deployments') {
+      // Find the app.kubernetes.io/name label
+      const appLabel = labels.find(l => l.key === 'app.kubernetes.io/name');
+      if (appLabel) {
+        setResourceSelection({
+          ...resourceSelection,
+          resourceType: 'pods',
+          labelSelectors: [appLabel],
+        });
+      } else {
+        console.warn(`No app.kubernetes.io/name label found on deployment ${resourceName}`);
+      }
+    }
+    // Add more routing rules here for other resource types
+  };
+
+  const handleRemoveFilter = (index: number) => {
+    if (!resourceSelection) return;
+    const newSelectors = [...(resourceSelection.labelSelectors || [])];
+    newSelectors.splice(index, 1);
+    setResourceSelection({
+      ...resourceSelection,
+      labelSelectors: newSelectors.length > 0 ? newSelectors : undefined,
+    });
+  };
+
   // Show ResourceList when a selection is made
   if (resourceSelection) {
     return (
@@ -404,13 +436,18 @@ function App() {
         context={resourceSelection.context}
         namespace={resourceSelection.namespace}
         resourceType={resourceSelection.resourceType}
+        labelSelectors={resourceSelection.labelSelectors}
         onBack={handleBackToDashboard}
         onResourceTypeChange={(newResourceType) => {
+          // Clear filters when resource type changes
           setResourceSelection({
             ...resourceSelection,
             resourceType: newResourceType,
+            labelSelectors: undefined,
           });
         }}
+        onResourceClick={handleResourceClick}
+        onRemoveFilter={handleRemoveFilter}
       />
     );
   }
