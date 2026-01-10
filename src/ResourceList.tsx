@@ -284,7 +284,7 @@ export function ResourceList({
               filterItems={filterResourceTypes}
               placeholder="Select resource type..."
               emptyMessage="No resource types found"
-              tabIndex={2}
+              tabIndex={1}
               onOpenChange={setIsComboboxOpen}
             />
           </Label>
@@ -297,14 +297,14 @@ export function ResourceList({
             shortcut={'Cmd+R'}
             onClick={refresh}
             disabled={isRefreshing}
-            tabIndex={3}
+            tabIndex={2}
             className={classes.refreshButton}
           />
           <ShortcutButton
             label="Back"
             shortcut="Esc"
             onClick={onBack}
-            tabIndex={1}
+            tabIndex={3}
             className={classes.backButton}
           />
         </div>
