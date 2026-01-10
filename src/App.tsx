@@ -130,25 +130,6 @@ function handleCellKeyDown(e: KeyboardEvent, tableRef: HTMLTableElement | null) 
       targetCol = currentCol + 1;
       handled = true;
       break;
-    case "Tab":
-      // Let Tab work naturally but find next/prev button
-      const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
-      const currentIndex = allButtons.indexOf(target);
-      
-      if (e.shiftKey) {
-        // Find previous button
-        if (currentIndex > 0) {
-          e.preventDefault();
-          allButtons[currentIndex - 1].focus();
-        }
-      } else {
-        // Find next button
-        if (currentIndex < allButtons.length - 1) {
-          e.preventDefault();
-          allButtons[currentIndex + 1].focus();
-        }
-      }
-      return;
   }
   
   if (!handled) return;
@@ -318,6 +299,7 @@ function App() {
   const [showFilter, setShowFilter] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [navigationStack, setNavigationStack] = useState<NavigationNode[]>([]);
+  const [lastSelectedCell, setLastSelectedCell] = useState<{ context: string; namespace: string } | null>(null);
 
   useEffect(() => {
     async function fetchConfig() {
@@ -334,9 +316,40 @@ function App() {
     fetchConfig();
   }, []);
 
-  // Listen for keydown to show filter input
+  // Focus button when dashboard is shown (restore last selection or focus first)
+  useEffect(() => {
+    if (config && navigationStack.length === 0) {
+      // Use requestAnimationFrame to ensure DOM is rendered
+      requestAnimationFrame(() => {
+        let targetButton: HTMLElement | null = null;
+        
+        // Try to restore focus to last selected cell
+        if (lastSelectedCell) {
+          targetButton = document.querySelector(
+            `.${classes.cellButton}[data-context="${lastSelectedCell.context}"][data-namespace="${lastSelectedCell.namespace}"]`
+          ) as HTMLElement | null;
+        }
+        
+        // Fall back to first button if last selection not found
+        if (!targetButton) {
+          targetButton = document.querySelector(`.${classes.cellButton}`) as HTMLElement | null;
+        }
+        
+        if (targetButton) {
+          targetButton.focus();
+        }
+      });
+    }
+  }, [config, navigationStack.length, lastSelectedCell]);
+
+  // Listen for keydown to show filter input (only on dashboard)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Only handle filter input when on dashboard
+      if (navigationStack.length > 0) {
+        return;
+      }
+      
       // Ignore if we're already focused on an input
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
@@ -380,11 +393,81 @@ function App() {
 
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, []);
+  }, [navigationStack.length]);
+
+  // Handle Tab navigation between dashboard groups and filter input
+  useEffect(() => {
+    function handleTabNavigation(e: KeyboardEvent) {
+      // Only handle Tab on dashboard
+      if (navigationStack.length > 0) return;
+      if (e.key !== "Tab") return;
+
+      // Build list of focusable targets: first button of each group + filter input
+      const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
+      const groupFirstButtons = sections
+        .map(section => section.querySelector(`.${classes.cellButton}`) as HTMLElement | null)
+        .filter((btn): btn is HTMLElement => btn !== null);
+
+      const filterInput = document.querySelector(`.${classes.filterInput}`) as HTMLElement | null;
+
+      // Build ordered list of tab stops
+      const tabStops: HTMLElement[] = [...groupFirstButtons];
+      if (filterInput) {
+        tabStops.push(filterInput);
+      }
+
+      if (tabStops.length === 0) return;
+
+      const activeElement = document.activeElement as HTMLElement;
+      
+      // Check if we're currently on a cell button or filter input
+      const isOnCellButton = activeElement?.classList.contains(classes.cellButton);
+      const isOnFilterInput = activeElement?.classList.contains(classes.filterInput);
+      
+      if (!isOnCellButton && !isOnFilterInput) return;
+
+      e.preventDefault();
+
+      // Find which group the current element belongs to
+      let currentIndex = -1;
+      if (isOnFilterInput) {
+        currentIndex = tabStops.indexOf(filterInput!);
+      } else if (isOnCellButton) {
+        // Find which section this button is in
+        const currentSection = activeElement.closest(`.${classes.dashboardSection}`);
+        if (currentSection) {
+          const sectionIndex = sections.indexOf(currentSection);
+          if (sectionIndex !== -1 && sectionIndex < groupFirstButtons.length) {
+            currentIndex = sectionIndex;
+          }
+        }
+      }
+
+      if (currentIndex === -1) return;
+
+      // Calculate next index
+      let nextIndex: number;
+      if (e.shiftKey) {
+        nextIndex = currentIndex - 1;
+        if (nextIndex < 0) nextIndex = tabStops.length - 1;
+      } else {
+        nextIndex = currentIndex + 1;
+        if (nextIndex >= tabStops.length) nextIndex = 0;
+      }
+
+      tabStops[nextIndex].focus();
+    }
+
+    document.addEventListener("keydown", handleTabNavigation, true);
+    return () => document.removeEventListener("keydown", handleTabNavigation, true);
+  }, [navigationStack.length, showFilter]);
 
   const filterWords = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
   const handleCellClick = (context: string, namespace: string) => {
+    // Remember the selected cell for restoring focus when returning
+    setLastSelectedCell({ context, namespace });
+    
     // Push initial navigation node - back button will show "Dashboard"
     const initialNode = createNavigationNode(
       context,
@@ -736,6 +819,8 @@ function NamespaceGroupRows({
                       title={`${ns.name} @ ${ctx}`}
                       data-row={rowIndex}
                       data-col={col}
+                      data-context={ctx}
+                      data-namespace={ns.name}
                       onClick={() => onCellClick(ctx, ns.name)}
                       onKeyDown={(e) => handleCellKeyDown(e as unknown as KeyboardEvent, tableRef.current)}
                     >
