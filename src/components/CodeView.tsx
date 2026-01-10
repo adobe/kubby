@@ -18,7 +18,7 @@ export function CodeView({ code, language }: CodeViewProps) {
     
     codeToHtml(code, {
       lang: language,
-      theme: 'dark-plus', // 'github-dark',
+      theme: 'github-dark-default', // 'github-dark',
     }).then((result) => {
       if (!cancelled) {
         setHtml(result)

@@ -553,10 +553,12 @@ export function ResourceList({
                   data-index={index}
                 >
                   <td class={classes.nameCell}>
-                    {resource.name}
-                    {editingResourceName === resource.name && (
-                      <span class={classes.editingChip}>Editing</span>
-                    )}
+                    <div class={classes.nameContent}>
+                      <span>{resource.name}</span>
+                      {editingResourceName === resource.name && (
+                        <span class={classes.editingChip}>Editing</span>
+                      )}
+                    </div>
                   </td>
                   {columns.map((col) => (
                     <td key={col.name} class={classes.dataCell}>
