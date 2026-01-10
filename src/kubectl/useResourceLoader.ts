@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'preact/hooks'
 import { invoke } from '@tauri-apps/api/core'
 import {
   getCacheKey,
@@ -23,16 +23,28 @@ interface UseResourceLoaderOptions {
 }
 
 /**
+ * Filter resources by label selectors (client-side filtering)
+ */
+function filterByLabels(items: ResourceItem[], labelSelectors?: LabelSelector[]): ResourceItem[] {
+  if (!labelSelectors?.length) return items
+  return items.filter(item =>
+    labelSelectors.every(selector =>
+      item.labels?.some(l => l.key === selector.key && l.value === selector.value)
+    )
+  )
+}
+
+/**
  * Custom hook for loading resources with cache-first strategy.
  * 
  * Flow:
  * 1. Initialize with cached data synchronously (before first render)
  * 2. Start background refresh automatically
  * 3. Update state when fresh data arrives
+ * 4. Apply label filtering client-side
  */
 export function useResourceLoader({ context, namespace, resourceType, labelSelectors }: UseResourceLoaderOptions) {
-  const cacheKey = getCacheKey(context, namespace, resourceType, labelSelectors)
-  const baseCacheKey = getCacheKey(context, namespace, resourceType) // no labelSelectors
+  const cacheKey = getCacheKey(context, namespace, resourceType)
   const isMountedRef = useRef(true)
   const prevCacheKeyRef = useRef(cacheKey)
   const currentCacheKeyRef = useRef(cacheKey) // Track which cacheKey we expect results for
@@ -61,30 +73,12 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
     }
   })
 
-  // Handle cacheKey changes after initial mount (e.g., when filters change)
+  // Handle cacheKey changes after initial mount (e.g., when resource type changes)
   useEffect(() => {
     if (prevCacheKeyRef.current === cacheKey) return
     prevCacheKeyRef.current = cacheKey
 
-    // Try loading from exact cache key first
-    let cached = loadCachedResources(cacheKey)
-
-    // If no cache for filtered key, try base (unfiltered) cache
-    if (!cached?.data && labelSelectors?.length) {
-      const baseCache = loadCachedResources(baseCacheKey)
-      if (baseCache?.data) {
-        // Filter items client-side
-        const filteredItems = baseCache.data.items.filter(item =>
-          labelSelectors.every(selector =>
-            item.labels?.some(l => l.key === selector.key && l.value === selector.value)
-          )
-        )
-        cached = {
-          data: { ...baseCache.data, items: filteredItems },
-          timestamp: baseCache.timestamp,
-        }
-      }
-    }
+    const cached = loadCachedResources(cacheKey)
 
     // Update state with cached data (or empty) and set refreshing
     setState({
@@ -94,7 +88,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
       isRefreshing: true,
       error: null,
     })
-  }, [cacheKey, baseCacheKey, labelSelectors])
+  }, [cacheKey])
 
   // Fetch function - doesn't touch state except at the end
   const fetchResources = useCallback(async () => {
@@ -102,20 +96,21 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
     const fetchCacheKey = cacheKey
     
     try {
+      // Always fetch all resources (no label selectors)
       const result = await invoke<ResourceListResponse>('get_resources', {
         resourceType,
         context,
         namespace,
-        labelSelectors: labelSelectors || [],
+        labelSelectors: [],
       })
 
       // Ignore stale results if cacheKey has changed (user navigated away)
       if (currentCacheKeyRef.current !== fetchCacheKey) return
 
-      // Save to cache
+      // Save full (unfiltered) result to cache
       saveCachedResources(cacheKey, result)
 
-      // Update state with fresh data
+      // Update state with fresh data (unfiltered)
       setState(prev => ({
         ...prev,
         resources: result.items,
@@ -134,7 +129,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         error: String(e),
       }))
     }
-  }, [cacheKey, context, namespace, resourceType, labelSelectors])
+  }, [cacheKey, context, namespace, resourceType])
 
   // Start background fetch after mount
   useEffect(() => {
@@ -159,8 +154,15 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
     fetchResources()
   }, [fetchResources])
 
+  // Apply client-side filtering based on label selectors
+  const filteredResources = useMemo(
+    () => filterByLabels(state.resources, labelSelectors),
+    [state.resources, labelSelectors]
+  )
+
   return {
     ...state,
+    resources: filteredResources,
     refresh,
   }
 }
