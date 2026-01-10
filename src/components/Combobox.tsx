@@ -101,6 +101,8 @@ function ComboboxInner<T>(
       if (newSelectedItem && newSelectedItem !== selectedItem) {
         onSelectedItemChange(newSelectedItem)
         setFilterInput(itemToString(newSelectedItem))
+        // Blur after selection to allow global keyboard shortcuts
+            inputRef.current?.blur()
       }
     },
     onIsOpenChange: ({isOpen: newIsOpen}) => {
