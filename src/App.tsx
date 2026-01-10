@@ -52,6 +52,16 @@ function App() {
     }
   };
 
+  const handleNavigateToNode = (index: number) => {
+    if (index < 0) {
+      // Navigate to dashboard
+      setNavigationStack([]);
+    } else if (index < navigationStack.length) {
+      // Navigate to specific node in stack
+      setNavigationStack(navigationStack.slice(0, index + 1));
+    }
+  };
+
   const handleResourceClick = (resourceType: string, resourceName: string, labels: LabelSelector[]) => {
     if (navigationStack.length === 0) return;
 
@@ -90,7 +100,6 @@ function App() {
   // Show ResourceList when navigation stack is not empty
   if (navigationStack.length > 0) {
     const currentNode = navigationStack[navigationStack.length - 1];
-    const backLabel = currentNode.displayName;
     
     return (
       <ResourceList
@@ -98,7 +107,8 @@ function App() {
         namespace={currentNode.namespace}
         resourceType={currentNode.resourceType}
         labelSelectors={currentNode.labelSelectors}
-        backLabel={backLabel}
+        navigationStack={navigationStack}
+        onNavigateToNode={handleNavigateToNode}
         onBack={handleBackNavigation}
         onResourceTypeChange={(newResourceType) => {
           const updatedNode: NavigationNode = {

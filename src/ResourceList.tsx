@@ -4,7 +4,8 @@ import {useCombobox} from 'downshift'
 import classes from './ResourceList.module.scss'
 import {getCacheAge} from './kubectl/resourceCache'
 import {useResourceLoader} from './kubectl/useResourceLoader'
-import {FilterChipBar} from './components/FilterChipBar.tsx'
+import {NavigationBar} from './components/NavigationBar.tsx'
+import type {NavigationNode} from './navigation/navigationTypes'
 import {ShortcutsBar} from './components/ShortcutsBar.tsx'
 import {ShortcutButton} from './components/ShortcutButton.tsx'
 import {isMac, isPrimaryModifierPressed} from './navigation/keyboardShortcuts.ts'
@@ -51,7 +52,8 @@ interface ResourceListProps {
   namespace: string;
   resourceType: string;
   labelSelectors?: LabelSelector[];
-  backLabel: string;
+  navigationStack: NavigationNode[];
+  onNavigateToNode: (index: number) => void;
   onBack: () => void;
   onResourceTypeChange?: (resourceType: string) => void;
   onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
@@ -60,7 +62,7 @@ interface ResourceListProps {
   onSelectionChange?: (index: number) => void;
 }
 
-export function ResourceList({context, namespace, resourceType, labelSelectors, backLabel, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter, initialSelectedIndex, onSelectionChange}: ResourceListProps) {
+export function ResourceList({context, namespace, resourceType, labelSelectors, navigationStack, onNavigateToNode, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter, initialSelectedIndex, onSelectionChange}: ResourceListProps) {
   const isMountedRef = useRef(true)
   const comboboxInputRef = useRef<HTMLInputElement>(null)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
@@ -283,7 +285,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
     <div class={classes.resourceList}>
       <header class={classes.header}>
         <ShortcutButton
-          label={`← ${backLabel}`}
+          label="← Back"
           shortcut="Esc"
           onClick={onBack}
           tabIndex={1}
@@ -343,12 +345,12 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
         />
       </header>
 
-      {labelSelectors && labelSelectors.length > 0 && onRemoveFilter && (
-        <FilterChipBar 
-          labelSelectors={labelSelectors} 
-          onRemoveFilter={onRemoveFilter}
-        />
-      )}
+      <NavigationBar
+        navigationStack={navigationStack}
+        onNavigateToNode={onNavigateToNode}
+        labelSelectors={labelSelectors}
+        onRemoveFilter={onRemoveFilter}
+      />
 
       {error && (
         <div class={classes.error}>
