@@ -1,57 +1,58 @@
-.breadcrumb {
+.Breadcrumb {
   display: flex;
   align-items: center;
   gap: 0;
   font-size: 0.75rem;
-}
 
-.segment {
-  display: flex;
-  align-items: center;
-}
 
-.separator {
-  color: var(--color-dimmed);
-  margin: 0 0.25rem;
-  font-size: 0.85rem;
-  user-select: none;
-}
-
-.item {
-  background: none;
-  border: none;
-  padding: 0.15rem 0.25rem;
-  margin: -0.15rem 0;
-  font: inherit;
-  font-size: 0.75rem;
-  color: var(--link-color);
-  cursor: pointer;
-  border-radius: 3px;
-  transition: all 0.15s ease;
-  
-  &:hover {
-    background: var(--surface-subtle);
-    color: var(--link-color-hover, var(--link-color));
+  .segment {
+    display: flex;
+    align-items: center;
   }
-  
-  &:focus {
-    outline: 2px solid var(--selection-bg);
-    outline-offset: 1px;
-  }
-  
-  &:active {
-    opacity: 0.7;
-  }
-}
 
-.current {
-  font-weight: 600;
-  color: var(--color);
-  padding: 0.15rem 0;
-}
+  .separator {
+    color: var(--color-dimmed);
+    margin: 0 0.25rem;
+    font-size: 0.85rem;
+    user-select: none;
+  }
 
-.parentResource {
-  color: var(--color);
-  padding: 0.15rem 0;
-  font-weight: 500;
+  .item {
+    background: none;
+    border: none;
+    padding: 0.15rem 0.25rem;
+    margin: -0.15rem 0;
+    font: inherit;
+    font-size: 0.75rem;
+    color: var(--link-color);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--surface-subtle);
+      color: var(--link-color-hover, var(--link-color));
+    }
+
+    &:focus {
+      outline: 2px solid var(--selection-bg);
+      outline-offset: 1px;
+    }
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+
+  .current {
+    font-weight: 600;
+    color: var(--color);
+    padding: 0.15rem 0;
+  }
+
+  .parentResource {
+    color: var(--color);
+    padding: 0.15rem 0;
+    font-weight: 500;
+  }
 }

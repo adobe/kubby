@@ -25,7 +25,7 @@ export function NavigationBar({
       />
       
       {labelSelectors && labelSelectors.length > 0 && onRemoveFilter && (
-        <div class={classes.chips}>
+        <div class={classes.FilterChipBar}>
           {labelSelectors.map((selector, index) => (
             <LabelFilterChip
               key={`${selector.key}-${selector.value}-${index}`}

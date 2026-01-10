@@ -125,6 +125,6 @@ export function isControlModifierPressed(e: KeyboardEvent): boolean {
 /**
  * Checks if the Alt/Option key is pressed in an event.
  */
-export function isAltPressed(e: KeyboardEvent): boolean {
+export function isAltModifierPressed(e: KeyboardEvent): boolean {
   return e.altKey
 }

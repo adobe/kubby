@@ -8,7 +8,7 @@ interface LabelFilterChipProps {
 
 export function LabelFilterChip({ labelKey, labelValue, onRemove }: LabelFilterChipProps) {
   return (
-    <div class={classes.chip}>
+    <div class={classes.LabelFilterChip}>
       <span class={classes.labelKey}>{labelKey}</span>
       <span class={classes.equals}>=</span>
       <span class={classes.labelValue}>{labelValue}</span>

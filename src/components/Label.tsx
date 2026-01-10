@@ -11,7 +11,7 @@ interface LabelProps {
 
 export function Label({label, value, shortcut, className, children}: LabelProps) {
   return (
-    <span className={`${classes.label} ${className || ''}`}>
+    <span className={`${classes.Label} ${className || ''}`}>
       <span className={classes.labelText}>
         {label}
         {shortcut && (

@@ -9,7 +9,7 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ navigationStack, onNavigateToNode }: BreadcrumbProps) {
   return (
-    <nav class={classes.breadcrumb} aria-label="Navigation breadcrumb">
+    <nav class={classes.Breadcrumb} aria-label="Navigation breadcrumb">
       <button
         class={classes.item}
         onClick={() => onNavigateToNode(-1)}

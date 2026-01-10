@@ -1,5 +1,5 @@
 import classes from './ShortcutsBar.module.scss'
-import {ShortcutButton} from './ShortcutButton.tsx'
+import {Button} from './Button.tsx'
 
 interface ShortcutConfig {
   label: string
@@ -66,9 +66,9 @@ export function ShortcutsBar({ resourceType, hasSelection }: ShortcutsBarProps) 
   const shortcuts = getShortcutsForResourceType(resourceType, hasSelection)
   
   return (
-    <div class={classes.shortcutsBar}>
+    <div class={classes.ShortcutsBar}>
       {shortcuts.map((shortcut) => (
-        <ShortcutButton 
+        <Button
           key={shortcut.label}
           label={shortcut.label}
           shortcut={shortcut.shortcut}

@@ -1,7 +1,7 @@
-import classes from './ShortcutButton.module.scss'
+import classes from './Button.module.scss'
 import {formatShortcut} from '../navigation/keyboardShortcuts.ts'
 
-interface ShortcutButtonProps {
+interface ButtonProps {
   /** The label text displayed next to the shortcut key */
   label: string
   /** The shortcut string (e.g., "Ctrl+R", "Enter", "Shift+F") */
@@ -16,17 +16,17 @@ interface ShortcutButtonProps {
   tabIndex?: number
 }
 
-export function ShortcutButton({ 
+export function Button({
   label, 
   shortcut, 
   onClick, 
   disabled = false,
   className = '',
   tabIndex = -1,
-}: ShortcutButtonProps) {
+}: ButtonProps) {
   return (
     <button 
-      class={`${classes.shortcutButton} ${className}`}
+      class={`${classes.Button} ${className}`}
       onClick={onClick}
       disabled={disabled}
       tabIndex={tabIndex}

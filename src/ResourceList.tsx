@@ -6,11 +6,11 @@ import {useResourceLoader} from './kubectl/useResourceLoader'
 import {NavigationBar} from './components/NavigationBar.tsx'
 import type {NavigationNode} from './navigation/navigationTypes'
 import {ShortcutsBar} from './components/ShortcutsBar.tsx'
-import {ShortcutButton} from './components/ShortcutButton.tsx'
+import {Button} from './components/Button.tsx'
 import {Label} from './components/Label.tsx'
 import {Combobox} from './components/Combobox.tsx'
 import type {ComboboxHandle} from './components/Combobox.tsx'
-import {isPrimaryModifierPressed, isAltPressed, isControlModifierPressed} from './navigation/keyboardShortcuts.ts'
+import {isAltModifierPressed, isControlModifierPressed} from './navigation/keyboardShortcuts.ts'
 import type {LabelSelector} from './kubectl/resourceTypes'
 import type {DashboardConfig} from './Dashboard'
 
@@ -318,7 +318,7 @@ export function ResourceList({
 
       // Opt+R - Focus resource type combobox (not available in containers view)
       // Use e.code because Opt+letter produces special characters on macOS (e.g., Opt+R → '®')
-      if (e.code === 'KeyR' && isAltPressed(e) && !isContainersView) {
+      if (e.code === 'KeyR' && isAltModifierPressed(e) && !isContainersView) {
         e.preventDefault()
         resourceComboboxRef.current?.focus()
         return
@@ -326,7 +326,7 @@ export function ResourceList({
 
       // Opt+C - Focus context combobox
       // Use e.code because Opt+letter produces special characters on macOS (e.g., Opt+C → 'ç')
-      if (e.code === 'KeyC' && isAltPressed(e)) {
+      if (e.code === 'KeyC' && isAltModifierPressed(e)) {
         e.preventDefault()
         contextComboboxRef.current?.focus()
         return
@@ -334,7 +334,7 @@ export function ResourceList({
 
       // Opt+N - Focus namespace combobox
       // Use e.code because Opt+letter produces special characters on macOS (e.g., Opt+N → '˜')
-      if (e.code === 'KeyN' && isAltPressed(e)) {
+      if (e.code === 'KeyN' && isAltModifierPressed(e)) {
         e.preventDefault()
         namespaceComboboxRef.current?.focus()
         return
@@ -432,7 +432,7 @@ export function ResourceList({
           </Label>
         </div>
         <div class={classes.headerButtons}>
-          <ShortcutButton
+          <Button
             label="Refresh"
             shortcut={'Ctrl+R'}
             onClick={refresh}
@@ -440,7 +440,7 @@ export function ResourceList({
             tabIndex={4}
             className={classes.refreshButton}
           />
-          <ShortcutButton
+          <Button
             label="Back"
             shortcut="Esc"
             onClick={onBack}

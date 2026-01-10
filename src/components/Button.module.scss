@@ -1,4 +1,4 @@
-.shortcutButton {
+.Button {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -33,26 +33,28 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-}
 
-.shortcutLabel {
-  color: var(--color);
-  white-space: nowrap;
-}
 
-.shortcutKey {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.2em;
-  padding: 0.05rem 0.25rem;
-  background: var(--shortcut-key-bg);
-  border: 1px solid var(--shortcut-key-border);
-  border-radius: 3px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.1rem;
-  line-height: 1.2;
-  color: var(--color-dimmed);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+  .shortcutLabel {
+    color: var(--color);
+    white-space: nowrap;
+  }
+
+  .shortcutKey {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.2em;
+    padding: 0.05rem 0.25rem;
+    background: var(--shortcut-key-bg);
+    border: 1px solid var(--shortcut-key-border);
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1rem;
+    line-height: 1.2;
+    color: var(--color-dimmed);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+  }
+
 }

@@ -1,26 +1,27 @@
-.label {
+.Label {
   display: flex;
   flex-direction: column;
-}
 
-.labelText {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-left: 0.25rem;
-  color: var(--color-dimmed);
-  font-size: 0.65rem;
-  line-height: 1;
-  text-transform: uppercase;
-}
+  .labelText {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 0.25rem;
+    color: var(--color-dimmed);
+    font-size: 0.65rem;
+    line-height: 1;
+    text-transform: uppercase;
+  }
 
-.shortcutHint {
-  font-size: 0.75rem;
-  letter-spacing: 0.1rem;
-  color: var(--color-dimmed);
-}
+  .shortcutHint {
+    font-size: 0.75rem;
+    letter-spacing: 0.1rem;
+    color: var(--color-dimmed);
+  }
 
-.value {
-  font-weight: 500;
-  color: var(--color);
+  .value {
+    font-weight: 500;
+    color: var(--color);
+  }
+
 }

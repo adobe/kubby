@@ -1,11 +1,12 @@
-.chip {
+.LabelFilterChip {
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
-  padding: 0.15rem 0.4rem;
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  padding: 0 0.4rem;
+  background: var(--surface-muted);
+  border-left: 2px solid var(--border-color);
+  border-right: 2px solid var(--border-color);
+  border-radius: 5px;
   font-size: 0.75rem;
   line-height: 1;
   white-space: nowrap;
@@ -14,48 +15,48 @@
   &:hover {
     background: var(--surface-hover);
   }
-}
 
-.labelKey {
-  font-weight: 600;
-  color: var(--color-emphasis);
-}
-
-.equals {
-  color: var(--color-muted);
-  font-weight: 500;
-  padding: 0 0.1rem;
-}
-
-.labelValue {
-  font-weight: 400;
-  color: var(--color);
-}
-
-.removeButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 0.3rem;
-  margin-top: 0.2rem;
-  padding: 0;
-  width: 1rem;
-  height: 1rem;
-  background: transparent;
-  border: none;
-  border-radius: 3px;
-  color: var(--color-muted);
-  font-size: 1.2rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.15s ease;
-
-  &:hover {
-    background: var(--surface-active);
-    color: var(--color-danger, #e74c3c);
+  .labelKey {
+    font-weight: 400;
+    color: var(--color);
   }
 
-  &:active {
-    transform: scale(0.9);
+  .equals {
+    color: var(--color-muted);
+    font-weight: 400;
+    padding: 0 0.1rem;
+  }
+
+  .labelValue {
+    font-weight: 500;
+    color: var(--color-emphasis);
+  }
+
+  .removeButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.3rem;
+    padding: 0;
+    width: 1rem;
+    height: 1rem;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    color: var(--color-muted);
+    font-weight: normal;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--surface-active);
+      color: var(--color-danger, #e74c3c);
+    }
+
+    &:active {
+      transform: scale(0.9);
+    }
   }
 }

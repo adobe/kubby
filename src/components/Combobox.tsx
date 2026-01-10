@@ -117,8 +117,8 @@ function ComboboxInner<T>(
   const inputStyle = typeof width === 'number' ? {width: `${width}px`} : {width}
 
   return (
-    <div className={`${classes.comboboxWrapper} ${className || ''}`}>
-      <div className={classes.combobox}>
+    <div className={`${classes.Combobox} ${className || ''}`}>
+      <div className={classes.comboboxInputWrapper}>
         <input
           {...getInputProps({
             ref: inputRef,
