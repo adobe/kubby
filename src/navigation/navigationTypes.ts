@@ -4,7 +4,7 @@ import type { ResourceFilter } from '../kubectl/filterTypes'
 import { createLabelFilter, createResourceNameFilter } from '../kubectl/filterTypes'
 
 /** View type for navigation nodes */
-export type ViewType = 'list' | 'describe'
+export type ViewType = 'list' | 'describe' | 'logs'
 
 /**
  * Represents a single node in the navigation stack.
@@ -32,8 +32,11 @@ export interface NavigationNode {
   /** Type of view: 'list' for resource list, 'describe' for single resource detail */
   viewType?: ViewType
   
-  /** Name of the specific resource being described (only used when viewType is 'describe') */
+  /** Name of the specific resource being described (only used when viewType is 'describe' or 'logs') */
   resourceName?: string
+  
+  /** Container name for logs view (when viewing logs for a specific container) */
+  containerName?: string
 }
 
 /**
@@ -138,4 +141,33 @@ export function createDescribeNavigationNode(
  */
 export function isDescribeView(node: NavigationNode): boolean {
   return node.viewType === 'describe'
+}
+
+/**
+ * Create a navigation node for the logs view (streaming logs for a resource)
+ */
+export function createLogsNavigationNode(
+  context: string,
+  namespace: string,
+  resourceType: string,
+  resourceName: string,
+  displayName: string,
+  containerName?: string
+): NavigationNode {
+  return {
+    context,
+    namespace,
+    resourceType,
+    displayName,
+    viewType: 'logs',
+    resourceName,
+    containerName,
+  }
+}
+
+/**
+ * Check if a navigation node is a logs view
+ */
+export function isLogsView(node: NavigationNode): boolean {
+  return node.viewType === 'logs'
 }

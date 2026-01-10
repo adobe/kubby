@@ -120,6 +120,8 @@ interface ResourceListProps {
   onClearFilters?: () => void;
   /** Called when user wants to describe (view details of) a resource */
   onDescribe?: (resourceType: string, resourceName: string) => void;
+  /** Called when user wants to view logs for a resource */
+  onLogs?: (resourceType: string, resourceName: string, containerName?: string) => void;
   initialSelectedIndex?: number;
   onSelectionChange?: (index: number) => void;
 }
@@ -139,6 +141,7 @@ export function ResourceList({
                                onResourceClick,
                                onClearFilters,
                                onDescribe,
+                               onLogs,
                                initialSelectedIndex,
                                onSelectionChange,
                              }: ResourceListProps) {
@@ -433,12 +436,27 @@ export function ResourceList({
           handleEdit()
           return
         }
+
+        // L - View logs for selected resource
+        if (e.code === 'KeyL' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
+          e.preventDefault()
+          const resource = resources[selectedIndex]
+          if (resource && onLogs) {
+            if (isContainersView && parentResourceName) {
+              // For containers, get logs from the parent pod with this container selected
+              onLogs('pod', parentResourceName, resource.name)
+            } else {
+              onLogs(resourceType, resource.name)
+            }
+          }
+          return
+        }
       }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, handleEdit])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit])
 
   return (
     <div class={classes.resourceList}>

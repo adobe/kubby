@@ -1,0 +1,186 @@
+.LogViewer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+
+  .header {
+    position: fixed;
+    height: 2rem;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
+    background-color: var(--surface-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0.25rem;
+    z-index: 100;
+  }
+
+  .headerInfo {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex: 1;
+  }
+
+  .resourceName {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .resourceType {
+    font-size: 0.75rem;
+    color: var(--color-dimmed);
+  }
+
+  .streamingIndicator {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    color: var(--color-dimmed);
+    
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--success-color, #22c55e);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    &.paused .dot {
+      background-color: var(--warning-color, #f59e0b);
+      animation: none;
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  .headerButtons {
+    display: flex;
+    column-gap: 0.5rem;
+  }
+
+  .body {
+    margin-top: 2rem; // Leave room for header bar
+    margin-bottom: 2rem; // Leave room for shortcuts bar
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .error {
+    color: var(--error-color);
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    margin: 0.5rem;
+  }
+
+  .logContainer {
+    flex: 1;
+    overflow: auto;
+    padding: 0.5rem;
+    background: var(--surface-bg, #0d1117);
+  }
+
+  .logContent {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color);
+    margin: 0;
+    
+    &.wrap {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    
+    &.nowrap {
+      white-space: pre;
+    }
+  }
+
+  .logLine {
+    display: block;
+    padding: 0 0.25rem;
+    
+    &:hover {
+      background: var(--hover-bg);
+    }
+  }
+
+  .empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: var(--color-dimmed);
+    font-size: 0.85rem;
+  }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 3rem;
+    color: var(--color-dimmed);
+    font-size: 0.9rem;
+  }
+
+  // Anchor element for autoscroll
+  .scrollAnchor {
+    height: 1px;
+  }
+
+  // Shortcuts bar
+  .shortcutsBar {
+    position: fixed;
+    height: 2rem;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    background: var(--shortcuts-bar-bg);
+    border-top: 1px solid var(--shortcuts-bar-border);
+    z-index: 100;
+
+    .label {
+      color: var(--color-dimmed);
+      font-size: 0.75rem;
+    }
+
+    .separator {
+      width: 1px;
+      height: 1rem;
+      background: var(--border-subtle);
+      margin: 0 0.25rem;
+    }
+  }
+
+  .activeButton {
+    background: var(--accent-bg-active);
+    border-color: var(--hover-border-color);
+  }
+
+  .lineCount {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: var(--color-dimmed);
+  }
+}

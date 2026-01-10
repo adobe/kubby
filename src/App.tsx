@@ -4,6 +4,7 @@ import classes from "./App.module.scss";
 import { Dashboard, DashboardConfig } from "./Dashboard";
 import { ResourceList } from "./ResourceList";
 import { ResourceDetail } from "./ResourceDetail";
+import { LogViewer } from "./LogViewer";
 import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
 import { 
@@ -11,7 +12,9 @@ import {
   createNavigationNodeWithLabels, 
   createNavigationNodeWithResourceName,
   createDescribeNavigationNode,
+  createLogsNavigationNode,
   isDescribeView,
+  isLogsView,
   formatResourceTypeForDisplay 
 } from "./navigation/navigationTypes";
 
@@ -197,7 +200,22 @@ function App() {
     setNavigationStack([...navigationStack, describeNode]);
   };
 
-  // Show ResourceDetail when current node is a describe view
+  const handleLogs = (resourceType: string, resourceName: string, containerName?: string) => {
+    if (navigationStack.length === 0) return;
+    const currentNode = navigationStack[navigationStack.length - 1];
+    
+    const logsNode = createLogsNavigationNode(
+      currentNode.context,
+      currentNode.namespace,
+      resourceType,
+      resourceName,
+      containerName || resourceName, // Display name is container name if viewing container logs
+      containerName
+    );
+    setNavigationStack([...navigationStack, logsNode]);
+  };
+
+  // Show ResourceDetail when current node is a describe view, LogViewer for logs view
   if (navigationStack.length > 0 && config) {
     const currentNode = navigationStack[navigationStack.length - 1];
     
@@ -209,6 +227,20 @@ function App() {
           namespace={currentNode.namespace}
           resourceType={currentNode.resourceType}
           resourceName={currentNode.resourceName}
+          onBack={handleBackNavigation}
+        />
+      );
+    }
+    
+    // Render logs view if current node is a logs view
+    if (isLogsView(currentNode) && currentNode.resourceName) {
+      return (
+        <LogViewer
+          context={currentNode.context}
+          namespace={currentNode.namespace}
+          resourceType={currentNode.resourceType}
+          resourceName={currentNode.resourceName}
+          containerName={currentNode.containerName}
           onBack={handleBackNavigation}
         />
       );
@@ -239,6 +271,7 @@ function App() {
         onResourceClick={handleResourceClick}
         onClearFilters={handleClearFilters}
         onDescribe={handleDescribe}
+        onLogs={handleLogs}
         initialSelectedIndex={currentNode.selectedIndex}
         onSelectionChange={(index) => {
           // Update current node's selection without triggering re-render cascade
