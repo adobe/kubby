@@ -51,6 +51,10 @@ function ComboboxInner<T>(
   const inputRef = useRef<HTMLInputElement>(null)
   const [filterInput, setFilterInput] = useState(itemToString(selectedItem))
 
+  // Track previous selectedItem to detect actual changes
+  // (not just itemToString reference changes from inline functions)
+  const prevSelectedItemRef = useRef<T | null>(selectedItem)
+
   // Expose focus method via ref
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -60,8 +64,13 @@ function ComboboxInner<T>(
   }), [])
 
   // Update filter input when selectedItem prop changes
+  // Using ref comparison to avoid resetting when itemToString is an inline function
+  // that creates a new reference on every parent render
   useEffect(() => {
-    setFilterInput(itemToString(selectedItem))
+    if (prevSelectedItemRef.current !== selectedItem) {
+      setFilterInput(itemToString(selectedItem))
+      prevSelectedItemRef.current = selectedItem
+    }
   }, [selectedItem, itemToString])
 
   // Filter items based on current input
