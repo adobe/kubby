@@ -8,7 +8,8 @@ import {NavigationBar} from './components/NavigationBar.tsx'
 import type {NavigationNode} from './navigation/navigationTypes'
 import {ShortcutsBar} from './components/ShortcutsBar.tsx'
 import {ShortcutButton} from './components/ShortcutButton.tsx'
-import {isMac, isPrimaryModifierPressed} from './navigation/keyboardShortcuts.ts'
+import {Label} from './components/Label.tsx'
+import {isPrimaryModifierPressed} from './navigation/keyboardShortcuts.ts'
 import type {LabelSelector} from './kubectl/resourceTypes'
 
 function sortByFilterRelevance(filterInput: string) {
@@ -308,22 +309,21 @@ export function ResourceList({
       <header class={classes.header}>
         <div class={classes.headerInfo}>
           <div class={classes.resourceTypeWrapper}>
-            <span class={classes.resourceTypeLabel}>
-              Resource <span class={classes.shortcutHint}>{isMac() ? '⌘K' : 'Ctrl+K'}</span>
-            </span>
-            <div class={classes.combobox}>
-              <input
-                {...getInputProps({
-                  ref: comboboxInputRef,
-                  onBlur: () => {
-                    setFilterInput(resourceType)
-                  },
-                })}
-                class={classes.comboboxInput}
-                placeholder="Select resource type..."
-                tabIndex={2}
-              />
-            </div>
+            <Label label="Resource" shortcut="Cmd+K">
+              <div class={classes.combobox}>
+                <input
+                  {...getInputProps({
+                    ref: comboboxInputRef,
+                    onBlur: () => {
+                      setFilterInput(resourceType)
+                    },
+                  })}
+                  class={classes.comboboxInput}
+                  placeholder="Select resource type..."
+                  tabIndex={2}
+                />
+              </div>
+            </Label>
             {isOpen && (
               <ul {...getMenuProps()} class={classes.comboboxMenu}>
                 {filteredItems.map((item, index) => (
@@ -341,19 +341,13 @@ export function ResourceList({
               </ul>
             )}
           </div>
-          <span className={classes.context}>
-            <span className={classes.label}>Context</span>
-            <span className={classes.name}>{context}</span>
-          </span>
-          <span className={classes.namespace}>
-            <span className={classes.label}>Namespace</span>
-            <span className={classes.name}>{namespace}</span>
-          </span>
+          <Label label="Context" value={context} />
+          <Label label="Namespace" value={namespace} />
         </div>
         <div class={classes.headerButtons}>
           <ShortcutButton
             label="Refresh"
-            shortcut={isMac() ? 'Cmd+R' : 'Ctrl+R'}
+            shortcut={'Cmd+R'}
             onClick={refresh}
             disabled={isRefreshing}
             tabIndex={3}
