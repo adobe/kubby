@@ -13,6 +13,7 @@ export interface ResourceState {
   cacheTimestamp: number | null;
   isRefreshing: boolean;
   error: string | null;
+  resourcesCacheKey: string; // Track which cache key these resources belong to
 }
 
 interface UseResourceLoaderOptions {
@@ -66,6 +67,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         cacheTimestamp: cached.timestamp,
         isRefreshing: true, // Will start refreshing immediately
         error: null,
+        resourcesCacheKey: cacheKey,
       }
     }
     return {
@@ -74,6 +76,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
       cacheTimestamp: null,
       isRefreshing: true, // Loading state
       error: null,
+      resourcesCacheKey: cacheKey,
     }
   })
 
@@ -91,6 +94,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
       cacheTimestamp: cached?.timestamp || null,
       isRefreshing: true,
       error: null,
+      resourcesCacheKey: cacheKey,
     })
   }, [cacheKey])
 
@@ -133,6 +137,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         cacheTimestamp: Date.now(),
         isRefreshing: false,
         error: null,
+        resourcesCacheKey: fetchCacheKey,
       }))
     } catch (e) {
       // Ignore stale errors if cacheKey has changed (user navigated away)
@@ -170,10 +175,14 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
   }, [fetchResources])
 
   // Apply client-side filtering based on label selectors
-  const filteredResources = useMemo(
-    () => filterByLabels(state.resources, labelSelectors),
-    [state.resources, labelSelectors]
-  )
+  // Only return resources if they belong to the current cache key to avoid
+  // showing stale/unfiltered data during navigation transitions
+  const filteredResources = useMemo(() => {
+    if (state.resourcesCacheKey !== cacheKey) {
+      return [] // Resources are stale, return empty while loading new data
+    }
+    return filterByLabels(state.resources, labelSelectors)
+  }, [state.resources, state.resourcesCacheKey, labelSelectors, cacheKey])
 
   return {
     ...state,
