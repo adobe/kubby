@@ -1,13 +1,13 @@
-.LabelFilterChip {
+.FilterChip {
   display: inline-flex;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.1rem 0.3rem;
+  gap: 0.1rem;
+  padding: 0.05rem 0.25rem;
   background: var(--surface-muted);
   border-left: 2px solid var(--border-color);
   border-right: 2px solid var(--border-color);
   border-radius: 5px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   line-height: 1;
   white-space: nowrap;
   transition: background 0.15s ease;
@@ -16,18 +16,17 @@
     background: var(--surface-hover);
   }
 
-  .labelKey {
+  .key {
     font-weight: 400;
     color: var(--color);
   }
 
-  .equals {
+  .operator {
     color: var(--color-muted);
     font-weight: 400;
-    padding: 0 0.1rem;
   }
 
-  .labelValue {
+  .value {
     font-weight: 500;
     color: var(--color-emphasis);
   }
@@ -36,16 +35,16 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-left: 0.3rem;
+    margin-left: 0.2rem;
     padding: 0;
-    width: 1rem;
-    height: 1rem;
+    width: 0.9rem;
+    height: 0.9rem;
     background: transparent;
     border: none;
-    border-radius: 3px;
+    border-radius: 2px;
     color: var(--color-muted);
     font-weight: normal;
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     line-height: 1;
     cursor: pointer;
     transition: all 0.15s ease;

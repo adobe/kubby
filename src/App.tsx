@@ -5,7 +5,12 @@ import { Dashboard, DashboardConfig } from "./Dashboard";
 import { ResourceList } from "./ResourceList";
 import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
-import { createNavigationNode, formatResourceTypeForDisplay } from "./navigation/navigationTypes";
+import { 
+  createNavigationNode, 
+  createNavigationNodeWithLabels, 
+  createNavigationNodeWithResourceName,
+  formatResourceTypeForDisplay 
+} from "./navigation/navigationTypes";
 
 /**
  * Get all namespaces available for a given context from the dashboard config.
@@ -97,7 +102,7 @@ function App() {
     if (resourceType === 'deployments') {
       const appLabel = labels.find(l => l.key === 'app.kubernetes.io/name');
       if (appLabel) {
-        const newNode = createNavigationNode(
+        const newNode = createNavigationNodeWithLabels(
           currentNode.context,
           currentNode.namespace,
           'pods',
@@ -110,28 +115,33 @@ function App() {
       }
     } else if (resourceType === 'pods') {
       // Navigate to containers view for the selected pod
-      const newNode = createNavigationNode(
+      const newNode = createNavigationNodeWithResourceName(
         currentNode.context,
         currentNode.namespace,
         'containers',
         resourceName, // Display name is the pod name
-        undefined, // No label selectors for containers
-        undefined, // No initial selected index
-        resourceName // parentResourceName is the pod name
+        'pod', // Filter resource type
+        resourceName // Filter value is the pod name
       );
       setNavigationStack([...navigationStack, newNode]);
     }
   };
 
-  const handleRemoveFilter = (index: number) => {
+  const handleClearFilters = () => {
     if (navigationStack.length === 0) return;
     const currentNode = navigationStack[navigationStack.length - 1];
-    const newSelectors = [...(currentNode.labelSelectors || [])];
-    newSelectors.splice(index, 1);
     
+    // If this is containers view (has resource name filter), go back instead of clearing
+    // because containers without a pod doesn't make sense
+    if (currentNode.resourceType === 'containers') {
+      handleBackNavigation();
+      return;
+    }
+    
+    // For other views, clear all filters
     const updatedNode: NavigationNode = {
       ...currentNode,
-      labelSelectors: newSelectors.length > 0 ? newSelectors : undefined,
+      filters: undefined,
     };
     setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
   };
@@ -179,8 +189,7 @@ function App() {
         context={currentNode.context}
         namespace={currentNode.namespace}
         resourceType={currentNode.resourceType}
-        labelSelectors={currentNode.labelSelectors}
-        parentResourceName={currentNode.parentResourceName}
+        filters={currentNode.filters}
         navigationStack={navigationStack}
         dashboardConfig={config}
         onNavigateToNode={handleNavigateToNode}
@@ -189,16 +198,15 @@ function App() {
           const updatedNode: NavigationNode = {
             ...currentNode,
             resourceType: newResourceType,
-            labelSelectors: undefined,
+            filters: undefined,
             selectedIndex: undefined,
-            parentResourceName: undefined,
           };
           setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
         }}
         onContextChange={handleContextChange}
         onNamespaceChange={handleNamespaceChange}
         onResourceClick={handleResourceClick}
-        onRemoveFilter={handleRemoveFilter}
+        onClearFilters={handleClearFilters}
         initialSelectedIndex={currentNode.selectedIndex}
         onSelectionChange={(index) => {
           // Update current node's selection without triggering re-render cascade

@@ -12,6 +12,8 @@ import {Combobox} from './components/Combobox.tsx'
 import type {ComboboxHandle} from './components/Combobox.tsx'
 import {isAltModifierPressed, isControlModifierPressed} from './navigation/keyboardShortcuts.ts'
 import type {LabelSelector} from './kubectl/resourceTypes'
+import type {ResourceFilter} from './kubectl/filterTypes'
+import {getResourceNameFilter, toLabelSelectors} from './kubectl/filterTypes'
 import type {DashboardConfig} from './Dashboard'
 
 /**
@@ -104,7 +106,8 @@ interface ResourceListProps {
   context: string;
   namespace: string;
   resourceType: string;
-  labelSelectors?: LabelSelector[];
+  /** All active filters for the current view */
+  filters?: ResourceFilter[];
   navigationStack: NavigationNode[];
   dashboardConfig: DashboardConfig;
   onNavigateToNode: (index: number) => void;
@@ -113,18 +116,17 @@ interface ResourceListProps {
   onContextChange?: (context: string) => void;
   onNamespaceChange?: (namespace: string) => void;
   onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
-  onRemoveFilter?: (index: number) => void;
+  /** Called when user wants to clear all filters */
   onClearFilters?: () => void;
   initialSelectedIndex?: number;
   onSelectionChange?: (index: number) => void;
-  parentResourceName?: string; // For containers view: the pod name
 }
 
 export function ResourceList({
                                context,
                                namespace,
                                resourceType,
-                               labelSelectors,
+                               filters = [],
                                navigationStack,
                                dashboardConfig,
                                onNavigateToNode,
@@ -133,11 +135,9 @@ export function ResourceList({
                                onContextChange,
                                onNamespaceChange,
                                onResourceClick,
-                               onRemoveFilter,
                                onClearFilters,
                                initialSelectedIndex,
                                onSelectionChange,
-                               parentResourceName,
                              }: ResourceListProps) {
   const isMountedRef = useRef(true)
   const resourceComboboxRef = useRef<ComboboxHandle>(null)
@@ -147,6 +147,11 @@ export function ResourceList({
 
   // Containers view has a fixed resource type (not changeable)
   const isContainersView = resourceType === 'containers'
+
+  // Extract label selectors and parent resource name from filters for the resource loader
+  const labelSelectors = useMemo(() => toLabelSelectors(filters), [filters])
+  const podFilter = getResourceNameFilter(filters, 'pod')
+  const parentResourceName = podFilter?.name
 
   // Use the resource loader hook - handles caching and background refresh
   const {
@@ -453,8 +458,8 @@ export function ResourceList({
       <NavigationBar
         navigationStack={navigationStack}
         onNavigateToNode={onNavigateToNode}
-        labelSelectors={labelSelectors}
-        onRemoveFilter={onRemoveFilter}
+        filters={filters}
+        onClearFilters={onClearFilters}
       />
 
       {error && (
