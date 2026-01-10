@@ -1,0 +1,137 @@
+.TreeView {
+  margin: 0;
+  padding: 0;
+
+  .objectEntry {
+    margin: 0;
+    padding: 0;
+  }
+
+  .keyRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    min-height: 1.5em;
+  }
+
+  .objectKey {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #0066cc;
+    flex-shrink: 0;
+
+    @media (prefers-color-scheme: dark) {
+      color: #6ab0f3;
+    }
+  }
+
+  .inlineValue {
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+  }
+
+  .nestedValue {
+    margin-left: 1rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--border-subtle);
+  }
+
+  .collapseToggle {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    font-size: 0.6rem;
+    color: var(--color-dimmed);
+    width: 1rem;
+    height: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: none;
+
+    &:hover {
+      color: var(--color);
+      border-color: transparent;
+    }
+  }
+
+  .collapsedIndicator {
+    font-size: 0.7rem;
+    color: var(--color-dimmed);
+    font-style: italic;
+    margin-left: 0.25rem;
+  }
+
+  // Array styles
+  .arrayContainer {
+    margin: 0;
+    padding: 0;
+  }
+
+  .arrayItem {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  .arrayIndex {
+    font-size: 0.7rem;
+    color: var(--color-dimmed);
+    flex-shrink: 0;
+    min-width: 2rem;
+  }
+
+  // Value type colors
+  .valueString {
+    color: #22863a;
+    font-size: 0.75rem;
+
+    @media (prefers-color-scheme: dark) {
+      color: #98c379;
+    }
+  }
+
+  .valueNumber {
+    color: #005cc5;
+    font-size: 0.75rem;
+
+    @media (prefers-color-scheme: dark) {
+      color: #d19a66;
+    }
+  }
+
+  .valueBoolean {
+    color: #d73a49;
+    font-size: 0.75rem;
+    font-weight: 500;
+
+    @media (prefers-color-scheme: dark) {
+      color: #c678dd;
+    }
+  }
+
+  .valueNull {
+    color: var(--color-dimmed);
+    font-size: 0.75rem;
+    font-style: italic;
+  }
+
+  .valueTimestamp {
+    color: #6f42c1;
+    font-size: 0.75rem;
+
+    @media (prefers-color-scheme: dark) {
+      color: #c9a0dc;
+    }
+  }
+
+  .valueEmpty {
+    color: var(--color-dimmed);
+    font-size: 0.75rem;
+  }
+
+}

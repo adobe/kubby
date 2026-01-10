@@ -45,8 +45,10 @@ html, body {
 }
 
 html {
+  // Account for fixed header bar at top when using scrollIntoView
+  scroll-padding-top: 2rem;
   // Account for fixed shortcuts bar at bottom when using scrollIntoView
-  scroll-padding-bottom: 2.5rem;
+  scroll-padding-bottom: 2rem;
 }
 
 #root {
@@ -158,6 +160,11 @@ button {
 
 a:hover {
   color: var(--link-hover-color);
+}
+
+pre {
+  margin: 0;
+  padding: 0;
 }
 
 

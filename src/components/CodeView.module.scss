@@ -1,0 +1,31 @@
+// Code view - plain text fallback
+.CodeView {
+  margin: 0;
+  padding: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color);
+
+  // Shiki-highlighted code view
+  .codeViewHighlighted {
+    margin: 0;
+    padding: 0;
+
+    :global(pre) {
+      margin: 0;
+      padding: 0;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+
+    :global(code) {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.75rem;
+      line-height: 1.5;
+    }
+  }
+
+}
