@@ -7,6 +7,33 @@ import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
 import { createNavigationNode, formatResourceTypeForDisplay } from "./navigation/navigationTypes";
 
+/**
+ * Get all namespaces available for a given context from the dashboard config.
+ * Returns namespaces where contexts is null (available everywhere) or includes the context.
+ */
+function getNamespacesForContext(config: DashboardConfig, context: string): string[] {
+  const namespaces: string[] = [];
+  
+  for (const group of config.groups) {
+    // Check if context exists in this group
+    const contextInGroup = group.context_groups.some(cg => cg.contexts.includes(context));
+    if (!contextInGroup) continue;
+    
+    for (const ng of group.namespace_groups) {
+      for (const ns of ng.namespaces) {
+        // Namespace is available if contexts is null or includes this context
+        if (ns.contexts === null || ns.contexts.includes(context)) {
+          if (!namespaces.includes(ns.name)) {
+            namespaces.push(ns.name);
+          }
+        }
+      }
+    }
+  }
+  
+  return namespaces;
+}
+
 function App() {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -109,8 +136,42 @@ function App() {
     setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
   };
 
+  const handleContextChange = (newContext: string) => {
+    if (navigationStack.length === 0 || !config) return;
+    const currentNode = navigationStack[navigationStack.length - 1];
+    
+    // Get available namespaces for the new context
+    const availableNamespaces = getNamespacesForContext(config, newContext);
+    
+    // Keep current namespace if available in new context, otherwise use first available
+    let newNamespace = currentNode.namespace;
+    if (!availableNamespaces.includes(newNamespace)) {
+      newNamespace = availableNamespaces[0] || currentNode.namespace;
+    }
+    
+    const updatedNode: NavigationNode = {
+      ...currentNode,
+      context: newContext,
+      namespace: newNamespace,
+      selectedIndex: undefined, // Reset selection when changing context
+    };
+    setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
+  };
+
+  const handleNamespaceChange = (newNamespace: string) => {
+    if (navigationStack.length === 0) return;
+    const currentNode = navigationStack[navigationStack.length - 1];
+    
+    const updatedNode: NavigationNode = {
+      ...currentNode,
+      namespace: newNamespace,
+      selectedIndex: undefined, // Reset selection when changing namespace
+    };
+    setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
+  };
+
   // Show ResourceList when navigation stack is not empty
-  if (navigationStack.length > 0) {
+  if (navigationStack.length > 0 && config) {
     const currentNode = navigationStack[navigationStack.length - 1];
     
     return (
@@ -121,6 +182,7 @@ function App() {
         labelSelectors={currentNode.labelSelectors}
         parentResourceName={currentNode.parentResourceName}
         navigationStack={navigationStack}
+        dashboardConfig={config}
         onNavigateToNode={handleNavigateToNode}
         onBack={handleBackNavigation}
         onResourceTypeChange={(newResourceType) => {
@@ -133,6 +195,8 @@ function App() {
           };
           setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
         }}
+        onContextChange={handleContextChange}
+        onNamespaceChange={handleNamespaceChange}
         onResourceClick={handleResourceClick}
         onRemoveFilter={handleRemoveFilter}
         initialSelectedIndex={currentNode.selectedIndex}

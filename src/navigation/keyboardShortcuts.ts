@@ -21,6 +21,7 @@ const MAC_SYMBOLS: Record<string, string> = {
   'Shift': '⇧',
   'Alt': '⌥',
   'Option': '⌥',
+  'Opt': '⌥',
   'Enter': '↵',
   'Return': '↵',
   'Esc': 'Esc',
@@ -47,6 +48,7 @@ const PC_SYMBOLS: Record<string, string> = {
   'Command': 'Ctrl',
   'Meta': 'Ctrl',
   'Option': 'Alt',
+  'Opt': 'Alt',
   'Enter': 'Enter',
   'Return': 'Enter',
   'Esc': 'Esc',
@@ -114,4 +116,11 @@ export function getPrimaryModifier(): string {
  */
 export function isPrimaryModifierPressed(e: KeyboardEvent): boolean {
   return isMac() ? e.metaKey : e.ctrlKey
+}
+
+/**
+ * Checks if the Alt/Option key is pressed in an event.
+ */
+export function isAltPressed(e: KeyboardEvent): boolean {
+  return e.altKey
 }

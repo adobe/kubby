@@ -20,7 +20,8 @@
   outline: 2px solid transparent;
   outline-offset: 1px;
   cursor: text;
-  
+  width: 250px !important;
+
   &::placeholder {
     color: var(--color-dimmed);
     opacity: 0.6;
@@ -46,6 +47,7 @@
   overflow-y: auto;
   z-index: 1000;
   min-width: 200px;
+  white-space: nowrap;
 }
 
 .comboboxItem {

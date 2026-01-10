@@ -1,4 +1,4 @@
-import {useEffect, useState, useRef, useCallback} from 'preact/hooks'
+import {useEffect, useState, useRef, useCallback, useMemo} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
 import classes from './ResourceList.module.scss'
 import {getCacheAge} from './kubectl/resourceCache'
@@ -9,8 +9,10 @@ import {ShortcutsBar} from './components/ShortcutsBar.tsx'
 import {ShortcutButton} from './components/ShortcutButton.tsx'
 import {Label} from './components/Label.tsx'
 import {Combobox} from './components/Combobox.tsx'
-import {isPrimaryModifierPressed} from './navigation/keyboardShortcuts.ts'
+import type {ComboboxHandle} from './components/Combobox.tsx'
+import {isPrimaryModifierPressed, isAltPressed} from './navigation/keyboardShortcuts.ts'
 import type {LabelSelector} from './kubectl/resourceTypes'
+import type {DashboardConfig} from './Dashboard'
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -54,15 +56,62 @@ function filterResourceTypes(items: string[], inputValue: string): string[] {
     })
 }
 
+/**
+ * Extract all contexts from dashboard config (flattened from all groups).
+ */
+function getAllContexts(config: DashboardConfig): string[] {
+  const contexts: string[] = []
+  for (const group of config.groups) {
+    for (const cg of group.context_groups) {
+      for (const ctx of cg.contexts) {
+        if (!contexts.includes(ctx)) {
+          contexts.push(ctx)
+        }
+      }
+    }
+  }
+  return contexts
+}
+
+/**
+ * Get all namespaces available for a given context from the dashboard config.
+ * Returns namespaces where contexts is null (available everywhere) or includes the context.
+ */
+function getNamespacesForContext(config: DashboardConfig, context: string): string[] {
+  const namespaces: string[] = []
+  
+  for (const group of config.groups) {
+    // Check if context exists in this group
+    const contextInGroup = group.context_groups.some(cg => cg.contexts.includes(context))
+    if (!contextInGroup) continue
+    
+    for (const ng of group.namespace_groups) {
+      for (const ns of ng.namespaces) {
+        // Namespace is available if contexts is null or includes this context
+        if (ns.contexts === null || ns.contexts.includes(context)) {
+          if (!namespaces.includes(ns.name)) {
+            namespaces.push(ns.name)
+          }
+        }
+      }
+    }
+  }
+  
+  return namespaces
+}
+
 interface ResourceListProps {
   context: string;
   namespace: string;
   resourceType: string;
   labelSelectors?: LabelSelector[];
   navigationStack: NavigationNode[];
+  dashboardConfig: DashboardConfig;
   onNavigateToNode: (index: number) => void;
   onBack: () => void;
   onResourceTypeChange?: (resourceType: string) => void;
+  onContextChange?: (context: string) => void;
+  onNamespaceChange?: (namespace: string) => void;
   onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
   onRemoveFilter?: (index: number) => void;
   initialSelectedIndex?: number;
@@ -76,9 +125,12 @@ export function ResourceList({
                                resourceType,
                                labelSelectors,
                                navigationStack,
+                               dashboardConfig,
                                onNavigateToNode,
                                onBack,
                                onResourceTypeChange,
+                               onContextChange,
+                               onNamespaceChange,
                                onResourceClick,
                                onRemoveFilter,
                                initialSelectedIndex,
@@ -86,7 +138,9 @@ export function ResourceList({
                                parentResourceName,
                              }: ResourceListProps) {
   const isMountedRef = useRef(true)
-  const comboboxRef = useRef<{ focus: () => void }>(null)
+  const resourceComboboxRef = useRef<ComboboxHandle>(null)
+  const contextComboboxRef = useRef<ComboboxHandle>(null)
+  const namespaceComboboxRef = useRef<ComboboxHandle>(null)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
 
   // Containers view has a fixed resource type (not changeable)
@@ -103,6 +157,13 @@ export function ResourceList({
   } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName})
 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
+
+  // Extract contexts and namespaces from dashboard config
+  const allContexts = useMemo(() => getAllContexts(dashboardConfig), [dashboardConfig])
+  const availableNamespaces = useMemo(
+    () => getNamespacesForContext(dashboardConfig, context),
+    [dashboardConfig, context]
+  )
 
   // Selected row index (-1 means no selection)
   // Initialize from prop if provided, otherwise -1
@@ -174,8 +235,11 @@ export function ResourceList({
     }
   }, [context])
 
-  // Track if combobox is open (for Escape key handling)
-  const [isComboboxOpen, setIsComboboxOpen] = useState(false)
+  // Track if comboboxes are open (for Escape key handling)
+  const [isResourceComboboxOpen, setIsResourceComboboxOpen] = useState(false)
+  const [isContextComboboxOpen, setIsContextComboboxOpen] = useState(false)
+  const [isNamespaceComboboxOpen, setIsNamespaceComboboxOpen] = useState(false)
+  const isAnyComboboxOpen = isResourceComboboxOpen || isContextComboboxOpen || isNamespaceComboboxOpen
 
   // Handle row click
   const handleRowClick = useCallback((index: number) => {
@@ -197,6 +261,20 @@ export function ResourceList({
     }
   }, [resourceType, onResourceTypeChange])
 
+  // Handle context selection from combobox
+  const handleContextSelect = useCallback((newContext: string | null) => {
+    if (newContext && newContext !== context && onContextChange) {
+      onContextChange(newContext)
+    }
+  }, [context, onContextChange])
+
+  // Handle namespace selection from combobox
+  const handleNamespaceSelect = useCallback((newNamespace: string | null) => {
+    if (newNamespace && newNamespace !== namespace && onNamespaceChange) {
+      onNamespaceChange(newNamespace)
+    }
+  }, [namespace, onNamespaceChange])
+
   // Global keyboard shortcuts
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
@@ -204,9 +282,9 @@ export function ResourceList({
       const target = e.target as HTMLElement
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
-      // Escape - go back (but not if combobox is open - let it close first)
+      // Escape - go back (but not if any combobox is open - let it close first)
       if (e.key === 'Escape') {
-        if (isComboboxOpen) {
+        if (isAnyComboboxOpen) {
           // Let the combobox handle Escape to close itself
           return
         }
@@ -225,10 +303,24 @@ export function ResourceList({
         return
       }
 
-      // Ctrl+K / Cmd+K - Focus combobox (not available in containers view)
-      if (e.key === 'k' && isPrimaryModifierPressed(e) && !isContainersView) {
+      // Opt+R - Focus resource type combobox (not available in containers view)
+      if (e.key === 'r' && isAltPressed(e) && !isContainersView) {
         e.preventDefault()
-        comboboxRef.current?.focus()
+        resourceComboboxRef.current?.focus()
+        return
+      }
+
+      // Opt+C - Focus context combobox
+      if (e.key === 'c' && isAltPressed(e)) {
+        e.preventDefault()
+        contextComboboxRef.current?.focus()
+        return
+      }
+
+      // Opt+N - Focus namespace combobox
+      if (e.key === 'n' && isAltPressed(e)) {
+        e.preventDefault()
+        namespaceComboboxRef.current?.focus()
         return
       }
 
@@ -276,15 +368,15 @@ export function ResourceList({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources.length, selectedIndex, handleRowActivate, isComboboxOpen, isContainersView])
+  }, [onBack, refresh, resources.length, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView])
 
   return (
     <div class={classes.resourceList}>
       <header class={classes.header}>
         <div class={classes.headerInfo}>
-          <Label label="Resource" shortcut="Cmd+K">
+          <Label label="Resource" shortcut="Opt+R">
             <Combobox
-              ref={comboboxRef}
+              ref={resourceComboboxRef}
               items={resourceTypes}
               selectedItem={resourceType}
               onSelectedItemChange={handleResourceTypeSelect}
@@ -293,11 +385,35 @@ export function ResourceList({
               placeholder="Select resource type..."
               emptyMessage="No resource types found"
               tabIndex={1}
-              onOpenChange={setIsComboboxOpen}
+              onOpenChange={setIsResourceComboboxOpen}
             />
           </Label>
-          <Label label="Context" value={context} />
-          <Label label="Namespace" value={namespace} />
+          <Label label="Context" shortcut="Opt+C">
+            <Combobox
+              ref={contextComboboxRef}
+              items={allContexts}
+              selectedItem={context}
+              onSelectedItemChange={handleContextSelect}
+              itemToString={(item) => item || ''}
+              placeholder="Select context..."
+              emptyMessage="No contexts found"
+              tabIndex={2}
+              onOpenChange={setIsContextComboboxOpen}
+            />
+          </Label>
+          <Label label="Namespace" shortcut="Opt+N">
+            <Combobox
+              ref={namespaceComboboxRef}
+              items={availableNamespaces}
+              selectedItem={namespace}
+              onSelectedItemChange={handleNamespaceSelect}
+              itemToString={(item) => item || ''}
+              placeholder="Select namespace..."
+              emptyMessage="No namespaces found"
+              tabIndex={3}
+              onOpenChange={setIsNamespaceComboboxOpen}
+            />
+          </Label>
         </div>
         <div class={classes.headerButtons}>
           <ShortcutButton
@@ -305,14 +421,14 @@ export function ResourceList({
             shortcut={'Cmd+R'}
             onClick={refresh}
             disabled={isRefreshing}
-            tabIndex={2}
+            tabIndex={4}
             className={classes.refreshButton}
           />
           <ShortcutButton
             label="Back"
             shortcut="Esc"
             onClick={onBack}
-            tabIndex={3}
+            tabIndex={5}
             className={classes.backButton}
           />
         </div>
