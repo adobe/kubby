@@ -177,16 +177,18 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
   // Apply client-side filtering based on label selectors
   // Only return resources if they belong to the current cache key to avoid
   // showing stale/unfiltered data during navigation transitions
+  const isStale = state.resourcesCacheKey !== cacheKey
   const filteredResources = useMemo(() => {
-    if (state.resourcesCacheKey !== cacheKey) {
+    if (isStale) {
       return [] // Resources are stale, return empty while loading new data
     }
     return filterByLabels(state.resources, labelSelectors)
-  }, [state.resources, state.resourcesCacheKey, labelSelectors, cacheKey])
+  }, [state.resources, isStale, labelSelectors])
 
   return {
     ...state,
     resources: filteredResources,
     refresh,
+    isStale, // True when resources don't match the current cache key (during transitions)
   }
 }

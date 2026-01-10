@@ -161,6 +161,7 @@ export function ResourceList({
     isRefreshing,
     error,
     refresh,
+    isStale,
   } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName})
 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
@@ -186,9 +187,9 @@ export function ResourceList({
   // Select first row when resources load for the first time, adjust if out of bounds
   useEffect(() => {
     if (resources.length === 0) {
-      // Only reset selection if not loading (actual empty result)
-      // This prevents losing initialSelectedIndex during loading transitions
-      if (!isRefreshing) {
+      // Only reset selection if not loading and not transitioning between views
+      // This prevents losing initialSelectedIndex during navigation transitions
+      if (!isRefreshing && !isStale) {
         setSelectedIndex(-1)
       }
     } else if (selectedIndex < 0) {
@@ -198,7 +199,7 @@ export function ResourceList({
       // If current selection is beyond the new list size, select the last item
       setSelectedIndex(resources.length - 1)
     }
-  }, [resources.length, selectedIndex, isRefreshing])
+  }, [resources.length, selectedIndex, isRefreshing, isStale])
 
   // Notify parent when selection changes
   useEffect(() => {
