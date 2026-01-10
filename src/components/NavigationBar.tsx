@@ -17,14 +17,15 @@ export function NavigationBar({
   labelSelectors, 
   onRemoveFilter 
 }: NavigationBarProps) {
+  const hasFilter = (labelSelectors?.length ?? 0) > 0;
   return (
     <div class={classes.NavigationBar}>
       <Breadcrumb 
-        navigationStack={navigationStack} 
-        onNavigateToNode={onNavigateToNode} 
+        navigationStack={navigationStack}
+        onNavigateToNode={onNavigateToNode}
       />
       
-      {labelSelectors && labelSelectors.length > 0 && onRemoveFilter && (
+      {labelSelectors && hasFilter && onRemoveFilter && (
         <div class={classes.filterChipBar}>
           {labelSelectors.map((selector, index) => (
             <LabelFilterChip
