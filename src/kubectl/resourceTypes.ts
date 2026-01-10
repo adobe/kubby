@@ -20,3 +20,7 @@ export interface LabelSelector {
   key: string;
   value: string;
 }
+
+// Raw JSON response for resource details (kubectl get <type> <name> -o json)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ResourceDetailResponse = Record<string, any>;

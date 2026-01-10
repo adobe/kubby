@@ -3,6 +3,9 @@
 import type { ResourceFilter } from '../kubectl/filterTypes'
 import { createLabelFilter, createResourceNameFilter } from '../kubectl/filterTypes'
 
+/** View type for navigation nodes */
+export type ViewType = 'list' | 'describe'
+
 /**
  * Represents a single node in the navigation stack.
  * Each node captures the state needed to render a specific resource view.
@@ -25,6 +28,12 @@ export interface NavigationNode {
   
   /** Selected row index to restore when navigating back (-1 or undefined means no selection) */
   selectedIndex?: number
+  
+  /** Type of view: 'list' for resource list, 'describe' for single resource detail */
+  viewType?: ViewType
+  
+  /** Name of the specific resource being described (only used when viewType is 'describe') */
+  resourceName?: string
 }
 
 /**
@@ -102,4 +111,31 @@ export function createNavigationNodeWithResourceName(
 ): NavigationNode {
   const filters = [createResourceNameFilter(filterResourceType, resourceName)]
   return createNavigationNode(context, namespace, resourceType, displayName, filters, selectedIndex)
+}
+
+/**
+ * Create a navigation node for the describe view (single resource detail)
+ */
+export function createDescribeNavigationNode(
+  context: string,
+  namespace: string,
+  resourceType: string,
+  resourceName: string,
+  displayName: string
+): NavigationNode {
+  return {
+    context,
+    namespace,
+    resourceType,
+    displayName,
+    viewType: 'describe',
+    resourceName,
+  }
+}
+
+/**
+ * Check if a navigation node is a describe view
+ */
+export function isDescribeView(node: NavigationNode): boolean {
+  return node.viewType === 'describe'
 }

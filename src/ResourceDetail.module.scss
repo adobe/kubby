@@ -1,0 +1,273 @@
+.ResourceDetail {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+
+
+  .header {
+    position: fixed;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
+    background-color: var(--surface-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0.25rem;
+  }
+
+  .headerInfo {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex: 1;
+  }
+
+  .resourceName {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .resourceType {
+    font-size: 0.75rem;
+    color: var(--color-dimmed);
+  }
+
+  .headerButtons {
+    display: flex;
+    column-gap: 0.5rem;
+  }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 3rem;
+    color: var(--color-dimmed);
+    font-size: 0.9rem;
+  }
+
+  .empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: var(--color-dimmed);
+    font-size: 0.85rem;
+  }
+
+  .error {
+    color: var(--error-color);
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    margin: 0.5rem;
+  }
+
+  .contentWrapper {
+    flex: 1;
+    overflow: auto;
+    padding: 0.5rem;
+    margin-bottom: 2.5rem; // Leave room for shortcuts bar
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  // Code view (YAML/JSON)
+  .codeView {
+    margin: 0;
+    padding: 0;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--color);
+  }
+
+  // Hierarchical view styles
+  .objectContainer {
+    margin: 0;
+    padding: 0;
+  }
+
+  .objectEntry {
+    margin: 0;
+    padding: 0;
+  }
+
+  .keyRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    min-height: 1.5em;
+  }
+
+  .objectKey {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #0066cc;
+    flex-shrink: 0;
+
+    @media (prefers-color-scheme: dark) {
+      color: #6ab0f3;
+    }
+  }
+
+  .inlineValue {
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+  }
+
+  .nestedValue {
+    margin-left: 1rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--border-subtle);
+  }
+
+  .collapseToggle {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    font-size: 0.6rem;
+    color: var(--color-dimmed);
+    width: 1rem;
+    height: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: none;
+
+    &:hover {
+      color: var(--color);
+      border-color: transparent;
+    }
+  }
+
+  .collapsedIndicator {
+    font-size: 0.7rem;
+    color: var(--color-dimmed);
+    font-style: italic;
+    margin-left: 0.25rem;
+  }
+
+  // Array styles
+  .arrayContainer {
+    margin: 0;
+    padding: 0;
+  }
+
+  .arrayItem {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  .arrayIndex {
+    font-size: 0.7rem;
+    color: var(--color-dimmed);
+    flex-shrink: 0;
+    min-width: 2rem;
+  }
+
+  // Value type colors
+  .valueString {
+    color: #22863a;
+    font-size: 0.75rem;
+
+    @media (prefers-color-scheme: dark) {
+      color: #98c379;
+    }
+  }
+
+  .valueNumber {
+    color: #005cc5;
+    font-size: 0.75rem;
+
+    @media (prefers-color-scheme: dark) {
+      color: #d19a66;
+    }
+  }
+
+  .valueBoolean {
+    color: #d73a49;
+    font-size: 0.75rem;
+    font-weight: 500;
+
+    @media (prefers-color-scheme: dark) {
+      color: #c678dd;
+    }
+  }
+
+  .valueNull {
+    color: var(--color-dimmed);
+    font-size: 0.75rem;
+    font-style: italic;
+  }
+
+  .valueTimestamp {
+    color: #6f42c1;
+    font-size: 0.75rem;
+
+    @media (prefers-color-scheme: dark) {
+      color: #c9a0dc;
+    }
+  }
+
+  .valueEmpty {
+    color: var(--color-dimmed);
+    font-size: 0.75rem;
+  }
+
+  // Refresh indicator
+  .refreshIndicator {
+    position: fixed;
+    bottom: 2.75rem; // Above the shortcuts bar
+    right: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface-muted);
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem 0.15rem 0.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    backdrop-filter: blur(8px);
+    font-size: 0.75rem;
+    line-height: 1;
+    color: var(--color-dimmed);
+  }
+
+  // Shortcuts bar
+  .shortcutsBar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    background: var(--shortcuts-bar-bg);
+    border-top: 1px solid var(--shortcuts-bar-border);
+    z-index: 100;
+
+    .label {
+      color: var(--color-dimmed);
+      font-size: 0.75rem;
+    }
+  }
+
+  .activeViewButton {
+    background: var(--accent-bg-active);
+    border-color: var(--hover-border-color);
+  }
+
+}

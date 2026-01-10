@@ -139,6 +139,51 @@ async fn get_resource_types(context: String) -> Result<Vec<String>, String> {
     Ok(resource_types)
 }
 
+#[tauri::command]
+async fn get_resource_detail(
+    resource_type: String,
+    resource_name: String,
+    context: String,
+    namespace: String,
+) -> Result<serde_json::Value, String> {
+    // Build kubectl command to get a single resource as JSON
+    let args = vec![
+        "get".to_string(),
+        resource_type,
+        resource_name,
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+        "-o".to_string(),
+        "json".to_string(),
+    ];
+    
+    // Execute kubectl command asynchronously with timeout
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl timed out after {}s, check your network connection then click refresh to retry", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("kubectl failed: {}", stderr));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    
+    // Parse and return the raw JSON
+    let detail: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse kubectl JSON output: {}", e))?;
+    
+    Ok(detail)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -148,6 +193,7 @@ pub fn run() {
             dashboard::get_dashboard_config,
             get_resource_columns,
             get_resource_types,
+            get_resource_detail,
             resource_list::get_resources,
             resource_list::get_pod_containers
         ])

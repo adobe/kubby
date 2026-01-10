@@ -3,12 +3,15 @@ import { invoke } from "@tauri-apps/api/core";
 import classes from "./App.module.scss";
 import { Dashboard, DashboardConfig } from "./Dashboard";
 import { ResourceList } from "./ResourceList";
+import { ResourceDetail } from "./ResourceDetail";
 import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
 import { 
   createNavigationNode, 
   createNavigationNodeWithLabels, 
   createNavigationNodeWithResourceName,
+  createDescribeNavigationNode,
+  isDescribeView,
   formatResourceTypeForDisplay 
 } from "./navigation/navigationTypes";
 
@@ -180,10 +183,38 @@ function App() {
     setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
   };
 
-  // Show ResourceList when navigation stack is not empty
+  const handleDescribe = (resourceType: string, resourceName: string) => {
+    if (navigationStack.length === 0) return;
+    const currentNode = navigationStack[navigationStack.length - 1];
+    
+    const describeNode = createDescribeNavigationNode(
+      currentNode.context,
+      currentNode.namespace,
+      resourceType,
+      resourceName,
+      resourceName // Display name is the resource name
+    );
+    setNavigationStack([...navigationStack, describeNode]);
+  };
+
+  // Show ResourceDetail when current node is a describe view
   if (navigationStack.length > 0 && config) {
     const currentNode = navigationStack[navigationStack.length - 1];
     
+    // Render describe view if current node is a describe view
+    if (isDescribeView(currentNode) && currentNode.resourceName) {
+      return (
+        <ResourceDetail
+          context={currentNode.context}
+          namespace={currentNode.namespace}
+          resourceType={currentNode.resourceType}
+          resourceName={currentNode.resourceName}
+          onBack={handleBackNavigation}
+        />
+      );
+    }
+    
+    // Otherwise render resource list
     return (
       <ResourceList
         context={currentNode.context}
@@ -207,6 +238,7 @@ function App() {
         onNamespaceChange={handleNamespaceChange}
         onResourceClick={handleResourceClick}
         onClearFilters={handleClearFilters}
+        onDescribe={handleDescribe}
         initialSelectedIndex={currentNode.selectedIndex}
         onSelectionChange={(index) => {
           // Update current node's selection without triggering re-render cascade

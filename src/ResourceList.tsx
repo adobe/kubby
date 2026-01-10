@@ -118,6 +118,8 @@ interface ResourceListProps {
   onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
   /** Called when user wants to clear all filters */
   onClearFilters?: () => void;
+  /** Called when user wants to describe (view details of) a resource */
+  onDescribe?: (resourceType: string, resourceName: string) => void;
   initialSelectedIndex?: number;
   onSelectionChange?: (index: number) => void;
 }
@@ -136,6 +138,7 @@ export function ResourceList({
                                onNamespaceChange,
                                onResourceClick,
                                onClearFilters,
+                               onDescribe,
                                initialSelectedIndex,
                                onSelectionChange,
                              }: ResourceListProps) {
@@ -385,12 +388,22 @@ export function ResourceList({
           setSelectedIndex(resources.length - 1)
           return
         }
+
+        // D - Describe selected resource
+        if (e.code === 'KeyD' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
+          e.preventDefault()
+          const resource = resources[selectedIndex]
+          if (resource && onDescribe) {
+            onDescribe(resourceType, resource.name)
+          }
+          return
+        }
       }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources.length, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe])
 
   return (
     <div class={classes.resourceList}>
