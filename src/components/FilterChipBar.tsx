@@ -8,13 +8,12 @@ interface FilterChipBarProps {
 }
 
 export function FilterChipBar({ labelSelectors, onRemoveFilter }: FilterChipBarProps) {
-  if (!labelSelectors || labelSelectors.length === 0) {
-    return null
-  }
+  // if (!labelSelectors || labelSelectors.length === 0) {
+  //   return null
+  // }
 
   return (
     <div class={classes.chipBar}>
-      <span class={classes.label}>Filters:</span>
       <div class={classes.chips}>
         {labelSelectors.map((selector, index) => (
           <LabelFilterChip
