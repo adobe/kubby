@@ -105,11 +105,17 @@ function App() {
             ...currentNode,
             resourceType: newResourceType,
             labelSelectors: undefined,
+            selectedIndex: undefined,
           };
           setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
         }}
         onResourceClick={handleResourceClick}
         onRemoveFilter={handleRemoveFilter}
+        initialSelectedIndex={currentNode.selectedIndex}
+        onSelectionChange={(index) => {
+          // Update current node's selection without triggering re-render cascade
+          currentNode.selectedIndex = index;
+        }}
       />
     );
   }

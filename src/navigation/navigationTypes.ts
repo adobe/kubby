@@ -21,6 +21,9 @@ export interface NavigationNode {
   
   /** Kubernetes namespace */
   namespace: string
+  
+  /** Selected row index to restore when navigating back (-1 or undefined means no selection) */
+  selectedIndex?: number
 }
 
 /**
@@ -56,7 +59,8 @@ export function createNavigationNode(
   namespace: string,
   resourceType: string,
   displayName: string,
-  labelSelectors?: LabelSelector[]
+  labelSelectors?: LabelSelector[],
+  selectedIndex?: number
 ): NavigationNode {
   return {
     context,
@@ -64,5 +68,6 @@ export function createNavigationNode(
     resourceType,
     displayName,
     labelSelectors,
+    selectedIndex,
   }
 }

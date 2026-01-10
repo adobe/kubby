@@ -56,9 +56,11 @@ interface ResourceListProps {
   onResourceTypeChange?: (resourceType: string) => void;
   onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
   onRemoveFilter?: (index: number) => void;
+  initialSelectedIndex?: number;
+  onSelectionChange?: (index: number) => void;
 }
 
-export function ResourceList({context, namespace, resourceType, labelSelectors, backLabel, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter}: ResourceListProps) {
+export function ResourceList({context, namespace, resourceType, labelSelectors, backLabel, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter, initialSelectedIndex, onSelectionChange}: ResourceListProps) {
   const isMountedRef = useRef(true)
   const comboboxInputRef = useRef<HTMLInputElement>(null)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
@@ -76,11 +78,14 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
   
   // Selected row index (-1 means no selection)
-  const [selectedIndex, setSelectedIndex] = useState(-1)
+  // Initialize from prop if provided, otherwise -1
+  const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex ?? -1)
   
-  // Reset selection and select first row when navigating to a different resource list
+  // Reset selection when navigating to a different resource list
+  // Use initialSelectedIndex if returning to same node, otherwise start fresh
   useEffect(() => {
-    setSelectedIndex(resources.length > 0 ? 0 : -1)
+    const newIndex = initialSelectedIndex ?? (resources.length > 0 ? 0 : -1)
+    setSelectedIndex(newIndex)
   }, [context, namespace, resourceType])
   
   // Select first row when resources load for the first time, adjust if out of bounds
@@ -95,6 +100,11 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
       setSelectedIndex(resources.length - 1)
     }
   }, [resources.length, selectedIndex])
+  
+  // Notify parent when selection changes
+  useEffect(() => {
+    onSelectionChange?.(selectedIndex)
+  }, [selectedIndex, onSelectionChange])
 
   // Fetch resource types on mount
   useEffect(() => {
