@@ -398,12 +398,11 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
             )}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {!error && resources.length > 0 && (
-        <div class={classes.footer}>
-          {resources.length} item{resources.length !== 1 ? 's' : ''}
+          {resources.length > 0 && (
+            <div class={classes.footer}>
+              {resources.length} item{resources.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       )}
 
