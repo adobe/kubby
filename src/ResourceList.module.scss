@@ -11,21 +11,9 @@
   padding: 0.5rem 0;
 }
 
+// Applied to ShortcutButton - adds margin for header spacing
 .backButton {
-  padding: 0.05rem 0.5rem;
-  font-size: 0.85rem;
-  background: var(--surface-subtle);
-  color: var(--color);
-  border: 1px solid var(--surface-subtle);
   margin: 0 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  
-  &:hover {
-    background: var(--surface-hover);
-    border-color: var(--border-color);
-  }
 }
 
 .headerInfo {
@@ -38,7 +26,22 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    // padding-top: 0.5rem; // matches label from context and namespace below
+  }
+  
+  .resourceTypeLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--color-dimmed);
+    font-size: 0.5rem;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  
+  .shortcutHint {
+    font-size: 0.5rem;
+    color: var(--color-dimmed);
+    opacity: 0.7;
   }
 
   .combobox {
@@ -49,11 +52,13 @@
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-    padding: 0;
+    padding: 0.1rem 0.25rem;
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
     color: var(--color);
-    outline: none;
+    outline: 2px solid transparent;
+    outline-offset: 1px;
     width: 200px;
     cursor: text;
     
@@ -63,9 +68,7 @@
     }
     
     &:focus {
-      outline: 1px solid var(--border-color);
-      outline-offset: 2px;
-      border-radius: 2px;
+      outline-color: var(--selection-bg);
     }
   }
 
@@ -98,8 +101,8 @@
     }
     
     &.comboboxItemHighlighted {
-      background: #0078d4;
-      color: white;
+      background: var(--selection-bg);
+      color: var(--selection-color);
     }
     
     &.comboboxItemSelected {
@@ -107,8 +110,8 @@
       font-weight: 500;
       
       &.comboboxItemHighlighted {
-        background: #0078d4;
-        color: white;
+        background: var(--selection-bg);
+        color: var(--selection-color);
         font-weight: 500;
       }
     }
@@ -170,26 +173,9 @@
 }
 
 
+// Applied to ShortcutButton - adds margin for header spacing
 .refreshButton {
-  padding: 0.05rem 0.5rem;
-  font-size: 0.85rem;
-  background: var(--surface-subtle);
-  color: var(--color);
-  border: 1px solid var(--surface-subtle);
   margin: 0 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  
-  &:hover:not(:disabled) {
-    background: var(--surface-hover);
-    border-color: var(--border-color);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 }
 
 .loading {
@@ -215,6 +201,8 @@
 
 .tableWrapper {
   overflow-x: auto;
+  // Leave room for the shortcuts bar
+  padding-bottom: 2.5rem;
 }
 
 .table {
@@ -281,6 +269,7 @@
 
 .resourceRow {
   transition: background-color 0.1s ease;
+  cursor: pointer;
   
   &:hover {
     background: var(--surface-subtle);
@@ -288,6 +277,22 @@
   
   &:last-child td {
     border-bottom: none;
+  }
+  
+  &.resourceRowSelected {
+    background: var(--selection-bg);
+    
+    td {
+      color: var(--selection-color);
+    }
+    
+    .nameCell {
+      color: var(--selection-color);
+    }
+    
+    &:hover {
+      background: var(--selection-bg-hover);
+    }
   }
 }
 
@@ -306,7 +311,7 @@
 
 .refreshIndicator {
   position: fixed;
-  bottom: 0.25rem;
+  bottom: 2.75rem; // Above the shortcuts bar
   right: 0.25rem;
   display: flex;
   align-items: center;

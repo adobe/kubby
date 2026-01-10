@@ -69,6 +69,17 @@ html, body {
   // Accent backgrounds
   --accent-bg: #e3ebf7;
   --accent-bg-active: #d0ddef;
+  
+  // Selection colors
+  --selection-bg: #0078d4;
+  --selection-bg-hover: #106ebe;
+  --selection-color: #ffffff;
+  
+  // Shortcuts bar
+  --shortcuts-bar-bg: var(--surface-muted);
+  --shortcuts-bar-border: var(--border-muted);
+  --shortcut-key-bg: var(--surface-subtle);
+  --shortcut-key-border: var(--border-color);
 
   color: var(--color);
   background-color: var(--background-color);
@@ -155,5 +166,10 @@ a:hover {
     // Accent backgrounds
     --accent-bg: #1e2a3d;
     --accent-bg-active: #253652;
+    
+    // Selection colors (dark mode)
+    --selection-bg: #2d5a88;
+    --selection-bg-hover: #3a6fa0;
+    --selection-color: #ffffff;
   }
 }

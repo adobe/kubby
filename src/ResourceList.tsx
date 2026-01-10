@@ -1,10 +1,13 @@
-import {useEffect, useState, useRef} from 'preact/hooks'
+import {useEffect, useState, useRef, useCallback} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
 import {useCombobox} from 'downshift'
 import classes from './ResourceList.module.scss'
 import {getCacheAge} from './resourceCache'
 import {useResourceLoader} from './useResourceLoader'
 import {FilterChipBar} from './FilterChipBar'
+import {ShortcutsBar} from './ShortcutsBar'
+import {ShortcutButton} from './ShortcutButton'
+import {isMac, isPrimaryModifierPressed} from './keyboardUtils'
 import type {LabelSelector} from './resourceTypes'
 
 function sortByFilterRelevance(filterInput: string) {
@@ -60,6 +63,8 @@ interface ResourceListProps {
 
 export function ResourceList({context, namespace, resourceType, labelSelectors, backLabel, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter}: ResourceListProps) {
   const isMountedRef = useRef(true)
+  const comboboxInputRef = useRef<HTMLInputElement>(null)
+  const tableBodyRef = useRef<HTMLTableSectionElement>(null)
 
   // Use the resource loader hook - handles caching and background refresh
   const {
@@ -72,6 +77,27 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
   } = useResourceLoader({ context, namespace, resourceType, labelSelectors })
 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
+  
+  // Selected row index (-1 means no selection)
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  
+  // Reset selection and select first row when navigating to a different resource list
+  useEffect(() => {
+    setSelectedIndex(resources.length > 0 ? 0 : -1)
+  }, [context, namespace, resourceType])
+  
+  // Select first row when resources load for the first time, adjust if out of bounds
+  useEffect(() => {
+    if (resources.length === 0) {
+      setSelectedIndex(-1)
+    } else if (selectedIndex < 0) {
+      // Select first row when resources first load
+      setSelectedIndex(0)
+    } else if (selectedIndex >= resources.length) {
+      // If current selection is beyond the new list size, select the last item
+      setSelectedIndex(resources.length - 1)
+    }
+  }, [resources.length, selectedIndex])
 
   // Fetch resource types on mount
   useEffect(() => {
@@ -109,6 +135,19 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
   useEffect(() => {
     setFilterInput(resourceType)
   }, [resourceType])
+  
+  // Handle row click
+  const handleRowClick = useCallback((index: number) => {
+    setSelectedIndex(index)
+  }, [])
+  
+  // Handle row double-click or Enter on selected row
+  const handleRowActivate = useCallback((index: number) => {
+    if (onResourceClick && resources[index]) {
+      const resource = resources[index]
+      onResourceClick(resourceType, resource.name, resource.labels)
+    }
+  }, [onResourceClick, resources, resourceType])
 
   // Filter and sort resource types based on current input value
   const filteredItems = filterInput
@@ -150,24 +189,115 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
     },
     itemToString: (item: string | null) => item || '',
   })
+  
+  // Global keyboard shortcuts
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      // Ignore if typing in an input (except for Escape)
+      const target = e.target as HTMLElement
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+      
+      // Escape - go back (but not if combobox is open - let it close first)
+      if (e.key === 'Escape') {
+        if (isOpen) {
+          // Let the combobox handle Escape to close itself
+          return
+        }
+        e.preventDefault()
+        onBack()
+        return
+      }
+      
+      // Skip other shortcuts if in an input
+      if (isInput) return
+      
+      // Ctrl+R / Cmd+R - Refresh
+      if (e.key === 'r' && isPrimaryModifierPressed(e)) {
+        e.preventDefault()
+        refresh()
+        return
+      }
+      
+      // Ctrl+K / Cmd+K - Focus combobox
+      if (e.key === 'k' && isPrimaryModifierPressed(e)) {
+        e.preventDefault()
+        comboboxInputRef.current?.focus()
+        comboboxInputRef.current?.select()
+        return
+      }
+      
+      // Arrow key navigation for resource list (works globally)
+      if (resources.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setSelectedIndex(prev => {
+            if (prev < 0) return 0 // First arrow down selects first item
+            return Math.min(prev + 1, resources.length - 1)
+          })
+          return
+        }
+        
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setSelectedIndex(prev => {
+            if (prev < 0) return 0 // First arrow up also selects first item
+            return Math.max(prev - 1, 0)
+          })
+          return
+        }
+        
+        // Enter activates selected resource
+        if (e.key === 'Enter' && selectedIndex >= 0) {
+          e.preventDefault()
+          handleRowActivate(selectedIndex)
+          return
+        }
+        
+        // Home/End for quick navigation
+        if (e.key === 'Home') {
+          e.preventDefault()
+          setSelectedIndex(0)
+          return
+        }
+        
+        if (e.key === 'End') {
+          e.preventDefault()
+          setSelectedIndex(resources.length - 1)
+          return
+        }
+      }
+    }
+    
+    document.addEventListener('keydown', handleGlobalKeyDown)
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [onBack, refresh, resources.length, selectedIndex, handleRowActivate, isOpen])
 
   return (
     <div class={classes.resourceList}>
       <header class={classes.header}>
-        <button class={classes.backButton} onClick={onBack}>
-          ← {backLabel}
-        </button>
+        <ShortcutButton
+          label={`← ${backLabel}`}
+          shortcut="Esc"
+          onClick={onBack}
+          tabIndex={1}
+          className={classes.backButton}
+        />
         <div class={classes.headerInfo}>
           <div class={classes.resourceTypeWrapper}>
+            <span class={classes.resourceTypeLabel}>
+              Resource <span class={classes.shortcutHint}>{isMac() ? '⌘K' : 'Ctrl+K'}</span>
+            </span>
             <div class={classes.combobox}>
               <input
                 {...getInputProps({
+                  ref: comboboxInputRef,
                   onBlur: () => {
                     setFilterInput(resourceType)
                   }
                 })}
                 class={classes.comboboxInput}
                 placeholder="Select resource type..."
+                tabIndex={2}
               />
             </div>
             {isOpen && (
@@ -196,9 +326,14 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
             <span className={classes.name}>{namespace}</span>
           </span>
         </div>
-        <button class={classes.refreshButton} onClick={refresh} disabled={isRefreshing}>
-          ↻ Refresh
-        </button>
+        <ShortcutButton
+          label="↻ Refresh"
+          shortcut={isMac() ? 'Cmd+R' : 'Ctrl+R'}
+          onClick={refresh}
+          disabled={isRefreshing}
+          tabIndex={3}
+          className={classes.refreshButton}
+        />
       </header>
 
       {labelSelectors && labelSelectors.length > 0 && onRemoveFilter && (
@@ -227,7 +362,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
               ))}
             </tr>
             </thead>
-            <tbody>
+            <tbody ref={tableBodyRef}>
             {resources.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + 1} class={classes.emptyRow}>
@@ -235,20 +370,16 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
                 </td>
               </tr>
             ) : (
-              resources.map((resource) => (
-                <tr key={resource.name} class={classes.resourceRow}>
+              resources.map((resource, index) => (
+                <tr 
+                  key={resource.name} 
+                  class={`${classes.resourceRow} ${selectedIndex === index ? classes.resourceRowSelected : ''}`}
+                  onClick={() => handleRowClick(index)}
+                  onDblClick={() => handleRowActivate(index)}
+                  data-index={index}
+                >
                   <td class={classes.nameCell}>
-                    {onResourceClick ? (
-                      <button 
-                        class={classes.nameButton}
-                        onClick={() => onResourceClick(resourceType, resource.name, resource.labels)}
-                        title={`View details for ${resource.name}`}
-                      >
-                        {resource.name}
-                      </button>
-                    ) : (
-                      resource.name
-                    )}
+                    {resource.name}
                   </td>
                   {columns.map((col) => (
                     <td key={col.name} class={classes.dataCell}>
@@ -278,6 +409,11 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
           )}
         </div>
       )}
+      
+      <ShortcutsBar 
+        resourceType={resourceType}
+        hasSelection={selectedIndex >= 0}
+      />
     </div>
   )
 }
