@@ -114,6 +114,7 @@ interface ResourceListProps {
   onNamespaceChange?: (namespace: string) => void;
   onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
   onRemoveFilter?: (index: number) => void;
+  onClearFilters?: () => void;
   initialSelectedIndex?: number;
   onSelectionChange?: (index: number) => void;
   parentResourceName?: string; // For containers view: the pod name
@@ -133,6 +134,7 @@ export function ResourceList({
                                onNamespaceChange,
                                onResourceClick,
                                onRemoveFilter,
+                               onClearFilters,
                                initialSelectedIndex,
                                onSelectionChange,
                                parentResourceName,
@@ -264,16 +266,26 @@ export function ResourceList({
   // Handle context selection from combobox
   const handleContextSelect = useCallback((newContext: string | null) => {
     if (newContext && newContext !== context && onContextChange) {
+      if (isContainersView) {
+        // Go to parent first since the pod won't exist in the new context
+        onBack()
+      }
+      onClearFilters?.() // Clear label filters since they won't apply to new context
       onContextChange(newContext)
     }
-  }, [context, onContextChange])
+  }, [context, onContextChange, onClearFilters, isContainersView, onBack])
 
   // Handle namespace selection from combobox
   const handleNamespaceSelect = useCallback((newNamespace: string | null) => {
     if (newNamespace && newNamespace !== namespace && onNamespaceChange) {
+      if (isContainersView) {
+        // Go to parent first since the pod won't exist in the new namespace
+        onBack()
+      }
+      onClearFilters?.() // Clear label filters since they won't apply to new namespace
       onNamespaceChange(newNamespace)
     }
-  }, [namespace, onNamespaceChange])
+  }, [namespace, onNamespaceChange, onClearFilters, isContainersView, onBack])
 
   // Global keyboard shortcuts
   useEffect(() => {
