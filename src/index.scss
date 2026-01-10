@@ -26,6 +26,11 @@ html, body {
   height: 100%;
 }
 
+html {
+  // Account for fixed shortcuts bar at bottom when using scrollIntoView
+  scroll-padding-bottom: 2.5rem;
+}
+
 #root {
   min-height: 100%;
 }

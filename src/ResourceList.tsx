@@ -137,6 +137,14 @@ export function ResourceList({
     onSelectionChange?.(selectedIndex)
   }, [selectedIndex, onSelectionChange])
 
+  // Scroll selected row into view when selection changes
+  useEffect(() => {
+    if (selectedIndex >= 0 && tableBodyRef.current) {
+      const row = tableBodyRef.current.querySelector(`tr[data-index="${selectedIndex}"]`)
+      row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [selectedIndex])
+
   // Fetch resource types on mount
   useEffect(() => {
     isMountedRef.current = true
