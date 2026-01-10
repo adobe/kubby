@@ -1,6 +1,5 @@
 import {useEffect, useState, useRef, useCallback} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
-import {useCombobox} from 'downshift'
 import classes from './ResourceList.module.scss'
 import {getCacheAge} from './kubectl/resourceCache'
 import {useResourceLoader} from './kubectl/useResourceLoader'
@@ -9,43 +8,50 @@ import type {NavigationNode} from './navigation/navigationTypes'
 import {ShortcutsBar} from './components/ShortcutsBar.tsx'
 import {ShortcutButton} from './components/ShortcutButton.tsx'
 import {Label} from './components/Label.tsx'
+import {Combobox} from './components/Combobox.tsx'
 import {isPrimaryModifierPressed} from './navigation/keyboardShortcuts.ts'
 import type {LabelSelector} from './kubectl/resourceTypes'
 
-function sortByFilterRelevance(filterInput: string) {
-  const lowerInput = filterInput.toLowerCase()
+/**
+ * Filter and sort resource types by relevance to the input.
+ * Prioritizes: exact match > singular/plural match > starts with > contains
+ */
+function filterResourceTypes(items: string[], inputValue: string): string[] {
+  const lowerInput = inputValue.toLowerCase()
+  
+  return items
+    .filter(item => item.toLowerCase().includes(lowerInput))
+    .sort((a, b) => {
+      const lowerA = a.toLowerCase()
+      const lowerB = b.toLowerCase()
 
-  return (a: string, b: string) => {
-    const lowerA = a.toLowerCase()
-    const lowerB = b.toLowerCase()
+      // Exact match comes first
+      const aExact = lowerA === lowerInput
+      const bExact = lowerB === lowerInput
+      if (aExact && !bExact) return -1
+      if (!aExact && bExact) return 1
 
-    // Exact match comes first
-    const aExact = lowerA === lowerInput
-    const bExact = lowerB === lowerInput
-    if (aExact && !bExact) return -1
-    if (!aExact && bExact) return 1
+      // Match without final 's' (singular/plural)
+      const aWithoutS = lowerA === lowerInput + 's'
+      const bWithoutS = lowerB === lowerInput + 's'
+      const aInputWithoutS = lowerA + 's' === lowerInput
+      const bInputWithoutS = lowerB + 's' === lowerInput
 
-    // Match without final 's' (singular/plural)
-    const aWithoutS = lowerA === lowerInput + 's'
-    const bWithoutS = lowerB === lowerInput + 's'
-    const aInputWithoutS = lowerA + 's' === lowerInput
-    const bInputWithoutS = lowerB + 's' === lowerInput
+      const aSingularPlural = aWithoutS || aInputWithoutS
+      const bSingularPlural = bWithoutS || bInputWithoutS
 
-    const aSingularPlural = aWithoutS || aInputWithoutS
-    const bSingularPlural = bWithoutS || bInputWithoutS
+      if (aSingularPlural && !bSingularPlural) return -1
+      if (!aSingularPlural && bSingularPlural) return 1
 
-    if (aSingularPlural && !bSingularPlural) return -1
-    if (!aSingularPlural && bSingularPlural) return 1
+      // Starts with the input comes next
+      const aStarts = lowerA.startsWith(lowerInput)
+      const bStarts = lowerB.startsWith(lowerInput)
+      if (aStarts && !bStarts) return -1
+      if (!aStarts && bStarts) return 1
 
-    // Starts with the input comes next
-    const aStarts = lowerA.startsWith(lowerInput)
-    const bStarts = lowerB.startsWith(lowerInput)
-    if (aStarts && !bStarts) return -1
-    if (!aStarts && bStarts) return 1
-
-    // Otherwise maintain alphabetical order
-    return a.localeCompare(b)
-  }
+      // Otherwise maintain alphabetical order
+      return a.localeCompare(b)
+    })
 }
 
 interface ResourceListProps {
@@ -80,7 +86,7 @@ export function ResourceList({
                                parentResourceName,
                              }: ResourceListProps) {
   const isMountedRef = useRef(true)
-  const comboboxInputRef = useRef<HTMLInputElement>(null)
+  const comboboxRef = useRef<{ focus: () => void }>(null)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
 
   // Containers view has a fixed resource type (not changeable)
@@ -160,13 +166,8 @@ export function ResourceList({
     }
   }, [context])
 
-  // State to track input value for filtering (separate from downshift's internal state)
-  const [filterInput, setFilterInput] = useState(resourceType)
-
-  // Update filter input when resourceType prop changes
-  useEffect(() => {
-    setFilterInput(resourceType)
-  }, [resourceType])
+  // Track if combobox is open (for Escape key handling)
+  const [isComboboxOpen, setIsComboboxOpen] = useState(false)
 
   // Handle row click
   const handleRowClick = useCallback((index: number) => {
@@ -181,46 +182,12 @@ export function ResourceList({
     }
   }, [onResourceClick, resources, resourceType])
 
-  // Filter and sort resource types based on current input value
-  const filteredItems = filterInput
-    ? resourceTypes
-      .filter(item =>
-        item.toLowerCase().includes(filterInput.toLowerCase()),
-      )
-      .sort(sortByFilterRelevance(filterInput))
-    : resourceTypes
-
-  // Downshift combobox setup
-  const {
-    isOpen,
-    getMenuProps,
-    getInputProps,
-    highlightedIndex,
-    getItemProps,
-    selectedItem,
-  } = useCombobox<string>({
-    items: filteredItems,
-    selectedItem: resourceType,
-    inputValue: filterInput,
-    defaultHighlightedIndex: 0,
-    onInputValueChange: ({inputValue: newInputValue, type}) => {
-      if (type === useCombobox.stateChangeTypes.InputChange) {
-        setFilterInput(newInputValue || '')
-      }
-    },
-    onSelectedItemChange: ({selectedItem: newSelectedItem}) => {
-      if (newSelectedItem && newSelectedItem !== resourceType && onResourceTypeChange) {
-        onResourceTypeChange(newSelectedItem)
-        setFilterInput(newSelectedItem)
-      }
-    },
-    onIsOpenChange: ({isOpen: newIsOpen}) => {
-      if (!newIsOpen) {
-        setFilterInput(resourceType)
-      }
-    },
-    itemToString: (item: string | null) => item || '',
-  })
+  // Handle resource type selection from combobox
+  const handleResourceTypeSelect = useCallback((newResourceType: string | null) => {
+    if (newResourceType && newResourceType !== resourceType && onResourceTypeChange) {
+      onResourceTypeChange(newResourceType)
+    }
+  }, [resourceType, onResourceTypeChange])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -231,7 +198,7 @@ export function ResourceList({
 
       // Escape - go back (but not if combobox is open - let it close first)
       if (e.key === 'Escape') {
-        if (isOpen) {
+        if (isComboboxOpen) {
           // Let the combobox handle Escape to close itself
           return
         }
@@ -253,8 +220,7 @@ export function ResourceList({
       // Ctrl+K / Cmd+K - Focus combobox (not available in containers view)
       if (e.key === 'k' && isPrimaryModifierPressed(e) && !isContainersView) {
         e.preventDefault()
-        comboboxInputRef.current?.focus()
-        comboboxInputRef.current?.select()
+        comboboxRef.current?.focus()
         return
       }
 
@@ -302,45 +268,26 @@ export function ResourceList({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources.length, selectedIndex, handleRowActivate, isOpen])
+  }, [onBack, refresh, resources.length, selectedIndex, handleRowActivate, isComboboxOpen, isContainersView])
 
   return (
     <div class={classes.resourceList}>
       <header class={classes.header}>
         <div class={classes.headerInfo}>
-          <div class={classes.resourceTypeWrapper}>
-            <Label label="Resource" shortcut="Cmd+K">
-              <div class={classes.combobox}>
-                <input
-                  {...getInputProps({
-                    ref: comboboxInputRef,
-                    onBlur: () => {
-                      setFilterInput(resourceType)
-                    },
-                  })}
-                  class={classes.comboboxInput}
-                  placeholder="Select resource type..."
-                  tabIndex={2}
-                />
-              </div>
-            </Label>
-            {isOpen && (
-              <ul {...getMenuProps()} class={classes.comboboxMenu}>
-                {filteredItems.map((item, index) => (
-                  <li
-                    key={item}
-                    {...getItemProps({item, index})}
-                    class={`${classes.comboboxItem} ${highlightedIndex === index ? classes.comboboxItemHighlighted : ''} ${selectedItem === item ? classes.comboboxItemSelected : ''}`}
-                  >
-                    {item}
-                  </li>
-                ))}
-                {filteredItems.length === 0 && (
-                  <li class={classes.comboboxItem}>No resource types found</li>
-                )}
-              </ul>
-            )}
-          </div>
+          <Label label="Resource" shortcut="Cmd+K">
+            <Combobox
+              ref={comboboxRef}
+              items={resourceTypes}
+              selectedItem={resourceType}
+              onSelectedItemChange={handleResourceTypeSelect}
+              itemToString={(item) => item || ''}
+              filterItems={filterResourceTypes}
+              placeholder="Select resource type..."
+              emptyMessage="No resource types found"
+              tabIndex={2}
+              onOpenChange={setIsComboboxOpen}
+            />
+          </Label>
           <Label label="Context" value={context} />
           <Label label="Namespace" value={namespace} />
         </div>
