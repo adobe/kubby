@@ -1,19 +1,37 @@
 @font-face {
-  font-family: 'Cousine';
+  font-family: 'Fira Code';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('./assets/fonts/cousine_5.2.7/webfonts/cousine-latin-400-normal.woff2') format('woff2'),
-       url('./assets/fonts/cousine_5.2.7/webfonts/cousine-latin-400-normal.woff') format('woff');
+  src: url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-400-normal.woff2') format('woff2'),
+       url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-400-normal.woff') format('woff');
 }
 
 @font-face {
-  font-family: 'Cousine';
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-500-normal.woff2') format('woff2'),
+  url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-500-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-600-normal.woff2') format('woff2'),
+  url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-600-normal.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Fira Code';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('./assets/fonts/cousine_5.2.7/webfonts/cousine-latin-700-normal.woff2') format('woff2'),
-  url('./assets/fonts/cousine_5.2.7/webfonts/cousine-latin-700-normal.woff') format('woff');
+  src: url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-700-normal.woff2') format('woff2'),
+  url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-700-normal.woff') format('woff');
 }
 
 *, *::before, *::after {
@@ -36,7 +54,7 @@ html {
 }
 
 :root {
-  font-family: Cousine, monospace;
+  font-family: 'Fira Code', monospace;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
