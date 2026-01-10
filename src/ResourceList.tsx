@@ -13,35 +13,35 @@ import type {LabelSelector} from './kubectl/resourceTypes'
 
 function sortByFilterRelevance(filterInput: string) {
   const lowerInput = filterInput.toLowerCase()
-  
+
   return (a: string, b: string) => {
     const lowerA = a.toLowerCase()
     const lowerB = b.toLowerCase()
-    
+
     // Exact match comes first
     const aExact = lowerA === lowerInput
     const bExact = lowerB === lowerInput
     if (aExact && !bExact) return -1
     if (!aExact && bExact) return 1
-    
+
     // Match without final 's' (singular/plural)
     const aWithoutS = lowerA === lowerInput + 's'
     const bWithoutS = lowerB === lowerInput + 's'
     const aInputWithoutS = lowerA + 's' === lowerInput
     const bInputWithoutS = lowerB + 's' === lowerInput
-    
+
     const aSingularPlural = aWithoutS || aInputWithoutS
     const bSingularPlural = bWithoutS || bInputWithoutS
-    
+
     if (aSingularPlural && !bSingularPlural) return -1
     if (!aSingularPlural && bSingularPlural) return 1
-    
+
     // Starts with the input comes next
     const aStarts = lowerA.startsWith(lowerInput)
     const bStarts = lowerB.startsWith(lowerInput)
     if (aStarts && !bStarts) return -1
     if (!aStarts && bStarts) return 1
-    
+
     // Otherwise maintain alphabetical order
     return a.localeCompare(b)
   }
@@ -63,11 +63,25 @@ interface ResourceListProps {
   parentResourceName?: string; // For containers view: the pod name
 }
 
-export function ResourceList({context, namespace, resourceType, labelSelectors, navigationStack, onNavigateToNode, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter, initialSelectedIndex, onSelectionChange, parentResourceName}: ResourceListProps) {
+export function ResourceList({
+                               context,
+                               namespace,
+                               resourceType,
+                               labelSelectors,
+                               navigationStack,
+                               onNavigateToNode,
+                               onBack,
+                               onResourceTypeChange,
+                               onResourceClick,
+                               onRemoveFilter,
+                               initialSelectedIndex,
+                               onSelectionChange,
+                               parentResourceName,
+                             }: ResourceListProps) {
   const isMountedRef = useRef(true)
   const comboboxInputRef = useRef<HTMLInputElement>(null)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
-  
+
   // Containers view has a fixed resource type (not changeable)
   const isContainersView = resourceType === 'containers'
 
@@ -79,21 +93,21 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
     isRefreshing,
     error,
     refresh,
-  } = useResourceLoader({ context, namespace, resourceType, labelSelectors, parentResourceName })
+  } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName})
 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
-  
+
   // Selected row index (-1 means no selection)
   // Initialize from prop if provided, otherwise -1
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex ?? -1)
-  
+
   // Reset selection when navigating to a different resource list
   // Use initialSelectedIndex if returning to same node, otherwise start fresh
   useEffect(() => {
     const newIndex = initialSelectedIndex ?? (resources.length > 0 ? 0 : -1)
     setSelectedIndex(newIndex)
   }, [context, namespace, resourceType])
-  
+
   // Select first row when resources load for the first time, adjust if out of bounds
   useEffect(() => {
     if (resources.length === 0) {
@@ -110,7 +124,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
       setSelectedIndex(resources.length - 1)
     }
   }, [resources.length, selectedIndex, isRefreshing])
-  
+
   // Notify parent when selection changes
   useEffect(() => {
     onSelectionChange?.(selectedIndex)
@@ -119,10 +133,10 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
   // Fetch resource types on mount
   useEffect(() => {
     isMountedRef.current = true
-    
+
     async function fetchResourceTypes() {
       try {
-        const types = await invoke<string[]>('get_resource_types', { context })
+        const types = await invoke<string[]>('get_resource_types', {context})
         if (isMountedRef.current) {
           setResourceTypes(types)
         }
@@ -133,7 +147,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
         }
       }
     }
-    
+
     // Use requestAnimationFrame to ensure UI renders before starting fetch
     const rafId = requestAnimationFrame(() => {
       fetchResourceTypes()
@@ -152,12 +166,12 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
   useEffect(() => {
     setFilterInput(resourceType)
   }, [resourceType])
-  
+
   // Handle row click
   const handleRowClick = useCallback((index: number) => {
     setSelectedIndex(index)
   }, [])
-  
+
   // Handle row double-click or Enter on selected row
   const handleRowActivate = useCallback((index: number) => {
     if (onResourceClick && resources[index]) {
@@ -169,10 +183,10 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
   // Filter and sort resource types based on current input value
   const filteredItems = filterInput
     ? resourceTypes
-        .filter(item => 
-          item.toLowerCase().includes(filterInput.toLowerCase())
-        )
-        .sort(sortByFilterRelevance(filterInput))
+      .filter(item =>
+        item.toLowerCase().includes(filterInput.toLowerCase()),
+      )
+      .sort(sortByFilterRelevance(filterInput))
     : resourceTypes
 
   // Downshift combobox setup
@@ -188,32 +202,32 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
     selectedItem: resourceType,
     inputValue: filterInput,
     defaultHighlightedIndex: 0,
-    onInputValueChange: ({ inputValue: newInputValue, type }) => {
+    onInputValueChange: ({inputValue: newInputValue, type}) => {
       if (type === useCombobox.stateChangeTypes.InputChange) {
         setFilterInput(newInputValue || '')
       }
     },
-    onSelectedItemChange: ({ selectedItem: newSelectedItem }) => {
+    onSelectedItemChange: ({selectedItem: newSelectedItem}) => {
       if (newSelectedItem && newSelectedItem !== resourceType && onResourceTypeChange) {
         onResourceTypeChange(newSelectedItem)
         setFilterInput(newSelectedItem)
       }
     },
-    onIsOpenChange: ({ isOpen: newIsOpen }) => {
+    onIsOpenChange: ({isOpen: newIsOpen}) => {
       if (!newIsOpen) {
         setFilterInput(resourceType)
       }
     },
     itemToString: (item: string | null) => item || '',
   })
-  
+
   // Global keyboard shortcuts
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
       // Ignore if typing in an input (except for Escape)
       const target = e.target as HTMLElement
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
-      
+
       // Escape - go back (but not if combobox is open - let it close first)
       if (e.key === 'Escape') {
         if (isOpen) {
@@ -224,17 +238,17 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
         onBack()
         return
       }
-      
+
       // Skip other shortcuts if in an input
       if (isInput) return
-      
+
       // Ctrl+R / Cmd+R - Refresh
       if (e.key === 'r' && isPrimaryModifierPressed(e)) {
         e.preventDefault()
         refresh()
         return
       }
-      
+
       // Ctrl+K / Cmd+K - Focus combobox (not available in containers view)
       if (e.key === 'k' && isPrimaryModifierPressed(e) && !isContainersView) {
         e.preventDefault()
@@ -242,7 +256,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
         comboboxInputRef.current?.select()
         return
       }
-      
+
       // Arrow key navigation for resource list (works globally)
       if (resources.length > 0) {
         if (e.key === 'ArrowDown') {
@@ -253,7 +267,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
           })
           return
         }
-        
+
         if (e.key === 'ArrowUp') {
           e.preventDefault()
           setSelectedIndex(prev => {
@@ -262,21 +276,21 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
           })
           return
         }
-        
+
         // Enter activates selected resource
         if (e.key === 'Enter' && selectedIndex >= 0) {
           e.preventDefault()
           handleRowActivate(selectedIndex)
           return
         }
-        
+
         // Home/End for quick navigation
         if (e.key === 'Home') {
           e.preventDefault()
           setSelectedIndex(0)
           return
         }
-        
+
         if (e.key === 'End') {
           e.preventDefault()
           setSelectedIndex(resources.length - 1)
@@ -284,7 +298,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
         }
       }
     }
-    
+
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
   }, [onBack, refresh, resources.length, selectedIndex, handleRowActivate, isOpen])
@@ -292,50 +306,41 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
   return (
     <div class={classes.resourceList}>
       <header class={classes.header}>
-        <ShortcutButton
-          label="← Back"
-          shortcut="Esc"
-          onClick={onBack}
-          tabIndex={1}
-          className={classes.backButton}
-        />
         <div class={classes.headerInfo}>
-          {!isContainersView && (
-            <div class={classes.resourceTypeWrapper}>
-              <span class={classes.resourceTypeLabel}>
-                Resource <span class={classes.shortcutHint}>{isMac() ? '⌘K' : 'Ctrl+K'}</span>
-              </span>
-              <div class={classes.combobox}>
-                <input
-                  {...getInputProps({
-                    ref: comboboxInputRef,
-                    onBlur: () => {
-                      setFilterInput(resourceType)
-                    }
-                  })}
-                  class={classes.comboboxInput}
-                  placeholder="Select resource type..."
-                  tabIndex={2}
-                />
-              </div>
-              {isOpen && (
-                <ul {...getMenuProps()} class={classes.comboboxMenu}>
-                  {filteredItems.map((item, index) => (
-                    <li
-                      key={item}
-                      {...getItemProps({ item, index })}
-                      class={`${classes.comboboxItem} ${highlightedIndex === index ? classes.comboboxItemHighlighted : ''} ${selectedItem === item ? classes.comboboxItemSelected : ''}`}
-                    >
-                      {item}
-                    </li>
-                  ))}
-                  {filteredItems.length === 0 && (
-                    <li class={classes.comboboxItem}>No resource types found</li>
-                  )}
-                </ul>
-              )}
+          <div class={classes.resourceTypeWrapper}>
+            <span class={classes.resourceTypeLabel}>
+              Resource <span class={classes.shortcutHint}>{isMac() ? '⌘K' : 'Ctrl+K'}</span>
+            </span>
+            <div class={classes.combobox}>
+              <input
+                {...getInputProps({
+                  ref: comboboxInputRef,
+                  onBlur: () => {
+                    setFilterInput(resourceType)
+                  },
+                })}
+                class={classes.comboboxInput}
+                placeholder="Select resource type..."
+                tabIndex={2}
+              />
             </div>
-          )}
+            {isOpen && (
+              <ul {...getMenuProps()} class={classes.comboboxMenu}>
+                {filteredItems.map((item, index) => (
+                  <li
+                    key={item}
+                    {...getItemProps({item, index})}
+                    class={`${classes.comboboxItem} ${highlightedIndex === index ? classes.comboboxItemHighlighted : ''} ${selectedItem === item ? classes.comboboxItemSelected : ''}`}
+                  >
+                    {item}
+                  </li>
+                ))}
+                {filteredItems.length === 0 && (
+                  <li class={classes.comboboxItem}>No resource types found</li>
+                )}
+              </ul>
+            )}
+          </div>
           <span className={classes.context}>
             <span className={classes.label}>Context</span>
             <span className={classes.name}>{context}</span>
@@ -345,14 +350,23 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
             <span className={classes.name}>{namespace}</span>
           </span>
         </div>
-        <ShortcutButton
-          label="↻ Refresh"
-          shortcut={isMac() ? 'Cmd+R' : 'Ctrl+R'}
-          onClick={refresh}
-          disabled={isRefreshing}
-          tabIndex={3}
-          className={classes.refreshButton}
-        />
+        <div class={classes.headerButtons}>
+          <ShortcutButton
+            label="Refresh"
+            shortcut={isMac() ? 'Cmd+R' : 'Ctrl+R'}
+            onClick={refresh}
+            disabled={isRefreshing}
+            tabIndex={3}
+            className={classes.refreshButton}
+          />
+          <ShortcutButton
+            label="Back"
+            shortcut="Esc"
+            onClick={onBack}
+            tabIndex={1}
+            className={classes.backButton}
+          />
+        </div>
       </header>
 
       <NavigationBar
@@ -390,8 +404,8 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
               </tr>
             ) : (
               resources.map((resource, index) => (
-                <tr 
-                  key={resource.name} 
+                <tr
+                  key={resource.name}
                   class={`${classes.resourceRow} ${selectedIndex === index ? classes.resourceRowSelected : ''}`}
                   onClick={() => handleRowClick(index)}
                   onDblClick={() => handleRowActivate(index)}
@@ -427,8 +441,8 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
           )}
         </div>
       )}
-      
-      <ShortcutsBar 
+
+      <ShortcutsBar
         resourceType={resourceType}
         hasSelection={selectedIndex >= 0}
       />
