@@ -41,12 +41,12 @@
     background: none;
     border: none;
     padding: 0;
-    margin: 0;
+    margin: 0 0 0 -0.75rem; // so it is outside the normal tree line
     cursor: pointer;
     font-size: 0.6rem;
     color: var(--color-dimmed);
-    width: 1rem;
-    height: 1.2rem;
+    width: 0.5rem;
+    height: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -153,14 +153,26 @@
   .truncatable {
     cursor: pointer;
     word-break: break-word;
+    padding: 0.1rem 0.25rem;
+    margin: -0.1rem -0.25rem;
+    border-radius: 3px;
+    transition: background 0.15s ease;
     
     &:hover {
-      text-decoration: underline;
-      text-decoration-style: dotted;
+      background: rgba(0, 0, 0, 0.05);
+      
+      @media (prefers-color-scheme: dark) {
+        background: rgba(255, 255, 255, 0.08);
+      }
     }
     
     &.expanded {
       white-space: pre-wrap;
+      background: none;
+    }
+
+    .expandDots {
+      color: var(--color-dimmed)
     }
   }
 
@@ -217,12 +229,7 @@
   .expandedTree {
     margin: 0 -0.25rem;
     padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.02);
+    background: none;
     border: 1px solid var(--border-subtle);
-    border-radius: 3px;
-    
-    @media (prefers-color-scheme: dark) {
-      background: rgba(255, 255, 255, 0.02);
-    }
   }
 }
