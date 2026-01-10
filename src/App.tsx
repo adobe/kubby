@@ -81,6 +81,18 @@ function App() {
       } else {
         console.warn(`No app.kubernetes.io/name label found on deployment ${resourceName}`);
       }
+    } else if (resourceType === 'pods') {
+      // Navigate to containers view for the selected pod
+      const newNode = createNavigationNode(
+        currentNode.context,
+        currentNode.namespace,
+        'containers',
+        resourceName, // Display name is the pod name
+        undefined, // No label selectors for containers
+        undefined, // No initial selected index
+        resourceName // parentResourceName is the pod name
+      );
+      setNavigationStack([...navigationStack, newNode]);
     }
   };
 
@@ -107,6 +119,7 @@ function App() {
         namespace={currentNode.namespace}
         resourceType={currentNode.resourceType}
         labelSelectors={currentNode.labelSelectors}
+        parentResourceName={currentNode.parentResourceName}
         navigationStack={navigationStack}
         onNavigateToNode={handleNavigateToNode}
         onBack={handleBackNavigation}
@@ -116,6 +129,7 @@ function App() {
             resourceType: newResourceType,
             labelSelectors: undefined,
             selectedIndex: undefined,
+            parentResourceName: undefined,
           };
           setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
         }}

@@ -148,7 +148,8 @@ pub fn run() {
             dashboard::get_dashboard_config,
             get_resource_columns,
             get_resource_types,
-            resource_list::get_resources
+            resource_list::get_resources,
+            resource_list::get_pod_containers
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,7 +7,7 @@ import type { LabelSelector } from '../kubectl/resourceTypes'
  * Each node captures the state needed to render a specific resource view.
  */
 export interface NavigationNode {
-  /** The resource type being viewed (e.g., "deployments", "pods") */
+  /** The resource type being viewed (e.g., "deployments", "pods", "containers") */
   resourceType: string
   
   /** Label filters applied to the resource list */
@@ -24,6 +24,9 @@ export interface NavigationNode {
   
   /** Selected row index to restore when navigating back (-1 or undefined means no selection) */
   selectedIndex?: number
+  
+  /** Parent resource name (e.g., pod name when viewing containers) */
+  parentResourceName?: string
 }
 
 /**
@@ -60,7 +63,8 @@ export function createNavigationNode(
   resourceType: string,
   displayName: string,
   labelSelectors?: LabelSelector[],
-  selectedIndex?: number
+  selectedIndex?: number,
+  parentResourceName?: string
 ): NavigationNode {
   return {
     context,
@@ -69,5 +73,6 @@ export function createNavigationNode(
     displayName,
     labelSelectors,
     selectedIndex,
+    parentResourceName,
   }
 }

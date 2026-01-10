@@ -387,3 +387,172 @@ pub async fn get_resources(
     })
 }
 
+#[tauri::command]
+pub async fn get_pod_containers(
+    context: String,
+    namespace: String,
+    pod_name: String,
+) -> Result<ResourceListResponse, String> {
+    // Build kubectl command to get a single pod
+    let args = vec![
+        "get".to_string(),
+        "pod".to_string(),
+        pod_name.clone(),
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+        "-o".to_string(),
+        "json".to_string(),
+    ];
+    
+    // Execute kubectl command asynchronously with timeout
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl timed out after {}s, check your network connection then click refresh to retry", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("kubectl failed: {}", stderr));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let pod: Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse kubectl JSON output: {}", e))?;
+    
+    // Extract containers from spec
+    let spec_containers = pod.get("spec")
+        .and_then(|s| s.get("containers"))
+        .and_then(|c| c.as_array())
+        .cloned()
+        .unwrap_or_default();
+    
+    // Extract container statuses
+    let container_statuses = pod.get("status")
+        .and_then(|s| s.get("containerStatuses"))
+        .and_then(|cs| cs.as_array())
+        .cloned()
+        .unwrap_or_default();
+    
+    // Build a map of container name -> status for easy lookup
+    let status_map: std::collections::HashMap<String, &Value> = container_statuses
+        .iter()
+        .filter_map(|status| {
+            status.get("name")
+                .and_then(|n| n.as_str())
+                .map(|name| (name.to_string(), status))
+        })
+        .collect();
+    
+    // Define columns for containers
+    let columns = vec![
+        crate::ColumnConfig {
+            name: "IMAGE".to_string(),
+            json_path: ".image".to_string(),
+        },
+        crate::ColumnConfig {
+            name: "READY".to_string(),
+            json_path: ".ready".to_string(),
+        },
+        crate::ColumnConfig {
+            name: "STATE".to_string(),
+            json_path: ".state".to_string(),
+        },
+        crate::ColumnConfig {
+            name: "RESTARTS".to_string(),
+            json_path: ".restartCount".to_string(),
+        },
+        crate::ColumnConfig {
+            name: "PORTS".to_string(),
+            json_path: ".ports".to_string(),
+        },
+    ];
+    
+    // Build container items
+    let mut items = Vec::new();
+    for container in &spec_containers {
+        let name = container.get("name")
+            .and_then(|n| n.as_str())
+            .unwrap_or("<unknown>")
+            .to_string();
+        
+        let image = container.get("image")
+            .and_then(|i| i.as_str())
+            .unwrap_or("<none>")
+            .to_string();
+        
+        // Get ports from spec
+        let ports = container.get("ports")
+            .and_then(|p| p.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|p| p.get("containerPort").and_then(|cp| cp.as_u64()))
+                    .map(|p| p.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .unwrap_or_else(|| "<none>".to_string());
+        
+        // Get status info
+        let status = status_map.get(&name);
+        
+        let ready = status
+            .and_then(|s| s.get("ready"))
+            .and_then(|r| r.as_bool())
+            .map(|r| if r { "True" } else { "False" })
+            .unwrap_or("False")
+            .to_string();
+        
+        let restarts = status
+            .and_then(|s| s.get("restartCount"))
+            .and_then(|r| r.as_u64())
+            .unwrap_or(0)
+            .to_string();
+        
+        // Determine state from status.state object
+        let state = status
+            .and_then(|s| s.get("state"))
+            .and_then(|state| {
+                if state.get("running").is_some() {
+                    Some("Running".to_string())
+                } else if let Some(waiting) = state.get("waiting") {
+                    let reason = waiting.get("reason")
+                        .and_then(|r| r.as_str())
+                        .unwrap_or("Waiting");
+                    Some(reason.to_string())
+                } else if let Some(terminated) = state.get("terminated") {
+                    let reason = terminated.get("reason")
+                        .and_then(|r| r.as_str())
+                        .unwrap_or("Terminated");
+                    Some(reason.to_string())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| "Unknown".to_string());
+        
+        let mut column_values = std::collections::HashMap::new();
+        column_values.insert("IMAGE".to_string(), image);
+        column_values.insert("READY".to_string(), ready);
+        column_values.insert("STATE".to_string(), state);
+        column_values.insert("RESTARTS".to_string(), restarts);
+        column_values.insert("PORTS".to_string(), ports);
+        
+        items.push(ResourceItem {
+            name,
+            columns: column_values,
+            labels: vec![], // Containers don't have labels
+        });
+    }
+    
+    Ok(ResourceListResponse {
+        columns,
+        items,
+    })
+}

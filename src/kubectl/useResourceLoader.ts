@@ -20,6 +20,7 @@ interface UseResourceLoaderOptions {
   namespace: string;
   resourceType: string;
   labelSelectors?: LabelSelector[];
+  parentResourceName?: string; // For containers view: the pod name
 }
 
 /**
@@ -43,8 +44,11 @@ function filterByLabels(items: ResourceItem[], labelSelectors?: LabelSelector[])
  * 3. Update state when fresh data arrives
  * 4. Apply label filtering client-side
  */
-export function useResourceLoader({ context, namespace, resourceType, labelSelectors }: UseResourceLoaderOptions) {
-  const cacheKey = getCacheKey(context, namespace, resourceType)
+export function useResourceLoader({ context, namespace, resourceType, labelSelectors, parentResourceName }: UseResourceLoaderOptions) {
+  // For containers, include pod name in cache key; otherwise use standard key
+  const cacheKey = resourceType === 'containers' && parentResourceName
+    ? getCacheKey(context, namespace, `containers:${parentResourceName}`)
+    : getCacheKey(context, namespace, resourceType)
   const isMountedRef = useRef(true)
   const prevCacheKeyRef = useRef(cacheKey)
   const currentCacheKeyRef = useRef(cacheKey) // Track which cacheKey we expect results for
@@ -96,13 +100,24 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
     const fetchCacheKey = cacheKey
     
     try {
-      // Always fetch all resources (no label selectors)
-      const result = await invoke<ResourceListResponse>('get_resources', {
-        resourceType,
-        context,
-        namespace,
-        labelSelectors: [],
-      })
+      let result: ResourceListResponse
+      
+      if (resourceType === 'containers' && parentResourceName) {
+        // Special case: fetch containers from a specific pod
+        result = await invoke<ResourceListResponse>('get_pod_containers', {
+          context,
+          namespace,
+          podName: parentResourceName,
+        })
+      } else {
+        // Standard case: fetch all resources (no label selectors)
+        result = await invoke<ResourceListResponse>('get_resources', {
+          resourceType,
+          context,
+          namespace,
+          labelSelectors: [],
+        })
+      }
 
       // Ignore stale results if cacheKey has changed (user navigated away)
       if (currentCacheKeyRef.current !== fetchCacheKey) return
@@ -129,7 +144,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         error: String(e),
       }))
     }
-  }, [cacheKey, context, namespace, resourceType])
+  }, [cacheKey, context, namespace, resourceType, parentResourceName])
 
   // Start background fetch after mount
   useEffect(() => {

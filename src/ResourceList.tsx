@@ -60,12 +60,16 @@ interface ResourceListProps {
   onRemoveFilter?: (index: number) => void;
   initialSelectedIndex?: number;
   onSelectionChange?: (index: number) => void;
+  parentResourceName?: string; // For containers view: the pod name
 }
 
-export function ResourceList({context, namespace, resourceType, labelSelectors, navigationStack, onNavigateToNode, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter, initialSelectedIndex, onSelectionChange}: ResourceListProps) {
+export function ResourceList({context, namespace, resourceType, labelSelectors, navigationStack, onNavigateToNode, onBack, onResourceTypeChange, onResourceClick, onRemoveFilter, initialSelectedIndex, onSelectionChange, parentResourceName}: ResourceListProps) {
   const isMountedRef = useRef(true)
   const comboboxInputRef = useRef<HTMLInputElement>(null)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
+  
+  // Containers view has a fixed resource type (not changeable)
+  const isContainersView = resourceType === 'containers'
 
   // Use the resource loader hook - handles caching and background refresh
   const {
@@ -75,7 +79,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
     isRefreshing,
     error,
     refresh,
-  } = useResourceLoader({ context, namespace, resourceType, labelSelectors })
+  } = useResourceLoader({ context, namespace, resourceType, labelSelectors, parentResourceName })
 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
   
@@ -227,8 +231,8 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
         return
       }
       
-      // Ctrl+K / Cmd+K - Focus combobox
-      if (e.key === 'k' && isPrimaryModifierPressed(e)) {
+      // Ctrl+K / Cmd+K - Focus combobox (not available in containers view)
+      if (e.key === 'k' && isPrimaryModifierPressed(e) && !isContainersView) {
         e.preventDefault()
         comboboxInputRef.current?.focus()
         comboboxInputRef.current?.select()
@@ -292,40 +296,42 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
           className={classes.backButton}
         />
         <div class={classes.headerInfo}>
-          <div class={classes.resourceTypeWrapper}>
-            <span class={classes.resourceTypeLabel}>
-              Resource <span class={classes.shortcutHint}>{isMac() ? '⌘K' : 'Ctrl+K'}</span>
-            </span>
-            <div class={classes.combobox}>
-              <input
-                {...getInputProps({
-                  ref: comboboxInputRef,
-                  onBlur: () => {
-                    setFilterInput(resourceType)
-                  }
-                })}
-                class={classes.comboboxInput}
-                placeholder="Select resource type..."
-                tabIndex={2}
-              />
+          {!isContainersView && (
+            <div class={classes.resourceTypeWrapper}>
+              <span class={classes.resourceTypeLabel}>
+                Resource <span class={classes.shortcutHint}>{isMac() ? '⌘K' : 'Ctrl+K'}</span>
+              </span>
+              <div class={classes.combobox}>
+                <input
+                  {...getInputProps({
+                    ref: comboboxInputRef,
+                    onBlur: () => {
+                      setFilterInput(resourceType)
+                    }
+                  })}
+                  class={classes.comboboxInput}
+                  placeholder="Select resource type..."
+                  tabIndex={2}
+                />
+              </div>
+              {isOpen && (
+                <ul {...getMenuProps()} class={classes.comboboxMenu}>
+                  {filteredItems.map((item, index) => (
+                    <li
+                      key={item}
+                      {...getItemProps({ item, index })}
+                      class={`${classes.comboboxItem} ${highlightedIndex === index ? classes.comboboxItemHighlighted : ''} ${selectedItem === item ? classes.comboboxItemSelected : ''}`}
+                    >
+                      {item}
+                    </li>
+                  ))}
+                  {filteredItems.length === 0 && (
+                    <li class={classes.comboboxItem}>No resource types found</li>
+                  )}
+                </ul>
+              )}
             </div>
-            {isOpen && (
-              <ul {...getMenuProps()} class={classes.comboboxMenu}>
-                {filteredItems.map((item, index) => (
-                  <li
-                    key={item}
-                    {...getItemProps({ item, index })}
-                    class={`${classes.comboboxItem} ${highlightedIndex === index ? classes.comboboxItemHighlighted : ''} ${selectedItem === item ? classes.comboboxItemSelected : ''}`}
-                  >
-                    {item}
-                  </li>
-                ))}
-                {filteredItems.length === 0 && (
-                  <li class={classes.comboboxItem}>No resource types found</li>
-                )}
-              </ul>
-            )}
-          </div>
+          )}
           <span className={classes.context}>
             <span className={classes.label}>Context</span>
             <span className={classes.name}>{context}</span>
