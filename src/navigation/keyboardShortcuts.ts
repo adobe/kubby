@@ -118,6 +118,10 @@ export function isPrimaryModifierPressed(e: KeyboardEvent): boolean {
   return isMac() ? e.metaKey : e.ctrlKey
 }
 
+export function isControlModifierPressed(e: KeyboardEvent): boolean {
+  return e.ctrlKey
+}
+
 /**
  * Checks if the Alt/Option key is pressed in an event.
  */

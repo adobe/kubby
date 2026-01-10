@@ -10,7 +10,7 @@ import {ShortcutButton} from './components/ShortcutButton.tsx'
 import {Label} from './components/Label.tsx'
 import {Combobox} from './components/Combobox.tsx'
 import type {ComboboxHandle} from './components/Combobox.tsx'
-import {isPrimaryModifierPressed, isAltPressed} from './navigation/keyboardShortcuts.ts'
+import {isPrimaryModifierPressed, isAltPressed, isControlModifierPressed} from './navigation/keyboardShortcuts.ts'
 import type {LabelSelector} from './kubectl/resourceTypes'
 import type {DashboardConfig} from './Dashboard'
 
@@ -297,28 +297,32 @@ export function ResourceList({
       if (isInput) return
 
       // Ctrl+R / Cmd+R - Refresh
-      if (e.key === 'r' && isPrimaryModifierPressed(e)) {
+      // Use e.code for physical key to avoid locale issues
+      if (e.code === 'KeyR' && isControlModifierPressed(e)) {
         e.preventDefault()
         refresh()
         return
       }
 
       // Opt+R - Focus resource type combobox (not available in containers view)
-      if (e.key === 'r' && isAltPressed(e) && !isContainersView) {
+      // Use e.code because Opt+letter produces special characters on macOS (e.g., Opt+R → '®')
+      if (e.code === 'KeyR' && isAltPressed(e) && !isContainersView) {
         e.preventDefault()
         resourceComboboxRef.current?.focus()
         return
       }
 
       // Opt+C - Focus context combobox
-      if (e.key === 'c' && isAltPressed(e)) {
+      // Use e.code because Opt+letter produces special characters on macOS (e.g., Opt+C → 'ç')
+      if (e.code === 'KeyC' && isAltPressed(e)) {
         e.preventDefault()
         contextComboboxRef.current?.focus()
         return
       }
 
       // Opt+N - Focus namespace combobox
-      if (e.key === 'n' && isAltPressed(e)) {
+      // Use e.code because Opt+letter produces special characters on macOS (e.g., Opt+N → '˜')
+      if (e.code === 'KeyN' && isAltPressed(e)) {
         e.preventDefault()
         namespaceComboboxRef.current?.focus()
         return
@@ -418,7 +422,7 @@ export function ResourceList({
         <div class={classes.headerButtons}>
           <ShortcutButton
             label="Refresh"
-            shortcut={'Cmd+R'}
+            shortcut={'Ctrl+R'}
             onClick={refresh}
             disabled={isRefreshing}
             tabIndex={4}
