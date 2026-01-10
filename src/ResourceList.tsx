@@ -97,7 +97,11 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
   // Select first row when resources load for the first time, adjust if out of bounds
   useEffect(() => {
     if (resources.length === 0) {
-      setSelectedIndex(-1)
+      // Only reset selection if not loading (actual empty result)
+      // This prevents losing initialSelectedIndex during loading transitions
+      if (!isRefreshing) {
+        setSelectedIndex(-1)
+      }
     } else if (selectedIndex < 0) {
       // Select first row when resources first load
       setSelectedIndex(0)
@@ -105,7 +109,7 @@ export function ResourceList({context, namespace, resourceType, labelSelectors, 
       // If current selection is beyond the new list size, select the last item
       setSelectedIndex(resources.length - 1)
     }
-  }, [resources.length, selectedIndex])
+  }, [resources.length, selectedIndex, isRefreshing])
   
   // Notify parent when selection changes
   useEffect(() => {
