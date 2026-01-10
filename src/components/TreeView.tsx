@@ -1,19 +1,163 @@
-import { useState } from 'preact/hooks'
+import { useState, useMemo } from 'preact/hooks'
 import classes from './TreeView.module.scss'
+import { findLinearizer, defaultLinearizers, LinearizerConfig, LinearizedResult, LinearizedPart } from './linearizers'
+
+const MAX_VALUE_LENGTH = 100
 
 interface TreeViewProps {
   data: unknown
   level?: number
+  path?: string[]
+  linearizers?: LinearizerConfig[]
 }
 
 /**
- * Render a hierarchical tree view of JSON data
+ * Truncatable value component - shows truncated text with expand on click
  */
-export function TreeView({ data, level = 0 }: TreeViewProps) {
+function TruncatableValue({ 
+  value, 
+  className 
+}: { 
+  value: string
+  className?: string 
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const needsTruncation = value.length > MAX_VALUE_LENGTH
+  
+  const displayValue = needsTruncation && !expanded 
+    ? value.slice(0, MAX_VALUE_LENGTH) + '…' 
+    : value
+  
+  if (!needsTruncation) {
+    return <span class={className}>{value}</span>
+  }
+  
+  return (
+    <span 
+      class={`${className} ${classes.truncatable} ${expanded ? classes.expanded : ''}`}
+      onClick={() => setExpanded(!expanded)}
+      title={expanded ? 'Click to collapse' : 'Click to expand'}
+    >
+      {displayValue}
+    </span>
+  )
+}
+
+/**
+ * Render a single linearized part with proper type formatting
+ */
+function LinearizedPartView({ part }: { part: LinearizedPart }) {
+  switch (part.type) {
+    case 'key':
+      return <span class={classes.objectKey}>{part.value}</span>
+    case 'string':
+      return <span class={classes.valueString}>{part.value}</span>
+    case 'number':
+      return <span class={classes.valueNumber}>{part.value}</span>
+    case 'boolean':
+      return <span class={classes.valueBoolean}>{part.value ? 'true' : 'false'}</span>
+    case 'text':
+      return <span class={classes.valueText}>{part.value}</span>
+    case 'separator':
+      return <span class={classes.valueSeparator}>|</span>
+    default:
+      return null
+  }
+}
+
+/**
+ * Linearized value component - shows compact representation with expand on click
+ */
+function LinearizedValue({ 
+  linearized, 
+  data, 
+  level,
+  path,
+  linearizers
+}: { 
+  linearized: LinearizedResult
+  data: unknown
+  level: number
+  path: string[]
+  linearizers?: LinearizerConfig[]
+}) {
+  const [expanded, setExpanded] = useState(false)
+  
+  const handleClick = (e: MouseEvent) => {
+    e.stopPropagation()
+    setExpanded(prev => !prev)
+  }
+  
+  return (
+    <div class={classes.linearizedContainer}>
+      <span 
+        class={`${classes.linearizedValue} ${expanded ? classes.expanded : ''}`}
+        onClick={handleClick}
+        title={expanded ? 'Click to collapse' : 'Click to expand full view'}
+      >
+        <span class={classes.linearizedParts}>
+          {linearized.map((part, i) => (
+            <LinearizedPartView key={i} part={part} />
+          ))}
+        </span>
+        <span class={classes.expandIcon}>{expanded ? '▼' : '▶'}</span>
+      </span>
+      {expanded && (
+        <div class={classes.expandedTree}>
+          <TreeViewInternal 
+            data={data} 
+            level={level + 1} 
+            path={path}
+            linearizers={linearizers}
+            skipLinearization 
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface TreeViewInternalProps extends TreeViewProps {
+  skipLinearization?: boolean
+}
+
+/**
+ * Internal TreeView component that handles all rendering logic
+ */
+function TreeViewInternal({ 
+  data, 
+  level = 0, 
+  path = [],
+  linearizers = defaultLinearizers,
+  skipLinearization = false
+}: TreeViewInternalProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   
   const toggleCollapse = (key: string) => {
     setCollapsed(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+  
+  // Check for linearization at this path
+  const linearizer = useMemo(() => {
+    if (skipLinearization) return null
+    return findLinearizer(path, linearizers)
+  }, [path, linearizers, skipLinearization])
+  
+  // If we have a linearizer, try to linearize
+  if (linearizer && typeof data === 'object' && data !== null) {
+    const key = path[path.length - 1] || ''
+    const linearized = linearizer(data, key)
+    if (linearized) {
+      return (
+        <LinearizedValue 
+          linearized={linearized} 
+          data={data} 
+          level={level}
+          path={path}
+          linearizers={linearizers}
+        />
+      )
+    }
   }
   
   if (data === null || data === undefined) {
@@ -25,15 +169,15 @@ export function TreeView({ data, level = 0 }: TreeViewProps) {
   }
   
   if (typeof data === 'number') {
-    return <span class={classes.valueNumber}>{data}</span>
+    return <TruncatableValue value={String(data)} className={classes.valueNumber} />
   }
   
   if (typeof data === 'string') {
     // Detect and format timestamps
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(data)) {
-      return <span class={classes.valueTimestamp}>{data}</span>
+      return <TruncatableValue value={data} className={classes.valueTimestamp} />
     }
-    return <span class={classes.valueString}>{data}</span>
+    return <TruncatableValue value={data} className={classes.valueString} />
   }
   
   if (Array.isArray(data)) {
@@ -46,7 +190,12 @@ export function TreeView({ data, level = 0 }: TreeViewProps) {
         {data.map((item, index) => (
           <div key={index} class={classes.arrayItem}>
             <span class={classes.arrayIndex}>[{index}]</span>
-            <TreeView data={item} level={level + 1} />
+            <TreeViewInternal 
+              data={item} 
+              level={level + 1} 
+              path={[...path, String(index)]}
+              linearizers={linearizers}
+            />
           </div>
         ))}
       </div>
@@ -71,11 +220,16 @@ export function TreeView({ data, level = 0 }: TreeViewProps) {
           const isComplex = typeof value === 'object' && value !== null
           const isCollapsed = collapsed[key]
           const showCollapseToggle = isComplex && isLargeObject
+          const childPath = [...path, key]
+          
+          // Check if child has a linearizer
+          const childLinearizer = findLinearizer(childPath, linearizers)
+          const childIsLinearizable = childLinearizer && isComplex
           
           return (
             <div key={key} class={classes.objectEntry}>
               <div class={classes.keyRow}>
-                {showCollapseToggle && (
+                {showCollapseToggle && !childIsLinearizable && (
                   <button 
                     class={classes.collapseToggle} 
                     onClick={() => toggleCollapse(key)}
@@ -84,18 +238,28 @@ export function TreeView({ data, level = 0 }: TreeViewProps) {
                   </button>
                 )}
                 <span class={classes.objectKey}>{key}:</span>
-                {!isComplex && (
+                {(!isComplex || childIsLinearizable) && (
                   <span class={classes.inlineValue}>
-                    <TreeView data={value} level={level + 1} />
+                    <TreeViewInternal 
+                      data={value} 
+                      level={level + 1} 
+                      path={childPath}
+                      linearizers={linearizers}
+                    />
                   </span>
                 )}
               </div>
-              {isComplex && !isCollapsed && (
+              {isComplex && !childIsLinearizable && !isCollapsed && (
                 <div class={classes.nestedValue}>
-                  <TreeView data={value} level={level + 1} />
+                  <TreeViewInternal 
+                    data={value} 
+                    level={level + 1} 
+                    path={childPath}
+                    linearizers={linearizers}
+                  />
                 </div>
               )}
-              {isComplex && isCollapsed && (
+              {isComplex && !childIsLinearizable && isCollapsed && (
                 <span class={classes.collapsedIndicator}>
                   {Array.isArray(value) ? `[${value.length} items]` : `{${Object.keys(value as object).length} keys}`}
                 </span>
@@ -107,5 +271,19 @@ export function TreeView({ data, level = 0 }: TreeViewProps) {
     )
   }
   
-  return <span>{String(data)}</span>
+  return <TruncatableValue value={String(data)} className={undefined} />
+}
+
+/**
+ * Render a hierarchical tree view of JSON data with linearization support
+ */
+export function TreeView({ data, level = 0, path = [], linearizers }: TreeViewProps) {
+  return (
+    <TreeViewInternal 
+      data={data} 
+      level={level} 
+      path={path}
+      linearizers={linearizers}
+    />
+  )
 }
