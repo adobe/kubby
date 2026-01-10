@@ -180,6 +180,34 @@ export function ResourceList({
   // Initialize from prop if provided, otherwise -1
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex ?? -1)
 
+  // Edit state
+  const [editError, setEditError] = useState<string | null>(null)
+  const [editingResourceName, setEditingResourceName] = useState<string | null>(null)
+
+  // Handle edit resource
+  const handleEdit = useCallback(async () => {
+    if (editingResourceName || selectedIndex < 0 || !resources[selectedIndex]) return
+    
+    const resource = resources[selectedIndex]
+    setEditingResourceName(resource.name)
+    setEditError(null)
+    
+    try {
+      await invoke('edit_resource', {
+        resourceType,
+        resourceName: resource.name,
+        context,
+        namespace,
+      })
+      // On success, refresh the resource data
+      refresh()
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setEditingResourceName(null)
+    }
+  }, [editingResourceName, selectedIndex, resources, resourceType, context, namespace, refresh])
+
   // Reset selection when navigating to a different resource list
   // Use initialSelectedIndex if returning to same node, otherwise start fresh
   useEffect(() => {
@@ -398,12 +426,19 @@ export function ResourceList({
           }
           return
         }
+
+        // E - Edit selected resource
+        if (e.code === 'KeyE' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
+          e.preventDefault()
+          handleEdit()
+          return
+        }
       }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, handleEdit])
 
   return (
     <div class={classes.resourceList}>
@@ -476,6 +511,12 @@ export function ResourceList({
         onClearFilters={onClearFilters}
       />
 
+      {editError && (
+        <div class={classes.error}>
+          <strong>Edit failed:</strong> {editError}
+        </div>
+      )}
+
       {error && (
         <div class={classes.error}>
           <strong>Error:</strong> {error}
@@ -513,6 +554,9 @@ export function ResourceList({
                 >
                   <td class={classes.nameCell}>
                     {resource.name}
+                    {editingResourceName === resource.name && (
+                      <span class={classes.editingChip}>Editing</span>
+                    )}
                   </td>
                   {columns.map((col) => (
                     <td key={col.name} class={classes.dataCell}>
