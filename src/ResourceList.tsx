@@ -2,13 +2,13 @@ import {useEffect, useState, useRef, useCallback} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
 import {useCombobox} from 'downshift'
 import classes from './ResourceList.module.scss'
-import {getCacheAge} from './resourceCache'
-import {useResourceLoader} from './useResourceLoader'
-import {FilterChipBar} from './FilterChipBar'
-import {ShortcutsBar} from './ShortcutsBar'
-import {ShortcutButton} from './ShortcutButton'
-import {isMac, isPrimaryModifierPressed} from './keyboardUtils'
-import type {LabelSelector} from './resourceTypes'
+import {getCacheAge} from './kubectl/resourceCache'
+import {useResourceLoader} from './kubectl/useResourceLoader'
+import {FilterChipBar} from './components/FilterChipBar.tsx'
+import {ShortcutsBar} from './components/ShortcutsBar.tsx'
+import {ShortcutButton} from './components/ShortcutButton.tsx'
+import {isMac, isPrimaryModifierPressed} from './navigation/keyboardShortcuts.ts'
+import type {LabelSelector} from './kubectl/resourceTypes'
 
 function sortByFilterRelevance(filterInput: string) {
   const lowerInput = filterInput.toLowerCase()
@@ -45,9 +45,6 @@ function sortByFilterRelevance(filterInput: string) {
     return a.localeCompare(b)
   }
 }
-
-// Re-export for backwards compatibility
-export type { ResourceListResponse } from './resourceTypes'
 
 interface ResourceListProps {
   context: string;

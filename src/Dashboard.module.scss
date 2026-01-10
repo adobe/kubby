@@ -1,0 +1,320 @@
+.dashboardSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.groupTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color);
+  vertical-align: middle;
+  background: var(--background-color);
+}
+
+.tableWrapper {
+  overflow: visible; // Allow sticky to work with viewport scroll
+  border-radius: 6px;
+}
+
+.matrix {
+  --header-row-height: 24px;
+  
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+
+  th, td {
+    padding: 0;
+  }
+}
+
+// Sticky header group (both rows stick together)
+.stickyHeader {
+  th {
+    position: sticky;
+    z-index: 1;
+    background: var(--background-color);
+  }
+}
+
+// Sticky first column
+.stickyCol {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--background-color);
+  padding: 0.35rem 0.75rem !important;
+  text-align: left;
+  white-space: nowrap;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border-muted);
+  }
+}
+
+// Context group header row (dev, stage, prod)
+.contextGroupRow {
+  th {
+    top: 0;
+  }
+  
+  .stickyCol {
+    z-index: 3; // Above other header cells (sticky col + sticky row)
+  }
+}
+
+.contextGroupHeader {
+  height: var(--header-row-height);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-dimmed);
+  padding: 0.5rem 0.5rem 0.25rem 0.5rem !important;
+  text-align: left;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+// Vertical border to separate context groups
+.groupBorder {
+  border-left: 2px solid var(--border-muted);
+}
+
+// Individual context header row
+.contextRow {
+  th {
+    top: var(--header-row-height);
+  }
+  
+  .stickyCol {
+    z-index: 3; // Above other header cells
+  }
+}
+
+.contextHeader {
+  padding: 0.25rem 0.15rem 0.5rem;
+  vertical-align: bottom;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.contextLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  white-space: nowrap;
+}
+
+.contextEnv {
+  font-size: 0.55rem;
+  font-weight: 500;
+  color: var(--color-dimmed);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.contextRegion {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0 0.25rem;
+  color: var(--color);
+}
+
+.contextRegionHidden {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0 0.25rem;
+  visibility: hidden;
+}
+
+.contextCluster {
+  font-size: 0.5rem;
+  font-weight: 400;
+  color: var(--color-dimmed);
+  overflow: hidden;
+  padding: 0 0.25rem;
+  text-overflow: ellipsis;
+}
+
+// Namespace group header
+.namespaceGroupRow {
+  td {
+    position: sticky;
+    top: calc(var(--header-row-height) * 2);
+    background: var(--surface-muted);
+  }
+  
+  .stickyCol {
+    z-index: 2; // Above the fill cell
+  }
+}
+
+.namespaceGroupHeader {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-dimmed);
+  text-align: left;
+}
+
+.namespaceGroupFill {
+  // Empty fill cell for the rest of the row
+}
+
+// Namespace row
+.namespaceRow {
+  &:hover {
+    .stickyCol {
+      background: var(--surface-hover);
+    }
+    
+    .cell {
+      background: var(--surface-subtle);
+    }
+  }
+}
+
+.namespaceLabel {
+  white-space: nowrap;
+}
+
+.namespacePrefix {
+  font-size: 0.55rem;
+  font-weight: 400;
+  color: var(--color-dimmed);
+}
+
+.namespaceSuffix {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color);
+}
+
+// Matrix cells
+.cell {
+  padding: 0.2rem;
+  text-align: center;
+  vertical-align: middle;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cellButton {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  background: var(--surface-subtle);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  box-shadow: none;
+  outline: none;
+  
+  &:hover {
+    border-color: var(--border-color);
+    background: var(--accent-bg);
+    transform: scale(1.1);
+  }
+  
+  &:focus {
+    border-color: var(--accent-color, #4a9eff);
+    box-shadow: 0 0 0 2px var(--accent-bg, rgba(74, 158, 255, 0.3));
+    transform: scale(1.1);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+    background: var(--accent-bg-active);
+  }
+}
+
+.bullet {
+  font-size: 8px;
+  color: var(--color-dimmed);
+  line-height: 1;
+  
+  .cellButton:hover & {
+    color: var(--border-color);
+  }
+}
+
+.emptyCell {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+}
+
+// Filter overlay
+.filterOverlay {
+  position: fixed;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-items: center;
+  gap: 0.5rem;
+  background: var(--surface-muted);
+  //border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.filterInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color);
+  padding: 0.25rem 0.5rem 0.15rem 0.5rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  min-width: 200px;
+  
+  &::placeholder {
+    color: var(--color-dimmed);
+  }
+}
+
+.filterClear {
+  background: none;
+  border: none;
+  color: var(--color-dimmed);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 0.25rem; // fix alignment
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  
+  &:hover {
+    color: var(--color);
+    background: var(--surface-hover);
+  }
+}

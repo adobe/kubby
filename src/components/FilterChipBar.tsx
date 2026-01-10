@@ -1,5 +1,5 @@
-import { LabelFilterChip } from './LabelFilterChip'
-import type { LabelSelector } from './resourceTypes'
+import { LabelFilterChip } from './LabelFilterChip.tsx'
+import type { LabelSelector } from '../kubectl/resourceTypes'
 import classes from './FilterChipBar.module.scss'
 
 interface FilterChipBarProps {

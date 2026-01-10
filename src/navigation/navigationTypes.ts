@@ -1,6 +1,6 @@
 // Types for navigation stack with filter awareness
 
-import type { LabelSelector } from './resourceTypes'
+import type { LabelSelector } from '../kubectl/resourceTypes'
 
 /**
  * Represents a single node in the navigation stack.

@@ -1,5 +1,5 @@
 import classes from './ShortcutsBar.module.scss'
-import {ShortcutButton} from './ShortcutButton'
+import {ShortcutButton} from './ShortcutButton.tsx'
 
 interface ShortcutConfig {
   label: string
