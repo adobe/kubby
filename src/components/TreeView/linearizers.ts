@@ -374,6 +374,48 @@ export const linearizeVolume: LinearizerFn = (data) => {
   return null
 }
 
+/**
+ * Linearize deployment strategy
+ * Example: RollingUpdate maxSurge: 50% maxUnavailable: 50%
+ */
+export const linearizeStrategy: LinearizerFn = (data) => {
+  if (typeof data !== 'object' || data === null) return null
+  
+  const strategy = data as Record<string, unknown>
+  const type = strategy.type as string || 'RollingUpdate'
+  const parts: LinearizedResult = [str(type)]
+  
+  if ('rollingUpdate' in strategy && typeof strategy.rollingUpdate === 'object' && strategy.rollingUpdate !== null) {
+    const rollingUpdate = strategy.rollingUpdate as Record<string, unknown>
+    
+    if ('maxSurge' in rollingUpdate) {
+      const maxSurge = rollingUpdate.maxSurge
+      parts.push(key('maxSurge:'))
+      if (typeof maxSurge === 'string' && maxSurge.endsWith('%')) {
+        parts.push(num(parseInt(maxSurge)), text('%'))
+      } else if (typeof maxSurge === 'number') {
+        parts.push(num(maxSurge))
+      } else {
+        parts.push(str(String(maxSurge)))
+      }
+    }
+    
+    if ('maxUnavailable' in rollingUpdate) {
+      const maxUnavailable = rollingUpdate.maxUnavailable
+      parts.push(key('maxUnavailable:'))
+      if (typeof maxUnavailable === 'string' && maxUnavailable.endsWith('%')) {
+        parts.push(num(parseInt(maxUnavailable)), text('%'))
+      } else if (typeof maxUnavailable === 'number') {
+        parts.push(num(maxUnavailable))
+      } else {
+        parts.push(str(String(maxUnavailable)))
+      }
+    }
+  }
+  
+  return parts.length > 1 ? parts : null
+}
+
 // ============================================================================
 // Default Linearizers Configuration
 // ============================================================================
@@ -387,6 +429,7 @@ export const defaultLinearizers: LinearizerConfig[] = [
   // Direct objects - match the object itself
   { pattern: '**/*Probe', linearize: linearizeProbe },
   { pattern: '**/resources', linearize: linearizeResources },
+  { pattern: '**/strategy', linearize: linearizeStrategy },
 ]
 
 /**

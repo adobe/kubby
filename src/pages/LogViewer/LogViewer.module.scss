@@ -108,12 +108,74 @@
     opacity: 0.85;
   }
 
+  // K8s timestamp (from kubectl)
   .timestamp {
     color: var(--color-dimmed);
   }
 
   .logText {
     color: var(--color);
+  }
+
+  // App timestamp (from the log message itself)
+  .appTimestamp {
+    color: #7c9cba;
+  }
+
+  // Thread name in brackets
+  .threadName {
+    color: #b08cce;
+  }
+
+  // Package name (Java-style dot-separated)
+  .packageName {
+    color: #6b8e8e;
+    font-style: italic;
+  }
+
+  // Message text (plain text after parsing)
+  .messageText {
+    color: var(--color);
+  }
+
+  // JSON message styling
+  .jsonMessage {
+    color: #c4b28a;
+  }
+
+  .jsonKey {
+    color: #7eb6a4;
+    font-weight: 500;
+  }
+
+  // Log level styles - each level gets a distinct color
+  .levelFatal {
+    color: #ff4d6a;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .levelError {
+    color: #f87171;
+    font-weight: 600;
+  }
+
+  .levelWarn, .levelWarning {
+    color: #fbbf24;
+    font-weight: 500;
+  }
+
+  .levelInfo {
+    color: #60a5fa;
+  }
+
+  .levelDebug {
+    color: #a3a3a3;
+  }
+
+  .levelTrace {
+    color: #737373;
+    font-style: italic;
   }
 
   .logLine {

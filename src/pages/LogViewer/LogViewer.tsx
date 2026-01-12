@@ -17,6 +17,140 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
 }
 
+// Log levels with their CSS class names
+type LogLevel = 'FATAL' | 'ERROR' | 'WARN' | 'WARNING' | 'INFO' | 'DEBUG' | 'TRACE'
+
+// Parsed log message components
+interface LogMessageComponents {
+  appTimestamp?: string    // ISO date from the log itself (e.g., 2026-01-12 11:13:17.963)
+  threadName?: string      // Thread name in square brackets (e.g., qtp734353051-485)
+  level?: LogLevel         // Log level (FATAL, ERROR, INFO, etc.)
+  packageName?: string     // Package name (e.g., com.adobe.asr.logging)
+  message?: string         // The actual log message (text or JSON)
+  isJson?: boolean         // Whether the message is JSON
+  raw: string              // Original text if parsing fails
+}
+
+// Quick heuristic to check if string looks like JSON
+function looksLikeJson(text: string): boolean {
+  const trimmed = text.trim()
+  return (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+         (trimmed.startsWith('[') && trimmed.endsWith(']'))
+}
+
+// Parse log message into structured components
+function parseLogMessage(text: string): LogMessageComponents {
+  const result: LogMessageComponents = { raw: text }
+  let remaining = text
+
+  // 1. Try to match app timestamp at start: YYYY-MM-DD HH:MM:SS.mmm or similar
+  const timestampMatch = remaining.match(/^(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:[.,]\d{1,6})?)\s+/)
+  if (timestampMatch) {
+    result.appTimestamp = timestampMatch[1]
+    remaining = remaining.slice(timestampMatch[0].length)
+  }
+
+  // 2. Try to match thread name in square brackets: [thread-name]
+  const threadMatch = remaining.match(/^\[([^\]]+)\]\s+/)
+  if (threadMatch) {
+    result.threadName = threadMatch[1]
+    remaining = remaining.slice(threadMatch[0].length)
+  }
+
+  // 3. Try to match log level
+  const levelMatch = remaining.match(/^(FATAL|ERROR|WARN(?:ING)?|INFO|DEBUG|TRACE)\s+/)
+  if (levelMatch) {
+    result.level = levelMatch[1] as LogLevel
+    remaining = remaining.slice(levelMatch[0].length)
+  }
+
+  // 4. Try to match package name (dot-separated segments, may have abbreviated form)
+  // Pattern: word.word.word... or single-letter abbreviations like c.a.s.g.Foo
+  // Followed by " - " separator typically
+  const packageMatch = remaining.match(/^((?:[a-zA-Z_$][a-zA-Z0-9_$]*\.)+[a-zA-Z_$][a-zA-Z0-9_$]*)\s+-\s+/)
+  if (packageMatch) {
+    result.packageName = packageMatch[1]
+    remaining = remaining.slice(packageMatch[0].length)
+  }
+
+  // 5. What remains is the message
+  if (remaining.length > 0) {
+    result.message = remaining
+    result.isJson = looksLikeJson(remaining)
+  }
+
+  return result
+}
+
+// Class names map for log message styling
+interface LogMessageClasses {
+  appTimestamp: string
+  threadName: string
+  packageName: string
+  messageText: string
+  jsonMessage: string
+  jsonKey: string
+  levelFatal: string
+  levelError: string
+  levelWarn: string
+  levelWarning: string
+  levelInfo: string
+  levelDebug: string
+  levelTrace: string
+  logText: string
+}
+
+// Render a parsed log message to HTML with styling
+function renderLogMessageHtml(text: string, cls: LogMessageClasses): string {
+  const parsed = parseLogMessage(text)
+
+  // If we didn't parse anything meaningful, just return escaped text
+  if (!parsed.appTimestamp && !parsed.threadName && !parsed.level && !parsed.packageName) {
+    return `<span class="${cls.logText}">${escapeHtml(text)}</span>`
+  }
+
+  const parts: string[] = []
+
+  if (parsed.appTimestamp) {
+    parts.push(`<span class="${cls.appTimestamp}">${escapeHtml(parsed.appTimestamp)}</span>`)
+  }
+
+  if (parsed.threadName) {
+    parts.push(`<span class="${cls.threadName}">[${escapeHtml(parsed.threadName)}]</span>`)
+  }
+
+  if (parsed.level) {
+    const levelClassMap: Record<LogLevel, string> = {
+      FATAL: cls.levelFatal,
+      ERROR: cls.levelError,
+      WARN: cls.levelWarn,
+      WARNING: cls.levelWarning,
+      INFO: cls.levelInfo,
+      DEBUG: cls.levelDebug,
+      TRACE: cls.levelTrace,
+    }
+    parts.push(`<span class="${levelClassMap[parsed.level]}">${escapeHtml(parsed.level)}</span>`)
+  }
+
+  if (parsed.packageName) {
+    parts.push(`<span class="${cls.packageName}">${escapeHtml(parsed.packageName)}</span>`)
+  }
+
+  if (parsed.message) {
+    if (parsed.isJson) {
+      const jsonContent = escapeHtml(parsed.message).replace(
+        /"([^"]+)":/g,
+        `<span class="${cls.jsonKey}">"$1"</span>:`
+      )
+      parts.push(`<span class="${cls.jsonMessage}">${jsonContent}</span>`)
+    } else {
+      parts.push(`<span class="${cls.messageText}">${escapeHtml(parsed.message)}</span>`)
+    }
+  }
+
+  return parts.join(' ')
+}
+
 // Parse a log line into components
 // Format with prefix: [pod/pod-name/container-name] 2026-01-11T08:00:39.783922111Z log text
 // Format without prefix (single container): 2026-01-11T08:00:39.783922111Z log text
@@ -224,6 +358,9 @@ export function LogViewer({
 
   // Memoize parsed and styled log HTML to avoid expensive processing on every render
   const logHtml = useMemo(() => {
+    // Cast classes to include the log message styling classes
+    const logClasses = classes as unknown as LogMessageClasses & typeof classes
+
     return logs.map(line => {
       const parsed = parseLogLine(line)
       if (parsed) {
@@ -240,9 +377,10 @@ export function LogViewer({
           ? `<span class="${classes.timestamp}">${escapeHtml(parsed.timestamp)}</span> `
           : ''
 
-        return prefixPart +
-               timestampPart +
-               `<span class="${classes.logText}">${escapeHtml(parsed.text)}</span>`
+        // Use enhanced log message parsing for the text content
+        const messagePart = renderLogMessageHtml(parsed.text, logClasses)
+
+        return prefixPart + timestampPart + messagePart
       }
       // Fallback for lines that don't match the expected format
       return escapeHtml(line)
