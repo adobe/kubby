@@ -222,62 +222,68 @@ function App() {
     // Render describe view if current node is a describe view
     if (isDescribeView(currentNode) && currentNode.resourceName) {
       return (
-        <ResourceDetail
-          context={currentNode.context}
-          namespace={currentNode.namespace}
-          resourceType={currentNode.resourceType}
-          resourceName={currentNode.resourceName}
-          onBack={handleBackNavigation}
-        />
+        <main class={classes.App}>
+          <ResourceDetail
+            context={currentNode.context}
+            namespace={currentNode.namespace}
+            resourceType={currentNode.resourceType}
+            resourceName={currentNode.resourceName}
+            onBack={handleBackNavigation}
+          />
+        </main>
       );
     }
     
     // Render logs view if current node is a logs view
     if (isLogsView(currentNode) && currentNode.resourceName) {
       return (
-        <LogViewer
-          context={currentNode.context}
-          namespace={currentNode.namespace}
-          resourceType={currentNode.resourceType}
-          resourceName={currentNode.resourceName}
-          containerName={currentNode.containerName}
-          onBack={handleBackNavigation}
-        />
+        <main class={classes.App}>
+          <LogViewer
+            context={currentNode.context}
+            namespace={currentNode.namespace}
+            resourceType={currentNode.resourceType}
+            resourceName={currentNode.resourceName}
+            containerName={currentNode.containerName}
+            onBack={handleBackNavigation}
+          />
+        </main>
       );
     }
     
     // Otherwise render resource list
     return (
-      <ResourceList
-        context={currentNode.context}
-        namespace={currentNode.namespace}
-        resourceType={currentNode.resourceType}
-        filters={currentNode.filters}
-        navigationStack={navigationStack}
-        dashboardConfig={config}
-        onNavigateToNode={handleNavigateToNode}
-        onBack={handleBackNavigation}
-        onResourceTypeChange={(newResourceType) => {
-          const updatedNode: NavigationNode = {
-            ...currentNode,
-            resourceType: newResourceType,
-            filters: undefined,
-            selectedIndex: undefined,
-          };
-          setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
-        }}
-        onContextChange={handleContextChange}
-        onNamespaceChange={handleNamespaceChange}
-        onResourceClick={handleResourceClick}
-        onClearFilters={handleClearFilters}
-        onDescribe={handleDescribe}
-        onLogs={handleLogs}
-        initialSelectedIndex={currentNode.selectedIndex}
-        onSelectionChange={(index) => {
-          // Update current node's selection without triggering re-render cascade
-          currentNode.selectedIndex = index;
-        }}
-      />
+      <main class={classes.App}>
+        <ResourceList
+          context={currentNode.context}
+          namespace={currentNode.namespace}
+          resourceType={currentNode.resourceType}
+          filters={currentNode.filters}
+          navigationStack={navigationStack}
+          dashboardConfig={config}
+          onNavigateToNode={handleNavigateToNode}
+          onBack={handleBackNavigation}
+          onResourceTypeChange={(newResourceType) => {
+            const updatedNode: NavigationNode = {
+              ...currentNode,
+              resourceType: newResourceType,
+              filters: undefined,
+              selectedIndex: undefined,
+            };
+            setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
+          }}
+          onContextChange={handleContextChange}
+          onNamespaceChange={handleNamespaceChange}
+          onResourceClick={handleResourceClick}
+          onClearFilters={handleClearFilters}
+          onDescribe={handleDescribe}
+          onLogs={handleLogs}
+          initialSelectedIndex={currentNode.selectedIndex}
+          onSelectionChange={(index) => {
+            // Update current node's selection without triggering re-render cascade
+            currentNode.selectedIndex = index;
+          }}
+        />
+      </main>
     );
   }
 

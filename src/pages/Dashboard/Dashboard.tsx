@@ -437,49 +437,51 @@ export function Dashboard({
   const filterWords = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
   return (
-    <>
-      {config.groups.map((group) => (
-        <DashboardTable 
-          key={group.name} 
-          group={group} 
-          filterWords={filterWords}
-          onCellClick={onCellClick}
-        />
-      ))}
+    <div class={classes.dashboard}>
+      <div class={classes.body}>
+        {config.groups.map((group) => (
+          <DashboardTable 
+            key={group.name} 
+            group={group} 
+            filterWords={filterWords}
+            onCellClick={onCellClick}
+          />
+        ))}
 
-      {showFilter && (
-        <div class={classes.filterOverlay}>
-          <input
-            ref={inputRef}
-            type="text"
-            class={classes.filterInput}
-            value={filter}
-            onInput={(e) => onFilterChange((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
+        {showFilter && (
+          <div class={classes.filterOverlay}>
+            <input
+              ref={inputRef}
+              type="text"
+              class={classes.filterInput}
+              value={filter}
+              onInput={(e) => onFilterChange((e.target as HTMLInputElement).value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  onShowFilterChange(false);
+                  onFilterChange("");
+                } else if (e.key === "Enter") {
+                  // TODO: on enter, focus first button in grid
+                  // handleCellKeyDown(e, )
+                }
+              }}
+              placeholder="Type to filter..."
+            />
+            <button 
+              class={classes.filterClear}
+              onClick={() => {
                 onShowFilterChange(false);
                 onFilterChange("");
-              } else if (e.key === "Enter") {
-                // TODO: on enter, focus first button in grid
-                // handleCellKeyDown(e, )
-              }
-            }}
-            placeholder="Type to filter..."
-          />
-          <button 
-            class={classes.filterClear}
-            onClick={() => {
-              onShowFilterChange(false);
-              onFilterChange("");
-            }}
-          >
-            ×
-          </button>
-        </div>
-      )}
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
 
       <DashboardShortcutsBar onFilter={() => onShowFilterChange(true)}/>
-    </>
+    </div>
   );
 }
 

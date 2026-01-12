@@ -1,3 +1,19 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.body {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding: 1rem;
+  position: relative;
+}
+
 .dashboardSection {
   display: flex;
   flex-direction: column;
@@ -265,19 +281,18 @@
 
 // Filter overlay
 .filterOverlay {
-  position: fixed;
-  bottom: 0.25rem;
-  left: 0.25rem;
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.5rem;
   display: flex;
   align-items: center;
   justify-items: center;
   gap: 0.5rem;
   background: var(--surface-muted);
-  //border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  z-index: 10;
   backdrop-filter: blur(8px);
 }
 

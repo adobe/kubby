@@ -217,9 +217,8 @@ export function ResourceDetail({
         </div>
       </header>
 
-      <Alert type="error" label="Edit Failed" message={editError} />
-
       <div class={classes.body}>
+        <Alert type="error" label="Edit Failed" message={editError} />
         <Alert type="error" label="Loading Error" message={error} />
 
         {!error && (
@@ -227,17 +226,17 @@ export function ResourceDetail({
             {renderContent()}
           </div>
         )}
-      </div>
 
-      {isRefreshing && (
-        <div class={classes.refreshIndicator}>
-          {cacheTimestamp ? (
-            <span>Data from {getCacheAge(cacheTimestamp)}, refreshing...</span>
-          ) : (
-            <span>Loading...</span>
-          )}
-        </div>
-      )}
+        {isRefreshing && (
+          <div class={classes.refreshIndicator}>
+            {cacheTimestamp ? (
+              <span>Data from {getCacheAge(cacheTimestamp)}, refreshing...</span>
+            ) : (
+              <span>Loading...</span>
+            )}
+          </div>
+        )}
+      </div>
 
       <DetailShortcutsBar viewMode={viewMode} onViewModeChange={setViewMode} onEdit={handleEdit} isEditing={isEditing}/>
     </div>

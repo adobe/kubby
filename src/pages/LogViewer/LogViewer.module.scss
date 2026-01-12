@@ -1,10 +1,10 @@
 .LogViewer {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
 
   .header {
-    position: fixed;
+    flex-shrink: 0;
     height: 2rem;
     width: 100%;
     display: flex;
@@ -14,7 +14,6 @@
     background-color: var(--surface-subtle);
     border-bottom: 1px solid var(--border-subtle);
     padding: 0.25rem;
-    z-index: 100;
   }
 
   .headerInfo {
@@ -70,8 +69,6 @@
   }
 
   .body {
-    margin-top: 2rem; // Leave room for header bar
-    margin-bottom: 2rem; // Leave room for shortcuts bar
     flex: 1;
     overflow: hidden;
     display: flex;
@@ -82,7 +79,7 @@
     flex: 1;
     overflow: auto;
     padding: 0.5rem;
-    background: var(--surface-bg, #0d1117);
+    background: var(--background-color);
   }
 
   .logContent {
@@ -136,18 +133,15 @@
 
   // Shortcuts bar
   .shortcutsBar {
-    position: fixed;
+    flex-shrink: 0;
     height: 2rem;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    width: 100%;
     display: flex;
     align-items: center;
     gap: 0.25rem;
     padding: 0.35rem 0.5rem;
     background: var(--shortcuts-bar-bg);
     border-top: 1px solid var(--shortcuts-bar-border);
-    z-index: 100;
 
     .label {
       color: var(--color-dimmed);

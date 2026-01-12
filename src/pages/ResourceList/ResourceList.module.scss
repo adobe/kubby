@@ -1,15 +1,19 @@
 .resourceList {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
 }
 
 .header {
+  flex-shrink: 0;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.25rem;
   padding: 0.5rem;
+  background-color: var(--surface-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 
   .headerButtons {
     display: flex;
@@ -19,6 +23,14 @@
     .refreshButton {
     }
   }
+}
+
+.body {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
 
@@ -40,9 +52,7 @@
 }
 
 .tableWrapper {
-  overflow-x: auto;
-  // Leave room for the shortcuts bar
-  margin-bottom: 2.5rem;
+  flex: 1;
 }
 
 .table {
@@ -161,18 +171,17 @@
 }
 
 .refreshIndicator {
-  position: fixed;
-  bottom: 2.75rem; // Above the shortcuts bar
-  right: 0.25rem;
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   background: var(--surface-muted);
-  //border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.25rem 0.5rem 0.15rem 0.5rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  z-index: 10;
   backdrop-filter: blur(8px);
   font-size: 0.75rem;
   line-height: 1;

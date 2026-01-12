@@ -523,80 +523,82 @@ export function ResourceList({
         </div>
       </header>
 
-      <NavigationBar
-        navigationStack={navigationStack}
-        onNavigateToNode={onNavigateToNode}
-        filters={filters}
-        onClearFilters={onClearFilters}
-      />
+      <div class={classes.body}>
+        <NavigationBar
+          navigationStack={navigationStack}
+          onNavigateToNode={onNavigateToNode}
+          filters={filters}
+          onClearFilters={onClearFilters}
+        />
 
-      <Alert type="error" label="Edit Failed" message={editError} />
-      <Alert type="error" label="Alert" message={error} />
+        <Alert type="error" label="Edit Failed" message={editError} />
+        <Alert type="error" label="Alert" message={error} />
 
-      {!error && (
-        <div class={classes.tableWrapper}>
-          <table class={classes.table}>
-            <thead>
-            <tr>
-              <th class={classes.nameColumn}>NAME</th>
-              {columns.map((col) => (
-                <th key={col.name}>
-                  {col.name}
-                </th>
-              ))}
-            </tr>
-            </thead>
-            <tbody ref={tableBodyRef}>
-            {resources.length === 0 ? (
+        {!error && (
+          <div class={classes.tableWrapper}>
+            <table class={classes.table}>
+              <thead>
               <tr>
-                <td colSpan={columns.length + 1} class={classes.emptyRow}>
-                  {isRefreshing ? '...' : 'No resources found'}
-                </td>
+                <th class={classes.nameColumn}>NAME</th>
+                {columns.map((col) => (
+                  <th key={col.name}>
+                    {col.name}
+                  </th>
+                ))}
               </tr>
-            ) : (
-              resources.map((resource, index) => (
-                <tr
-                  key={resource.name}
-                  class={`${classes.resourceRow} ${selectedIndex === index ? classes.resourceRowSelected : ''}`}
-                  onClick={() => handleRowClick(index)}
-                  onDblClick={() => handleRowActivate(index)}
-                  data-index={index}
-                >
-                  <td class={classes.nameCell}>
-                    <div class={classes.nameContent}>
-                      <span>{resource.name}</span>
-                      {editingResourceName === resource.name && (
-                        <span class={classes.editingChip}>Editing</span>
-                      )}
-                    </div>
+              </thead>
+              <tbody ref={tableBodyRef}>
+              {resources.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length + 1} class={classes.emptyRow}>
+                    {isRefreshing ? '...' : 'No resources found'}
                   </td>
-                  {columns.map((col) => (
-                    <td key={col.name} class={classes.dataCell}>
-                      {resource[col.name] ?? '<none>'}
-                    </td>
-                  ))}
                 </tr>
-              ))
+              ) : (
+                resources.map((resource, index) => (
+                  <tr
+                    key={resource.name}
+                    class={`${classes.resourceRow} ${selectedIndex === index ? classes.resourceRowSelected : ''}`}
+                    onClick={() => handleRowClick(index)}
+                    onDblClick={() => handleRowActivate(index)}
+                    data-index={index}
+                  >
+                    <td class={classes.nameCell}>
+                      <div class={classes.nameContent}>
+                        <span>{resource.name}</span>
+                        {editingResourceName === resource.name && (
+                          <span class={classes.editingChip}>Editing</span>
+                        )}
+                      </div>
+                    </td>
+                    {columns.map((col) => (
+                      <td key={col.name} class={classes.dataCell}>
+                        {resource[col.name] ?? '<none>'}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+              </tbody>
+            </table>
+            {resources.length > 0 && (
+              <div class={classes.footer}>
+                {resources.length} item{resources.length !== 1 ? 's' : ''}
+              </div>
             )}
-            </tbody>
-          </table>
-          {resources.length > 0 && (
-            <div class={classes.footer}>
-              {resources.length} item{resources.length !== 1 ? 's' : ''}
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {isRefreshing && (
-        <div class={classes.refreshIndicator}>
-          {cacheTimestamp ? (
-            <span>Data from {getCacheAge(cacheTimestamp)}, refreshing...</span>
-          ) : (
-            <span>Loading...</span>
-          )}
-        </div>
-      )}
+        {isRefreshing && (
+          <div class={classes.refreshIndicator}>
+            {cacheTimestamp ? (
+              <span>Data from {getCacheAge(cacheTimestamp)}, refreshing...</span>
+            ) : (
+              <span>Loading...</span>
+            )}
+          </div>
+        )}
+      </div>
 
       <ResourceListShortcutsBar
         resourceType={resourceType}

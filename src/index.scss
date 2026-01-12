@@ -41,18 +41,12 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: 100vh;
-}
-
-html {
-  // Account for fixed header bar at top when using scrollIntoView
-  scroll-padding-top: 2rem;
-  // Account for fixed shortcuts bar at bottom when using scrollIntoView
-  scroll-padding-bottom: 2rem;
+  height: 100%;
+  overflow: hidden;
 }
 
 #root {
-  min-height: 100%;
+  height: 100%;
 }
 
 :root {
@@ -62,7 +56,7 @@ html {
   font-weight: 400;
 
   // Base colors
-  --color: #0f0f0f;
+  --color: #202124;
   --color-dimmed: #6a6a6a;
   --background-color: #f6f6f6;
   
@@ -183,9 +177,9 @@ code {
 @media (prefers-color-scheme: dark) {
   :root {
     // Base colors
-    --color: #fefefe;
-    --color-dimmed: #afafaf;
-    --background-color: #0d1117;
+    --color: #BCBEC4;
+    --color-dimmed: #73777e;
+    --background-color: #1E1F22;
     
     // Link colors
     --link-hover-color: #24c8db;
