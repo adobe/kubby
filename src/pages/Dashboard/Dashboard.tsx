@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "preact/hooks";
 import classes from "./Dashboard.module.scss";
 import {Button} from '../../components/Button/Button.tsx'
+import {ShortcutsBar} from '../../components/ShortcutsBar/ShortcutsBar.tsx'
 
 export interface ContextGroup {
   name: string;
@@ -272,14 +273,14 @@ function DashboardShortcutsBar({onFilter}: {
   onFilter: () => void;
 }) {
   return (
-    <div class={classes.shortcutsBar}>
+    <ShortcutsBar>
       <Button
         label={"Filter"}
         shortcut="/"
         onClick={onFilter}
         tabIndex={0}
       />
-    </div>
+    </ShortcutsBar>
   )
 }
 
@@ -445,7 +446,7 @@ export function Dashboard({
           onCellClick={onCellClick}
         />
       ))}
-      
+
       {showFilter && (
         <div class={classes.filterOverlay}>
           <input

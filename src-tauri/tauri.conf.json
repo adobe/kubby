@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "k0s",
+  "productName": "kubby",
   "version": "0.1.0",
-  "identifier": "com.adobe.k0s",
+  "identifier": "com.adobe.kubby",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "k0s",
+        "title": "kubby",
         "width": 1024,
         "height": 800
       }

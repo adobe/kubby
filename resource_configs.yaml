@@ -1,5 +1,5 @@
 # Resource column configurations for Kubernetes resources
-# This section should be added to your k0s_config.yaml file under 'resources:'
+# This section should be added to your kubby_config.yaml file under 'resources:'
 resources:
   pods:
     columns:

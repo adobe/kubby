@@ -5,7 +5,7 @@ import {getCacheAge} from '../../kubectl/resourceCache.ts'
 import {useResourceLoader} from '../../kubectl/useResourceLoader.ts'
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 import type {NavigationNode} from '../../navigation/navigationTypes.ts'
-import {ShortcutsBar} from '../../components/ShortcutsBar/ShortcutsBar.tsx'
+import {ResourceListShortcutsBar} from './ResourceListShortcutsBar.tsx'
 import {Alert} from '../../components/Alert/Alert.tsx'
 import {Button} from '../../components/Button/Button.tsx'
 import {Label} from '../../components/Label/Label.tsx'
@@ -598,7 +598,7 @@ export function ResourceList({
         </div>
       )}
 
-      <ShortcutsBar
+      <ResourceListShortcutsBar
         resourceType={resourceType}
         hasSelection={selectedIndex >= 0}
         disabled={error !== null}

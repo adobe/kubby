@@ -9,6 +9,7 @@ import {Button} from '../../components/Button/Button.tsx'
 import {Alert} from '../../components/Alert/Alert.tsx'
 import {CodeView} from '../../components/CodeView/CodeView.tsx'
 import {TreeView} from '../../components/TreeView/TreeView.tsx'
+import {ShortcutsBar} from '../../components/ShortcutsBar/ShortcutsBar.tsx'
 import {isControlModifierPressed} from '../../navigation/keyboardShortcuts.ts'
 
 type ViewMode = 'tree' | 'yaml' | 'json'
@@ -33,7 +34,7 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing}: {
   isEditing: boolean;
 }) {
   return (
-    <div class={classes.shortcutsBar}>
+    <ShortcutsBar>
       <Button
         label={isEditing ? "Editing..." : "Edit"}
         shortcut="E"
@@ -63,7 +64,7 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing}: {
         tabIndex={0}
         className={viewMode === 'json' ? classes.activeViewButton : undefined}
       />
-    </div>
+    </ShortcutsBar>
   )
 }
 

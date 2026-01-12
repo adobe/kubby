@@ -140,7 +140,7 @@ impl DashboardConfig {
 #[tauri::command]
 pub fn get_dashboard_config() -> Result<NormalizedDashboardConfig, String> {
     let home = std::env::var("HOME").map_err(|_| "Could not get HOME directory")?;
-    let config_path: PathBuf = [&home, ".config", "k0s", "k0s_config.yaml"].iter().collect();
+    let config_path: PathBuf = [&home, ".config", "kubby", "kubby_config.yaml"].iter().collect();
 
     let content = fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read config file at {:?}: {}", config_path, e))?;
