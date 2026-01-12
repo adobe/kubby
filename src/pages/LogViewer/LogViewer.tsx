@@ -109,6 +109,11 @@ export function LogViewer({
   const pendingLogsRef = useRef<string[]>([])
   const batchTimeoutRef = useRef<number | null>(null)
 
+  // Helper to refocus log container for keyboard scrolling
+  const refocusLogs = useCallback(() => {
+    logContainerRef.current?.focus()
+  }, [])
+
   // Flush pending logs to state (batched update)
   const flushPendingLogs = useCallback(() => {
     if (pendingLogsRef.current.length === 0) return
@@ -251,6 +256,13 @@ export function LogViewer({
     }
   }, [logs, autoscroll])
 
+  // Focus log container when streaming starts for keyboard scrolling
+  useEffect(() => {
+    if (isStreaming) {
+      refocusLogs()
+    }
+  }, [isStreaming, refocusLogs])
+
   // Handle manual scroll - disable autoscroll if user scrolls up
   const handleScroll = useCallback(() => {
     if (!logContainerRef.current || !autoscroll) return
@@ -270,12 +282,30 @@ export function LogViewer({
     } catch (e) {
       console.error('Failed to copy logs:', e)
     }
-  }, [logs])
+    refocusLogs()
+  }, [logs, refocusLogs])
 
   // Refresh (restart stream)
   const handleRefresh = useCallback(() => {
     startStream()
-  }, [startStream])
+    refocusLogs()
+  }, [startStream, refocusLogs])
+
+  // Toggle handlers with refocus
+  const handleToggleWrap = useCallback(() => {
+    setWrap((prev) => !prev)
+    refocusLogs()
+  }, [refocusLogs])
+
+  const handleToggleTimestamps = useCallback(() => {
+    setTimestamps((prev) => !prev)
+    refocusLogs()
+  }, [refocusLogs])
+
+  const handleToggleAutoscroll = useCallback(() => {
+    setAutoscroll((prev) => !prev)
+    refocusLogs()
+  }, [refocusLogs])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -302,21 +332,21 @@ export function LogViewer({
       // W - Toggle wrap
       if (e.code === 'KeyW' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        setWrap((prev) => !prev)
+        handleToggleWrap()
         return
       }
 
       // T - Toggle timestamps
       if (e.code === 'KeyT' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        setTimestamps((prev) => !prev)
+        handleToggleTimestamps()
         return
       }
 
       // A - Toggle autoscroll
       if (e.code === 'KeyA' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        setAutoscroll((prev) => !prev)
+        handleToggleAutoscroll()
         return
       }
 
@@ -330,7 +360,7 @@ export function LogViewer({
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onBack, handleRefresh, handleCopy])
+  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll])
 
   return (
     <div class={classes.LogViewer}>
@@ -369,6 +399,7 @@ export function LogViewer({
         <div
           ref={logContainerRef}
           class={classes.logContainer}
+          tabIndex={0}
           onScroll={handleScroll}
         >
           {logs.length === 0 && !isStreaming ? (
@@ -389,21 +420,21 @@ export function LogViewer({
         <Button
           label="Wrap"
           shortcut="W"
-          onClick={() => setWrap((prev) => !prev)}
+          onClick={handleToggleWrap}
           tabIndex={0}
           className={wrap ? classes.activeButton : undefined}
         />
         <Button
           label="Timestamps"
           shortcut="T"
-          onClick={() => setTimestamps((prev) => !prev)}
+          onClick={handleToggleTimestamps}
           tabIndex={0}
           className={timestamps ? classes.activeButton : undefined}
         />
         <Button
           label="Autoscroll"
           shortcut="A"
-          onClick={() => setAutoscroll((prev) => !prev)}
+          onClick={handleToggleAutoscroll}
           tabIndex={0}
           className={autoscroll ? classes.activeButton : undefined}
         />

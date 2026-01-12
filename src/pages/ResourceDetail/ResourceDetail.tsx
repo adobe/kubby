@@ -1,4 +1,4 @@
-import {useEffect, useState, useCallback, useMemo} from 'preact/hooks'
+import {useEffect, useState, useCallback, useMemo, useRef} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
 import {stringify} from 'yaml'
 import classes from './ResourceDetail.module.scss'
@@ -78,6 +78,7 @@ export function ResourceDetail({
   const [viewMode, setViewMode] = useState<ViewMode>('tree')
   const [editError, setEditError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const bodyRef = useRef<HTMLDivElement>(null)
 
   // Use the resource detail loader hook - handles caching and background refresh
   const {
@@ -87,6 +88,28 @@ export function ResourceDetail({
     error,
     refresh,
   } = useResourceDetailLoader({context, namespace, resourceType, resourceName})
+
+  // Focus the body for keyboard scrolling when detail loads
+  useEffect(() => {
+    bodyRef.current?.focus()
+  }, [detail])
+
+  // Helper to refocus body after actions
+  const refocusBody = useCallback(() => {
+    bodyRef.current?.focus()
+  }, [])
+
+  // Handle view mode change with refocus
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode)
+    refocusBody()
+  }, [refocusBody])
+
+  // Handle refresh with refocus
+  const handleRefresh = useCallback(() => {
+    refresh()
+    refocusBody()
+  }, [refresh, refocusBody])
 
   // Handle edit resource
   const handleEdit = useCallback(async () => {
@@ -108,8 +131,9 @@ export function ResourceDetail({
       setEditError(e instanceof Error ? e.message : String(e))
     } finally {
       setIsEditing(false)
+      refocusBody()
     }
-  }, [resourceType, resourceName, context, namespace, refresh, isEditing])
+  }, [resourceType, resourceName, context, namespace, refresh, isEditing, refocusBody])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -131,28 +155,28 @@ export function ResourceDetail({
       // Ctrl+R / Cmd+R - Refresh
       if (e.code === 'KeyR' && isControlModifierPressed(e)) {
         e.preventDefault()
-        refresh()
+        handleRefresh()
         return
       }
 
       // Y - View YAML
       if (e.code === 'KeyY' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        setViewMode('yaml')
+        handleViewModeChange('yaml')
         return
       }
 
       // J - View JSON
       if (e.code === 'KeyJ' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        setViewMode('json')
+        handleViewModeChange('json')
         return
       }
 
       // T - View Tree (hierarchical)
       if (e.code === 'KeyT' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        setViewMode('tree')
+        handleViewModeChange('tree')
         return
       }
 
@@ -166,7 +190,7 @@ export function ResourceDetail({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, handleEdit])
+  }, [onBack, handleRefresh, handleEdit, handleViewModeChange])
 
   // Memoize the code strings to avoid re-highlighting on every render
   const yamlCode = useMemo(() => detail ? stringify(detail) : '', [detail])
@@ -202,7 +226,7 @@ export function ResourceDetail({
           <Button
             label="Refresh"
             shortcut="Ctrl+R"
-            onClick={refresh}
+            onClick={handleRefresh}
             disabled={isRefreshing}
             tabIndex={1}
             className={classes.refreshButton}
@@ -217,7 +241,7 @@ export function ResourceDetail({
         </div>
       </header>
 
-      <div class={classes.body}>
+      <div ref={bodyRef} class={classes.body} tabIndex={0}>
         <Alert type="error" label="Edit Failed" message={editError} />
         <Alert type="error" label="Loading Error" message={error} />
 
@@ -238,7 +262,7 @@ export function ResourceDetail({
         )}
       </div>
 
-      <DetailShortcutsBar viewMode={viewMode} onViewModeChange={setViewMode} onEdit={handleEdit} isEditing={isEditing}/>
+      <DetailShortcutsBar viewMode={viewMode} onViewModeChange={handleViewModeChange} onEdit={handleEdit} isEditing={isEditing}/>
     </div>
   )
 }

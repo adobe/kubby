@@ -270,12 +270,10 @@ function filterNamespaces(
 /**
  * Shortcuts bar for dashboard view
  */
-function DashboardShortcutsBar({onFilter}: {
-  onFilter: () => void;
-}) {
+function DashboardShortcutsBar({}: {}) {
   return (
     <ShortcutsBar>
-
+      <span></span>
     </ShortcutsBar>
   )
 }
@@ -454,7 +452,7 @@ export function Dashboard({
         </div>
       </div>
 
-      <DashboardShortcutsBar onFilter={() => filterInputRef.current?.focus()}/>
+      <DashboardShortcutsBar />
     </div>
   );
 }

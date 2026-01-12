@@ -80,6 +80,11 @@
     overflow: auto;
     padding: 0.5rem;
     background: var(--background-color);
+
+    // Subtle focus style for keyboard scrolling
+    &:focus {
+      outline: none;
+    }
   }
 
   .logContent {

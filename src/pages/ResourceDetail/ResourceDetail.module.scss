@@ -62,6 +62,11 @@
     overflow: auto;
     padding: 0.25rem;
     position: relative;
+
+    // Subtle focus style for keyboard scrolling
+    &:focus {
+      outline: none;
+    }
   }
 
   .contentWrapper {
