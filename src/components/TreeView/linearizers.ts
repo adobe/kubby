@@ -264,12 +264,16 @@ export const linearizePort: LinearizerFn = (data) => {
   const name = port.name as string
   const containerPort = port.containerPort
   const hostPort = port.hostPort
-  
+  const portNumber = port.port
+
   const parts: LinearizedResult = [str(protocol)]
   if (name) parts.push(str(name))
-  parts.push(typeof containerPort === 'number' ? num(containerPort) : str(String(containerPort ?? '?')))
+  parts.push(typeof containerPort === 'number' ? num(containerPort) : str(String(containerPort ?? '')))
   if (hostPort) {
     parts.push(text('→'), typeof hostPort === 'number' ? num(hostPort) : str(String(hostPort)))
+  }
+  if (portNumber) {
+    parts.push(text('→'), typeof portNumber === 'number' ? num(portNumber) : str(String(portNumber)))
   }
   
   return parts
