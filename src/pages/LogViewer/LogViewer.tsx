@@ -14,6 +14,7 @@ const OVERSCAN_COUNT = 20 // Extra rows above/below viewport for smooth scrollin
 
 // Helper to escape HTML and prevent XSS
 function escapeHtml(text: string): string {
+  if (!text) return ''
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -23,16 +24,21 @@ function escapeHtml(text: string): string {
 // Log levels with their CSS class names
 type LogLevel = 'FATAL' | 'ERROR' | 'WARN' | 'WARNING' | 'INFO' | 'DEBUG' | 'TRACE'
 
-// Parsed log message components
-interface LogMessageComponents {
-  appTimestamp?: string    // ISO date from the log itself (e.g., 2026-01-12 11:13:17.963)
-  threadName?: string      // Thread name in square brackets (e.g., qtp734353051-485)
-  level?: LogLevel         // Log level (FATAL, ERROR, INFO, etc.)
-  packageName?: string     // Package name (e.g., com.adobe.asr.logging)
-  message?: string         // The actual log message (text or JSON)
-  isJson?: boolean         // Whether the message is JSON
-  raw: string              // Original text if parsing fails
+// Segment types for parsed log messages
+type SegmentType = 'timestamp' | 'threadName' | 'level' | 'packageName' | 'json' | 'text'
+
+interface BaseSegment {
+  type: Exclude<SegmentType, 'level'>
+  value: string
 }
+
+interface LevelSegment {
+  type: 'level'
+  value: string
+  level: LogLevel
+}
+
+type LogSegment = BaseSegment | LevelSegment
 
 // Quick heuristic to check if string looks like JSON
 function looksLikeJson(text: string): boolean {
@@ -41,29 +47,36 @@ function looksLikeJson(text: string): boolean {
          (trimmed.startsWith('[') && trimmed.endsWith(']'))
 }
 
-// Parse log message into structured components
-function parseLogMessage(text: string): LogMessageComponents {
-  const result: LogMessageComponents = { raw: text }
+// Parse log message into a list of segments
+function parseLogMessageToSegments(text: string): LogSegment[] {
+  const segments: LogSegment[] = []
   let remaining = text
+
+  // for the case of single line JSON, just return the JSON as a single segment
+  if (looksLikeJson(remaining)) {
+    segments.push({ type: 'json', value: remaining })
+    return segments
+  }
 
   // 1. Try to match app timestamp at start: YYYY-MM-DD HH:MM:SS.mmm or similar
   const timestampMatch = remaining.match(/^(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:[.,]\d{1,6})?)\s+/)
   if (timestampMatch) {
-    result.appTimestamp = timestampMatch[1]
+    segments.push({ type: 'timestamp', value: timestampMatch[1] })
     remaining = remaining.slice(timestampMatch[0].length)
   }
 
   // 2. Try to match thread name in square brackets: [thread-name]
   const threadMatch = remaining.match(/^\[([^\]]+)\]\s+/)
   if (threadMatch) {
-    result.threadName = threadMatch[1]
+    segments.push({ type: 'threadName', value: threadMatch[1] })
     remaining = remaining.slice(threadMatch[0].length)
   }
 
   // 3. Try to match log level
-  const levelMatch = remaining.match(/^(FATAL|ERROR|WARN(?:ING)?|INFO|DEBUG|TRACE)\s+/)
+  const levelMatch = remaining.match(/^(FATAL|ERROR|WARN(?:ING)?|INFO|DEBUG|TRACE)\s+/i)
   if (levelMatch) {
-    result.level = levelMatch[1] as LogLevel
+    const level = levelMatch[1] as LogLevel
+    segments.push({ type: 'level', value: level, level })
     remaining = remaining.slice(levelMatch[0].length)
   }
 
@@ -72,27 +85,33 @@ function parseLogMessage(text: string): LogMessageComponents {
   // Followed by " - " separator typically
   const packageMatch = remaining.match(/^((?:[a-zA-Z_$][a-zA-Z0-9_$]*\.)+[a-zA-Z_$][a-zA-Z0-9_$]*)\s+-\s+/)
   if (packageMatch) {
-    result.packageName = packageMatch[1]
+    segments.push({ type: 'packageName', value: packageMatch[1] })
     remaining = remaining.slice(packageMatch[0].length)
   }
 
-  // 5. What remains is the message
+  // 5. What remains is the message (JSON or plain text)
   if (remaining.length > 0) {
-    result.message = remaining
-    result.isJson = looksLikeJson(remaining)
+    if (looksLikeJson(remaining)) {
+      segments.push({ type: 'json', value: remaining })
+    } else {
+      segments.push({ type: 'text', value: remaining })
+    }
   }
 
-  return result
+  return segments
 }
 
 // Class names map for log message styling
 interface LogMessageClasses {
+  timestamp: string
   appTimestamp: string
   threadName: string
   packageName: string
   messageText: string
+  jsonContainer: string
   jsonMessage: string
   jsonKey: string
+  formatJsonBtn: string
   levelFatal: string
   levelError: string
   levelWarn: string
@@ -103,55 +122,92 @@ interface LogMessageClasses {
   logText: string
 }
 
-// Render a parsed log message to HTML with styling
-function renderLogMessageHtml(text: string, cls: LogMessageClasses): string {
-  const parsed = parseLogMessage(text)
+// Options for rendering JSON segments
+interface JsonRenderOptions {
+  lineIdx: number
+  isFormatted: boolean
+}
 
-  // If we didn't parse anything meaningful, just return escaped text
-  if (!parsed.appTimestamp && !parsed.threadName && !parsed.level && !parsed.packageName) {
-    return `<span class="${cls.logText}">${escapeHtml(text)}</span>`
-  }
+// Render a single segment to HTML
+function renderSegmentHtml(segment: LogSegment, cls: LogMessageClasses, jsonOptions?: JsonRenderOptions): string {
+  switch (segment.type) {
+    case 'timestamp':
+      return `<span class="${cls.appTimestamp}">${escapeHtml(segment.value)}</span>`
 
-  const parts: string[] = []
+    case 'threadName':
+      return `<span class="${cls.threadName}">[${escapeHtml(segment.value)}]</span>`
 
-  if (parsed.appTimestamp) {
-    parts.push(`<span class="${cls.appTimestamp}">${escapeHtml(parsed.appTimestamp)}</span>`)
-  }
-
-  if (parsed.threadName) {
-    parts.push(`<span class="${cls.threadName}">[${escapeHtml(parsed.threadName)}]</span>`)
-  }
-
-  if (parsed.level) {
-    const levelClassMap: Record<LogLevel, string> = {
-      FATAL: cls.levelFatal,
-      ERROR: cls.levelError,
-      WARN: cls.levelWarn,
-      WARNING: cls.levelWarning,
-      INFO: cls.levelInfo,
-      DEBUG: cls.levelDebug,
-      TRACE: cls.levelTrace,
+    case 'level': {
+      const levelClassMap: Record<LogLevel, string> = {
+        FATAL: cls.levelFatal,
+        ERROR: cls.levelError,
+        WARN: cls.levelWarn,
+        WARNING: cls.levelWarning,
+        INFO: cls.levelInfo,
+        DEBUG: cls.levelDebug,
+        TRACE: cls.levelTrace,
+      }
+      return `<span class="${levelClassMap[segment.level]}">${escapeHtml(segment.value)}</span>`
     }
-    parts.push(`<span class="${levelClassMap[parsed.level]}">${escapeHtml(parsed.level)}</span>`)
-  }
 
-  if (parsed.packageName) {
-    parts.push(`<span class="${cls.packageName}">${escapeHtml(parsed.packageName)}</span>`)
-  }
+    case 'packageName':
+      return `<span class="${cls.packageName}">${escapeHtml(segment.value)}</span>`
 
-  if (parsed.message) {
-    if (parsed.isJson) {
-      const jsonContent = escapeHtml(parsed.message).replace(
+    case 'json': {
+      let jsonText = segment.value
+      const isFormatted = jsonOptions?.isFormatted ?? false
+      const lineIdx = jsonOptions?.lineIdx ?? -1
+      
+      // Try to format JSON if requested
+      if (isFormatted) {
+        try {
+          jsonText = JSON.stringify(JSON.parse(segment.value), null, 2)
+        } catch {
+          // Keep original if parsing fails
+        }
+      }
+      
+      // Apply key highlighting
+      const jsonContent = escapeHtml(jsonText).replace(
         /"([^"]+)":/g,
         `<span class="${cls.jsonKey}">"$1"</span>:`
       )
-      parts.push(`<span class="${cls.jsonMessage}">${jsonContent}</span>`)
-    } else {
-      parts.push(`<span class="${cls.messageText}">${escapeHtml(parsed.message)}</span>`)
+      
+      // Build button (hidden by default, shown on hover via CSS)
+      const buttonLabel = isFormatted ? 'Collapse' : 'Format'
+      const button = lineIdx >= 0
+        ? `<button class="${cls.formatJsonBtn}" data-line-idx="${lineIdx}">${buttonLabel}</button>`
+        : ''
+      
+      // Wrap in container for hover behavior
+      return `<span class="${cls.jsonContainer}"><span class="${cls.jsonMessage}">${jsonContent}</span>${button}</span>`
     }
+
+    case 'text':
+      return `<span class="${cls.messageText}">${escapeHtml(segment.value)}</span>`
+  }
+}
+
+// Render parsed log message segments to HTML
+function renderLogMessageHtml(text: string, cls: LogMessageClasses, jsonOptions?: JsonRenderOptions): string {
+  if (!text) return ''
+  const segments = parseLogMessageToSegments(text)
+  
+  // If no segments parsed, treat entire text as either JSON or plain text
+  if (segments.length === 0) {
+    if (looksLikeJson(text)) {
+      return renderSegmentHtml({ type: 'json', value: text }, cls, jsonOptions)
+    }
+    return `<span class="${cls.logText}">${escapeHtml(text)}</span>`
   }
 
-  return parts.join(' ')
+  return segments.map(seg => {
+    // Pass jsonOptions only for json segments
+    if (seg.type === 'json') {
+      return renderSegmentHtml(seg, cls, jsonOptions)
+    }
+    return renderSegmentHtml(seg, cls)
+  }).join(' ')
 }
 
 // Parse a log line into components
@@ -238,6 +294,7 @@ export function LogViewer({
   const [wrap, setWrap] = useState(true)
   const [timestamps, setTimestamps] = useState(false)
   const [autoscroll, setAutoscroll] = useState(true)
+  const [formattedLines, setFormattedLines] = useState<Set<number>>(new Set())
 
   const logContainerRef = useRef<HTMLDivElement>(null)
   
@@ -370,7 +427,14 @@ export function LogViewer({
   const logClasses = classes as unknown as LogMessageClasses & typeof classes
 
   // Render a single log line to HTML
-  const renderLogLine = useCallback((line: string): string => {
+  const renderLogLine = useCallback((line: string, lineIdx: number): string => {
+    if (!line) return ''
+    
+    const jsonOptions: JsonRenderOptions = {
+      lineIdx,
+      isFormatted: formattedLines.has(lineIdx),
+    }
+    
     const parsed = parseLogLine(line)
     if (parsed) {
       // Build prefix based on viewing context (only if line has prefix and not container view)
@@ -387,13 +451,13 @@ export function LogViewer({
         : ''
 
       // Use enhanced log message parsing for the text content
-      const messagePart = renderLogMessageHtml(parsed.text, logClasses)
+      const messagePart = renderLogMessageHtml(parsed.text, logClasses, jsonOptions)
 
       return prefixPart + timestampPart + messagePart
     }
-    // Fallback for lines that don't match the expected format
-    return escapeHtml(line)
-  }, [timestamps, isPodResource, isContainerView, logClasses])
+    // Fallback for lines that don't match the expected format - still check for JSON
+    return renderLogMessageHtml(line, logClasses, jsonOptions)
+  }, [timestamps, isPodResource, isContainerView, logClasses, formattedLines])
 
   // Autoscroll effect - scroll to last item when new logs arrive
   useEffect(() => {
@@ -425,6 +489,25 @@ export function LogViewer({
       setAutoscroll(false)
     }
   }, [autoscroll])
+
+  // Handle click on format JSON button (event delegation)
+  const handleLogClick = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.classList.contains(classes.formatJsonBtn)) {
+      const lineIdx = parseInt(target.dataset.lineIdx || '', 10)
+      if (!isNaN(lineIdx)) {
+        setFormattedLines((prev) => {
+          const next = new Set(prev)
+          if (next.has(lineIdx)) {
+            next.delete(lineIdx)
+          } else {
+            next.add(lineIdx)
+          }
+          return next
+        })
+      }
+    }
+  }, [])
 
   // Copy logs to clipboard
   const handleCopy = useCallback(async () => {
@@ -552,6 +635,7 @@ export function LogViewer({
           class={classes.logContainer}
           tabIndex={0}
           onScroll={handleScroll}
+          onClick={handleLogClick}
         >
           {logs.length === 0 && !isStreaming ? (
             <div class={classes.empty}>No logs available</div>
@@ -564,7 +648,7 @@ export function LogViewer({
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => (
                 <div
-                  key={`${virtualRow.index}-${wrap}`}
+                  key={`${virtualRow.index}-${wrap}-${formattedLines.has(virtualRow.index)}`}
                   data-index={virtualRow.index}
                   ref={(node) => rowVirtualizer.measureElement(node)}
                   class={`${classes.logLine} ${wrap ? classes.wrap : classes.nowrap}`}
@@ -575,7 +659,7 @@ export function LogViewer({
                     width: '100%',
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
-                  dangerouslySetInnerHTML={{ __html: renderLogLine(logs[virtualRow.index]) }}
+                  dangerouslySetInnerHTML={{ __html: renderLogLine(logs[virtualRow.index], virtualRow.index) }}
                 />
               ))}
             </div>
