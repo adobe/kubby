@@ -51,8 +51,23 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [navigationStack, setNavigationStack] = useState<NavigationNode[]>([]);
   const [lastSelectedCell, setLastSelectedCell] = useState<{ context: string; namespace: string } | null>(null);
-  // Filter state lifted here to persist across navigation
-  const [filter, setFilter] = useState("");
+  // Filter state lifted here to persist across navigation and page reloads
+  const [filter, setFilter] = useState(() => {
+    try {
+      return localStorage.getItem("kubby-dashboard-filter") || "";
+    } catch {
+      return "";
+    }
+  });
+
+  // Persist filter to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("kubby-dashboard-filter", filter);
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [filter]);
 
   useEffect(() => {
     async function fetchConfig() {
