@@ -6,6 +6,7 @@ import {useResourceLoader} from './kubectl/useResourceLoader'
 import {NavigationBar} from './components/NavigationBar.tsx'
 import type {NavigationNode} from './navigation/navigationTypes'
 import {ShortcutsBar} from './components/ShortcutsBar.tsx'
+import {Error} from './components/Error.tsx'
 import {Button} from './components/Button.tsx'
 import {Label} from './components/Label.tsx'
 import {Combobox} from './components/Combobox.tsx'
@@ -529,17 +530,8 @@ export function ResourceList({
         onClearFilters={onClearFilters}
       />
 
-      {editError && (
-        <div class={classes.error}>
-          <strong>Edit failed:</strong> {editError}
-        </div>
-      )}
-
-      {error && (
-        <div class={classes.error}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+      <Error label="Edit failed" message={editError} />
+      <Error label="Error" message={error} />
 
       {!error && (
         <div class={classes.tableWrapper}>

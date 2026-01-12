@@ -6,6 +6,7 @@ import {getCacheAge} from './kubectl/resourceCache'
 import {useResourceDetailLoader} from './kubectl/useResourceDetailLoader'
 import type {NavigationNode} from './navigation/navigationTypes'
 import {Button} from './components/Button.tsx'
+import {Error} from './components/Error.tsx'
 import {CodeView} from './components/CodeView.tsx'
 import {TreeView} from './components/TreeView.tsx'
 import {isControlModifierPressed} from './navigation/keyboardShortcuts.ts'
@@ -215,18 +216,10 @@ export function ResourceDetail({
         </div>
       </header>
 
-      {editError && (
-        <div class={classes.error}>
-          <strong>Edit failed:</strong> {editError}
-        </div>
-      )}
+      <Error label="Edit failed" message={editError} />
 
       <div class={classes.body}>
-        {error && (
-          <div class={classes.error}>
-            <strong>Error:</strong> {error}
-          </div>
-        )}
+        <Error label="Error" message={error} />
 
         {!error && (
           <div class={classes.contentWrapper}>

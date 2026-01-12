@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "preact/hooks";
 import classes from "./Dashboard.module.scss";
+import {Button} from './components/Button.tsx'
 
 export interface ContextGroup {
   name: string;
@@ -264,6 +265,24 @@ function filterNamespaces(
   return { filtered, hasMatches: true };
 }
 
+/**
+ * Shortcuts bar for dashboard view
+ */
+function DashboardShortcutsBar({onFilter}: {
+  onFilter: () => void;
+}) {
+  return (
+    <div class={classes.shortcutsBar}>
+      <Button
+        label={"Filter"}
+        shortcut="/"
+        onClick={onFilter}
+        tabIndex={0}
+      />
+    </div>
+  )
+}
+
 interface DashboardProps {
   config: DashboardConfig;
   lastSelectedCell: { context: string; namespace: string } | null;
@@ -406,6 +425,14 @@ export function Dashboard({
     return () => document.removeEventListener("keydown", handleTabNavigation, true);
   }, [showFilter]);
 
+  useEffect(() => {
+    if (showFilter) {
+      setTimeout(() => {
+        inputRef.current?.focus()
+      })
+    }
+  }, [showFilter])
+
   const filterWords = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
   return (
@@ -431,6 +458,9 @@ export function Dashboard({
               if (e.key === "Escape") {
                 onShowFilterChange(false);
                 onFilterChange("");
+              } else if (e.key === "Enter") {
+                // TODO: on enter, focus first button in grid
+                // handleCellKeyDown(e, )
               }
             }}
             placeholder="Type to filter..."
@@ -446,6 +476,8 @@ export function Dashboard({
           </button>
         </div>
       )}
+
+      <DashboardShortcutsBar onFilter={() => onShowFilterChange(true)}/>
     </>
   );
 }

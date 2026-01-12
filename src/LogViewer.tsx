@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import classes from './LogViewer.module.scss'
 import { Button } from './components/Button.tsx'
+import { Error } from './components/Error.tsx'
 import { isControlModifierPressed } from './navigation/keyboardShortcuts.ts'
 
 const MAX_LOG_LINES = 10_000
@@ -279,11 +280,7 @@ export function LogViewer({
       </header>
 
       <div class={classes.body}>
-        {error && (
-          <div class={classes.error}>
-            <strong>Error:</strong> {error}
-          </div>
-        )}
+        <Error label="Error" message={error} />
 
         <div
           ref={logContainerRef}
