@@ -87,11 +87,17 @@
     }
   }
 
-  .logContent {
+  .virtualContainer {
+    width: 100%;
+  }
+
+  .logLine {
+    font-family: var(--font-mono, 'Fira Code', monospace);
     font-size: 0.75rem;
-    line-height: 1.4;
+    line-height: 17px; // Fixed height for virtualization (matches LINE_HEIGHT constant)
     color: var(--color);
-    margin: 0;
+    padding: 0 0.25rem;
+    box-sizing: border-box;
     
     &.wrap {
       white-space: pre-wrap;
@@ -100,6 +106,10 @@
     
     &.nowrap {
       white-space: pre;
+    }
+    
+    &:hover {
+      background: var(--hover-bg);
     }
   }
 
@@ -178,15 +188,6 @@
     font-style: italic;
   }
 
-  .logLine {
-    display: block;
-    padding: 0 0.25rem;
-    
-    &:hover {
-      background: var(--hover-bg);
-    }
-  }
-
   .empty {
     display: flex;
     align-items: center;
@@ -204,11 +205,6 @@
     padding: 3rem;
     color: var(--color-dimmed);
     font-size: 0.9rem;
-  }
-
-  // Anchor element for autoscroll
-  .scrollAnchor {
-    height: 1px;
   }
 
   // Shortcuts bar

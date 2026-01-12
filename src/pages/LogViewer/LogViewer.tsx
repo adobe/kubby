@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'preact/hooks'
+import { useEffect, useState, useRef, useCallback } from 'preact/hooks'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, UnlistenFn } from '@tauri-apps/api/event'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import classes from './LogViewer.module.scss'
 import { Button } from '../../components/Button/Button.tsx'
 import { Alert } from '../../components/Alert/Alert.tsx'
@@ -8,6 +9,8 @@ import { isControlModifierPressed } from '../../navigation/keyboardShortcuts.ts'
 
 const MAX_LOG_LINES = 10_000
 const LOG_BATCH_INTERVAL_MS = 50 // Batch log updates every 50ms to reduce re-renders
+const LINE_HEIGHT = 17 // Approximate line height in pixels (0.75rem * 1.4 line-height ≈ 17px)
+const OVERSCAN_COUNT = 20 // Extra rows above/below viewport for smooth scrolling
 
 // Helper to escape HTML and prevent XSS
 function escapeHtml(text: string): string {
@@ -237,11 +240,18 @@ export function LogViewer({
   const [autoscroll, setAutoscroll] = useState(true)
 
   const logContainerRef = useRef<HTMLDivElement>(null)
-  const scrollAnchorRef = useRef<HTMLDivElement>(null)
   
   // Refs for batching log updates
   const pendingLogsRef = useRef<string[]>([])
   const batchTimeoutRef = useRef<number | null>(null)
+
+  // Virtual scrolling setup with dynamic height measurement for wrapped lines
+  const rowVirtualizer = useVirtualizer({
+    count: logs.length,
+    getScrollElement: () => logContainerRef.current,
+    estimateSize: () => LINE_HEIGHT,
+    overscan: OVERSCAN_COUNT,
+  })
 
   // Helper to refocus log container for keyboard scrolling
   const refocusLogs = useCallback(() => {
@@ -356,43 +366,46 @@ export function LogViewer({
   const isPodResource = resourceType === 'pod' || resourceType === 'pods'
   const isContainerView = !!containerName
 
-  // Memoize parsed and styled log HTML to avoid expensive processing on every render
-  const logHtml = useMemo(() => {
-    // Cast classes to include the log message styling classes
-    const logClasses = classes as unknown as LogMessageClasses & typeof classes
+  // Cast classes to include the log message styling classes
+  const logClasses = classes as unknown as LogMessageClasses & typeof classes
 
-    return logs.map(line => {
-      const parsed = parseLogLine(line)
-      if (parsed) {
-        // Build prefix based on viewing context (only if line has prefix and not container view)
-        let prefixPart = ''
-        if (parsed.hasPrefix && !isContainerView) {
-          const prefixText = isPodResource
-            ? parsed.containerName  // Pod: just container name
-            : `${parsed.podName}/${parsed.containerName}`  // Deployment: pod/container
-          prefixPart = `<span class="${classes.containerName}">[${escapeHtml(prefixText)}]</span> `
-        }
-
-        const timestampPart = timestamps
-          ? `<span class="${classes.timestamp}">${escapeHtml(parsed.timestamp)}</span> `
-          : ''
-
-        // Use enhanced log message parsing for the text content
-        const messagePart = renderLogMessageHtml(parsed.text, logClasses)
-
-        return prefixPart + timestampPart + messagePart
+  // Render a single log line to HTML
+  const renderLogLine = useCallback((line: string): string => {
+    const parsed = parseLogLine(line)
+    if (parsed) {
+      // Build prefix based on viewing context (only if line has prefix and not container view)
+      let prefixPart = ''
+      if (parsed.hasPrefix && !isContainerView) {
+        const prefixText = isPodResource
+          ? parsed.containerName  // Pod: just container name
+          : `${parsed.podName}/${parsed.containerName}`  // Deployment: pod/container
+        prefixPart = `<span class="${logClasses.containerName}">[${escapeHtml(prefixText)}]</span> `
       }
-      // Fallback for lines that don't match the expected format
-      return escapeHtml(line)
-    }).join('\n')
-  }, [logs, timestamps, isPodResource, isContainerView])
 
-  // Autoscroll effect
-  useEffect(() => {
-    if (autoscroll && scrollAnchorRef.current) {
-      scrollAnchorRef.current.scrollIntoView({ behavior: 'instant' })
+      const timestampPart = timestamps
+        ? `<span class="${logClasses.timestamp}">${escapeHtml(parsed.timestamp)}</span> `
+        : ''
+
+      // Use enhanced log message parsing for the text content
+      const messagePart = renderLogMessageHtml(parsed.text, logClasses)
+
+      return prefixPart + timestampPart + messagePart
     }
-  }, [logs, autoscroll])
+    // Fallback for lines that don't match the expected format
+    return escapeHtml(line)
+  }, [timestamps, isPodResource, isContainerView, logClasses])
+
+  // Autoscroll effect - scroll to last item when new logs arrive
+  useEffect(() => {
+    if (autoscroll && logs.length > 0) {
+      rowVirtualizer.scrollToIndex(logs.length - 1, { align: 'end' })
+    }
+  }, [logs.length, autoscroll, rowVirtualizer])
+
+  // Remeasure all rows when wrap mode changes (row heights will differ)
+  useEffect(() => {
+    rowVirtualizer.measure()
+  }, [wrap, rowVirtualizer])
 
   // Focus log container when streaming starts for keyboard scrolling
   useEffect(() => {
@@ -545,12 +558,28 @@ export function LogViewer({
           ) : logs.length === 0 && isStreaming ? (
             <div class={classes.loading}>Waiting for logs...</div>
           ) : (
-            <pre
-              class={`${classes.logContent} ${wrap ? classes.wrap : classes.nowrap}`}
-              dangerouslySetInnerHTML={{ __html: logHtml }}
-            />
+            <div
+              class={classes.virtualContainer}
+              style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => (
+                <div
+                  key={`${virtualRow.index}-${wrap}`}
+                  data-index={virtualRow.index}
+                  ref={(node) => rowVirtualizer.measureElement(node)}
+                  class={`${classes.logLine} ${wrap ? classes.wrap : classes.nowrap}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  dangerouslySetInnerHTML={{ __html: renderLogLine(logs[virtualRow.index]) }}
+                />
+              ))}
+            </div>
           )}
-          <div ref={scrollAnchorRef} class={classes.scrollAnchor} />
         </div>
       </div>
 
