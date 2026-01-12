@@ -15,7 +15,6 @@ import {
   createLogsNavigationNode,
   isDescribeView,
   isLogsView,
-  formatResourceTypeForDisplay 
 } from "./navigation/navigationTypes";
 
 /**
@@ -126,7 +125,7 @@ function App() {
           currentNode.context,
           currentNode.namespace,
           'pods',
-          formatResourceTypeForDisplay(resourceType),
+          resourceType,
           [appLabel]
         );
         setNavigationStack([...navigationStack, newNode]);

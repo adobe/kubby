@@ -40,31 +40,6 @@ export interface NavigationNode {
 }
 
 /**
- * Capitalizes and formats a resource type for display.
- * Examples:
- * - "deployments" -> "Deployments"
- * - "pods" -> "Pods"
- * - "configmaps" -> "ConfigMaps"
- */
-export function formatResourceTypeForDisplay(resourceType: string): string {
-  // Handle special cases with camelCase
-  const specialCases: Record<string, string> = {
-    'configmaps': 'ConfigMaps',
-    'replicasets': 'ReplicaSets',
-    'daemonsets': 'DaemonSets',
-    'statefulsets': 'StatefulSets',
-  }
-  
-  const lower = resourceType.toLowerCase()
-  if (specialCases[lower]) {
-    return specialCases[lower]
-  }
-  
-  // Default: capitalize first letter
-  return resourceType.charAt(0).toUpperCase() + resourceType.slice(1)
-}
-
-/**
  * Factory function to create a navigation node
  */
 export function createNavigationNode(

@@ -1,6 +1,5 @@
 import type { Ref } from 'preact'
 import type { NavigationNode } from '../../navigation/navigationTypes.ts'
-import { formatResourceTypeForDisplay } from '../../navigation/navigationTypes.ts'
 import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
 import { getLabelFilters, getResourceNameFilter } from '../../kubectl/filterTypes.ts'
 import { FilterChip } from '../FilterChip/FilterChip.tsx'
@@ -62,7 +61,7 @@ export function Breadcrumb({
       {navigationStack.map((node, index) => {
         const isLast = index === navigationStack.length - 1
         const isSecondToLast = index === navigationStack.length - 2
-        const label = formatResourceTypeForDisplay(node.resourceType)
+        const label = node.resourceType
         
         // Check if this node should show inline label filters (for filtered pods)
         const showLabelFiltersHere = isLast && hasLabelFilters
