@@ -36,8 +36,6 @@ const POD_SHORTCUTS: ShortcutConfig[] = [
 ]
 
 const NO_SELECTION_SHORTCUTS: ShortcutConfig[] = [
-  { label: 'Select', shortcut: 'Up / Down' },
-  { label: 'Help', shortcut: 'H' },
 ]
 
 function getShortcutsForResourceType(resourceType: string, hasSelection: boolean): ShortcutConfig[] {

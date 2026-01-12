@@ -1,8 +1,10 @@
+import type { Ref } from 'preact'
 import type { NavigationNode } from '../../navigation/navigationTypes.ts'
 import { formatResourceTypeForDisplay } from '../../navigation/navigationTypes.ts'
 import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
 import { getLabelFilters, getResourceNameFilter } from '../../kubectl/filterTypes.ts'
 import { FilterChip } from '../FilterChip/FilterChip.tsx'
+import { FilterInput } from '../FilterInput/FilterInput.tsx'
 import classes from './Breadcrumb.module.scss'
 
 interface BreadcrumbProps {
@@ -12,6 +14,18 @@ interface BreadcrumbProps {
   filters?: ResourceFilter[];
   /** Called when user wants to clear all filters (clicking the filtered node or × on any chip) */
   onClearFilters?: () => void;
+  /** Current text filter value */
+  filterText?: string;
+  /** Called when text filter changes */
+  onFilterTextChange?: (value: string) => void;
+  /** Called when text filter should be cleared */
+  onFilterClear?: () => void;
+  /** Ref for the filter input */
+  filterInputRef?: Ref<HTMLInputElement>;
+  /** Tab index for the filter input */
+  filterInputTabIndex?: number;
+  /** Called when Enter is pressed in the filter input */
+  onFilterSubmit?: () => void;
 }
 
 export function Breadcrumb({ 
@@ -19,6 +33,12 @@ export function Breadcrumb({
   onNavigateToNode,
   filters = [],
   onClearFilters,
+  filterText = '',
+  onFilterTextChange,
+  onFilterClear,
+  filterInputRef,
+  filterInputTabIndex,
+  onFilterSubmit,
 }: BreadcrumbProps) {
   const labelFilters = getLabelFilters(filters)
   const hasLabelFilters = labelFilters.length > 0
@@ -108,6 +128,21 @@ export function Breadcrumb({
           </span>
         )
       })}
+      
+      {/* Permanent filter input segment */}
+      {onFilterTextChange && onFilterClear && (
+        <span class={classes.segment}>
+          <span class={classes.separator}> </span>
+          <FilterInput
+            value={filterText}
+            onChange={onFilterTextChange}
+            onClear={onFilterClear}
+            onSubmit={onFilterSubmit}
+            inputRef={filterInputRef}
+            tabIndex={filterInputTabIndex}
+          />
+        </span>
+      )}
     </nav>
   )
 }

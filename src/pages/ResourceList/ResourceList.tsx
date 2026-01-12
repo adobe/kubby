@@ -151,6 +151,10 @@ export function ResourceList({
   const contextComboboxRef = useRef<ComboboxHandle>(null)
   const namespaceComboboxRef = useRef<ComboboxHandle>(null)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
+  const filterInputRef = useRef<HTMLInputElement>(null)
+
+  // Text filter state for filtering resources by name
+  const [filterText, setFilterText] = useState('')
 
   // Containers view has a fixed resource type (not changeable)
   const isContainersView = resourceType === 'containers'
@@ -162,7 +166,7 @@ export function ResourceList({
 
   // Use the resource loader hook - handles caching and background refresh
   const {
-    resources,
+    resources: allResources,
     columns,
     cacheTimestamp,
     isRefreshing,
@@ -170,6 +174,15 @@ export function ResourceList({
     refresh,
     isStale,
   } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName})
+
+  // Filter resources by text filter (case-insensitive substring match on name)
+  const resources = useMemo(() => {
+    if (!filterText.trim()) {
+      return allResources
+    }
+    const lowerFilter = filterText.toLowerCase()
+    return allResources.filter(r => r.name.toLowerCase().includes(lowerFilter))
+  }, [allResources, filterText])
 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
 
@@ -212,11 +225,12 @@ export function ResourceList({
     }
   }, [editingResourceName, selectedIndex, resources, resourceType, context, namespace, refresh])
 
-  // Reset selection when navigating to a different resource list
+  // Reset selection and filter when navigating to a different resource list
   // Use initialSelectedIndex if returning to same node, otherwise start fresh
   useEffect(() => {
     const newIndex = initialSelectedIndex ?? (resources.length > 0 ? 0 : -1)
     setSelectedIndex(newIndex)
+    setFilterText('') // Clear filter when changing views
   }, [context, namespace, resourceType])
 
   // Select first row when resources load for the first time, adjust if out of bounds
@@ -335,13 +349,18 @@ export function ResourceList({
       const target = e.target as HTMLElement
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
-      // Escape - go back (but not if any combobox is open - let it close first)
+      // Escape - clear filter if set, otherwise go back (but not if any combobox is open - let it close first)
       if (e.key === 'Escape') {
         if (isAnyComboboxOpen) {
           // Let the combobox handle Escape to close itself
           return
         }
         e.preventDefault()
+        // If filter text is set, clear it first
+        if (filterText) {
+          setFilterText('')
+          return
+        }
         onBack()
         return
       }
@@ -378,6 +397,13 @@ export function ResourceList({
       if (e.code === 'KeyN' && isAltModifierPressed(e)) {
         e.preventDefault()
         namespaceComboboxRef.current?.focus()
+        return
+      }
+
+      // "/" - Focus filter input
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        filterInputRef.current?.focus()
         return
       }
 
@@ -457,7 +483,7 @@ export function ResourceList({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit, filterText])
 
   return (
     <div class={classes.resourceList}>
@@ -529,6 +555,17 @@ export function ResourceList({
           onNavigateToNode={onNavigateToNode}
           filters={filters}
           onClearFilters={onClearFilters}
+          filterText={filterText}
+          onFilterTextChange={setFilterText}
+          onFilterClear={() => setFilterText('')}
+          filterInputRef={filterInputRef}
+          filterInputTabIndex={0}
+          onFilterSubmit={() => {
+            // Select first filtered result when Enter is pressed
+            if (resources.length > 0) {
+              setSelectedIndex(0)
+            }
+          }}
         />
 
         <Alert type="error" label="Edit Failed" message={editError} />

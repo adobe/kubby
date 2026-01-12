@@ -20,9 +20,17 @@ export interface ResourceNameFilter {
 }
 
 /**
+ * Filter by free text (substring match on resource name)
+ */
+export interface TextFilter {
+  type: 'text';
+  value: string;
+}
+
+/**
  * Union of all filter types
  */
-export type ResourceFilter = LabelFilter | ResourceNameFilter;
+export type ResourceFilter = LabelFilter | ResourceNameFilter | TextFilter;
 
 /**
  * Type guard for label filters
@@ -39,6 +47,13 @@ export function isResourceNameFilter(filter: ResourceFilter): filter is Resource
 }
 
 /**
+ * Type guard for text filters
+ */
+export function isTextFilter(filter: ResourceFilter): filter is TextFilter {
+  return filter.type === 'text';
+}
+
+/**
  * Create a label filter
  */
 export function createLabelFilter(key: string, value: string): LabelFilter {
@@ -50,6 +65,13 @@ export function createLabelFilter(key: string, value: string): LabelFilter {
  */
 export function createResourceNameFilter(resourceType: string, name: string): ResourceNameFilter {
   return { type: 'resourceName', resourceType, name };
+}
+
+/**
+ * Create a text filter
+ */
+export function createTextFilter(value: string): TextFilter {
+  return { type: 'text', value };
 }
 
 /**
@@ -73,6 +95,13 @@ export function getResourceNameFilter(filters: ResourceFilter[], resourceType: s
   return filters.find((f): f is ResourceNameFilter => 
     f.type === 'resourceName' && f.resourceType === resourceType
   );
+}
+
+/**
+ * Get the text filter from a filter array (there should only be one)
+ */
+export function getTextFilter(filters: ResourceFilter[]): TextFilter | undefined {
+  return filters.find(isTextFilter);
 }
 
 /**
