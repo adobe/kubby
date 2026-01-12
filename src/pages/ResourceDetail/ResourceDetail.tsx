@@ -2,14 +2,14 @@ import {useEffect, useState, useCallback, useMemo} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
 import {stringify} from 'yaml'
 import classes from './ResourceDetail.module.scss'
-import {getCacheAge} from './kubectl/resourceCache'
-import {useResourceDetailLoader} from './kubectl/useResourceDetailLoader'
-import type {NavigationNode} from './navigation/navigationTypes'
-import {Button} from './components/Button.tsx'
-import {Error} from './components/Error.tsx'
-import {CodeView} from './components/CodeView.tsx'
-import {TreeView} from './components/TreeView.tsx'
-import {isControlModifierPressed} from './navigation/keyboardShortcuts.ts'
+import {getCacheAge} from '../../kubectl/resourceCache.ts'
+import {useResourceDetailLoader} from '../../kubectl/useResourceDetailLoader.ts'
+import type {NavigationNode} from '../../navigation/navigationTypes.ts'
+import {Button} from '../../components/Button/Button.tsx'
+import {Alert} from '../../components/Alert/Alert.tsx'
+import {CodeView} from '../../components/CodeView/CodeView.tsx'
+import {TreeView} from '../../components/TreeView/TreeView.tsx'
+import {isControlModifierPressed} from '../../navigation/keyboardShortcuts.ts'
 
 type ViewMode = 'tree' | 'yaml' | 'json'
 
@@ -216,10 +216,10 @@ export function ResourceDetail({
         </div>
       </header>
 
-      <Error label="Edit failed" message={editError} />
+      <Alert type="error" label="Edit Failed" message={editError} />
 
       <div class={classes.body}>
-        <Error label="Error" message={error} />
+        <Alert type="error" label="Loading Error" message={error} />
 
         {!error && (
           <div class={classes.contentWrapper}>

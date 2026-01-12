@@ -1,4 +1,4 @@
-import type { ResourceFilter } from '../kubectl/filterTypes'
+import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
 import classes from './FilterChip.module.scss'
 
 interface FilterChipProps {

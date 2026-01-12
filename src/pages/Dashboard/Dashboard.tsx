@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "preact/hooks";
 import classes from "./Dashboard.module.scss";
-import {Button} from './components/Button.tsx'
+import {Button} from '../../components/Button/Button.tsx'
 
 export interface ContextGroup {
   name: string;

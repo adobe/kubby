@@ -1,5 +1,5 @@
 import classes from './ShortcutsBar.module.scss'
-import {Button} from './Button.tsx'
+import {Button} from '../Button/Button.tsx'
 
 interface ShortcutConfig {
   label: string
@@ -10,6 +10,7 @@ interface ShortcutConfig {
 interface ShortcutsBarProps {
   resourceType: string
   hasSelection: boolean
+  disabled: boolean
 }
 
 // Shortcut configurations by resource type
@@ -62,7 +63,7 @@ function getShortcutsForResourceType(resourceType: string, hasSelection: boolean
   ]
 }
 
-export function ShortcutsBar({ resourceType, hasSelection }: ShortcutsBarProps) {
+export function ShortcutsBar({ resourceType, hasSelection, disabled }: ShortcutsBarProps) {
   const shortcuts = getShortcutsForResourceType(resourceType, hasSelection)
   
   return (
@@ -74,6 +75,7 @@ export function ShortcutsBar({ resourceType, hasSelection }: ShortcutsBarProps) 
           shortcut={shortcut.shortcut}
           onClick={shortcut.onClick}
           tabIndex={0}
+          disabled={disabled}
         />
       ))}
     </div>

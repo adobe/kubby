@@ -1,8 +1,8 @@
-import type { NavigationNode } from '../navigation/navigationTypes'
-import { formatResourceTypeForDisplay } from '../navigation/navigationTypes'
-import type { ResourceFilter } from '../kubectl/filterTypes'
-import { getLabelFilters, getResourceNameFilter } from '../kubectl/filterTypes'
-import { FilterChip } from './FilterChip.tsx'
+import type { NavigationNode } from '../../navigation/navigationTypes.ts'
+import { formatResourceTypeForDisplay } from '../../navigation/navigationTypes.ts'
+import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
+import { getLabelFilters, getResourceNameFilter } from '../../kubectl/filterTypes.ts'
+import { FilterChip } from '../FilterChip/FilterChip.tsx'
 import classes from './Breadcrumb.module.scss'
 
 interface BreadcrumbProps {

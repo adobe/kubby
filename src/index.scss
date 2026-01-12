@@ -91,6 +91,16 @@ html {
   --error-bg: #fbeae8;
   --error-border: #e6a9a3;
   
+  // Warning colors
+  --warning-color: #e67e22;
+  --warning-bg: #fef5e7;
+  --warning-border: #f4c88a;
+  
+  // Info colors
+  --info-color: #3498db;
+  --info-bg: #ebf5fb;
+  --info-border: #aed6f1;
+  
   // Accent backgrounds
   --accent-bg: #e3ebf7;
   --accent-bg-active: #d0ddef;
@@ -194,6 +204,16 @@ code {
     --error-color: #e74c3c;
     --error-bg: #2d1f1e;
     --error-border: #5c2a25;
+    
+    // Warning colors
+    --warning-color: #f39c12;
+    --warning-bg: #3d2f1e;
+    --warning-border: #6b4e1f;
+    
+    // Info colors
+    --info-color: #3498db;
+    --info-bg: #1e2a3d;
+    --info-border: #2d4a5c;
     
     // Accent backgrounds
     --accent-bg: #1e2a3d;

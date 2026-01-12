@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'preact/hooks'
 import classes from './TreeView.module.scss'
-import { findLinearizer, defaultLinearizers, LinearizerConfig, LinearizedResult, LinearizedPart } from './linearizers'
+import { findLinearizer, defaultLinearizers, LinearizerConfig, LinearizedResult, LinearizedPart } from './linearizers.ts'
 
 const MAX_VALUE_LENGTH = 100
 

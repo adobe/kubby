@@ -1,21 +1,21 @@
 import {useEffect, useState, useRef, useCallback, useMemo} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
 import classes from './ResourceList.module.scss'
-import {getCacheAge} from './kubectl/resourceCache'
-import {useResourceLoader} from './kubectl/useResourceLoader'
-import {NavigationBar} from './components/NavigationBar.tsx'
-import type {NavigationNode} from './navigation/navigationTypes'
-import {ShortcutsBar} from './components/ShortcutsBar.tsx'
-import {Error} from './components/Error.tsx'
-import {Button} from './components/Button.tsx'
-import {Label} from './components/Label.tsx'
-import {Combobox} from './components/Combobox.tsx'
-import type {ComboboxHandle} from './components/Combobox.tsx'
-import {isAltModifierPressed, isControlModifierPressed} from './navigation/keyboardShortcuts.ts'
-import type {LabelSelector} from './kubectl/resourceTypes'
-import type {ResourceFilter} from './kubectl/filterTypes'
-import {getResourceNameFilter, toLabelSelectors} from './kubectl/filterTypes'
-import type {DashboardConfig} from './Dashboard'
+import {getCacheAge} from '../../kubectl/resourceCache.ts'
+import {useResourceLoader} from '../../kubectl/useResourceLoader.ts'
+import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
+import type {NavigationNode} from '../../navigation/navigationTypes.ts'
+import {ShortcutsBar} from '../../components/ShortcutsBar/ShortcutsBar.tsx'
+import {Alert} from '../../components/Alert/Alert.tsx'
+import {Button} from '../../components/Button/Button.tsx'
+import {Label} from '../../components/Label/Label.tsx'
+import {Combobox} from '../../components/Combobox/Combobox.tsx'
+import type {ComboboxHandle} from '../../components/Combobox/Combobox.tsx'
+import {isAltModifierPressed, isControlModifierPressed} from '../../navigation/keyboardShortcuts.ts'
+import type {LabelSelector} from '../../kubectl/resourceTypes.ts'
+import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
+import {getResourceNameFilter, toLabelSelectors} from '../../kubectl/filterTypes.ts'
+import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -530,8 +530,8 @@ export function ResourceList({
         onClearFilters={onClearFilters}
       />
 
-      <Error label="Edit failed" message={editError} />
-      <Error label="Error" message={error} />
+      <Alert type="error" label="Edit Failed" message={editError} />
+      <Alert type="error" label="Alert" message={error} />
 
       {!error && (
         <div class={classes.tableWrapper}>
@@ -601,6 +601,7 @@ export function ResourceList({
       <ShortcutsBar
         resourceType={resourceType}
         hasSelection={selectedIndex >= 0}
+        disabled={error !== null}
       />
     </div>
   )

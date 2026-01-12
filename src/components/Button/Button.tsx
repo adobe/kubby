@@ -1,5 +1,5 @@
 import classes from './Button.module.scss'
-import {formatShortcut} from '../navigation/keyboardShortcuts.ts'
+import {formatShortcut} from '../../navigation/keyboardShortcuts.ts'
 
 interface ButtonProps {
   /** The label text displayed next to the shortcut key */

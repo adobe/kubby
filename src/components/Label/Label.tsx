@@ -1,5 +1,5 @@
 import classes from './Label.module.scss'
-import {formatShortcut} from '../navigation/keyboardShortcuts.ts'
+import {formatShortcut} from '../../navigation/keyboardShortcuts.ts'
 
 interface LabelProps {
   label: string;

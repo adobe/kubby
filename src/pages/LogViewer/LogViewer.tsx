@@ -2,9 +2,9 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'preact/hooks'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import classes from './LogViewer.module.scss'
-import { Button } from './components/Button.tsx'
-import { Error } from './components/Error.tsx'
-import { isControlModifierPressed } from './navigation/keyboardShortcuts.ts'
+import { Button } from '../../components/Button/Button.tsx'
+import { Alert } from '../../components/Alert/Alert.tsx'
+import { isControlModifierPressed } from '../../navigation/keyboardShortcuts.ts'
 
 const MAX_LOG_LINES = 10_000
 const LOG_BATCH_INTERVAL_MS = 50 // Batch log updates every 50ms to reduce re-renders
@@ -280,7 +280,7 @@ export function LogViewer({
       </header>
 
       <div class={classes.body}>
-        <Error label="Error" message={error} />
+        <Alert type="error" label="Alert" message={error} />
 
         <div
           ref={logContainerRef}

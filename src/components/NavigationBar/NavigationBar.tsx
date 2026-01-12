@@ -1,6 +1,6 @@
-import { Breadcrumb } from './Breadcrumb.tsx'
-import type { ResourceFilter } from '../kubectl/filterTypes'
-import type { NavigationNode } from '../navigation/navigationTypes'
+import { Breadcrumb } from '../Breadcrumb/Breadcrumb.tsx'
+import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
+import type { NavigationNode } from '../../navigation/navigationTypes.ts'
 import classes from './NavigationBar.module.scss'
 
 interface NavigationBarProps {

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "preact/hooks";
 import { invoke } from "@tauri-apps/api/core";
 import classes from "./App.module.scss";
-import { Dashboard, DashboardConfig } from "./Dashboard";
-import { ResourceList } from "./ResourceList";
-import { ResourceDetail } from "./ResourceDetail";
-import { LogViewer } from "./LogViewer";
+import { Dashboard, DashboardConfig } from "./pages/Dashboard/Dashboard.tsx";
+import { ResourceList } from "./pages/ResourceList/ResourceList.tsx";
+import { ResourceDetail } from "./pages/ResourceDetail/ResourceDetail.tsx";
+import { LogViewer } from "./pages/LogViewer/LogViewer.tsx";
 import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
 import { 
