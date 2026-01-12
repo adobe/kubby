@@ -2,6 +2,7 @@ import { useEffect, useRef } from "preact/hooks";
 import classes from "./Dashboard.module.scss";
 import {Button} from '../../components/Button/Button.tsx'
 import {ShortcutsBar} from '../../components/ShortcutsBar/ShortcutsBar.tsx'
+import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 
 export interface ContextGroup {
   name: string;
@@ -274,12 +275,7 @@ function DashboardShortcutsBar({onFilter}: {
 }) {
   return (
     <ShortcutsBar>
-      <Button
-        label={"Filter"}
-        shortcut="/"
-        onClick={onFilter}
-        tabIndex={0}
-      />
+
     </ShortcutsBar>
   )
 }
@@ -288,9 +284,7 @@ interface DashboardProps {
   config: DashboardConfig;
   lastSelectedCell: { context: string; namespace: string } | null;
   filter: string;
-  showFilter: boolean;
   onFilterChange: (filter: string) => void;
-  onShowFilterChange: (show: boolean) => void;
   onCellClick: (context: string, namespace: string) => void;
 }
 
@@ -298,12 +292,10 @@ export function Dashboard({
   config, 
   lastSelectedCell, 
   filter,
-  showFilter,
   onFilterChange,
-  onShowFilterChange,
   onCellClick 
 }: DashboardProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const filterInputRef = useRef<HTMLInputElement>(null);
 
   // Focus button when dashboard is shown (restore last selection or focus first)
   useEffect(() => {
@@ -326,46 +318,48 @@ export function Dashboard({
     });
   }, [lastSelectedCell]);
 
-  // Listen for keydown to show filter input
+  // Listen for keydown to handle filter shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
-        return;
-      }
+      const isInInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
       
+      // Escape clears filter (works even in input)
       if (e.key === "Escape") {
-        onShowFilterChange(false);
-        onFilterChange("");
-        return;
-      }
-      
-      if (e.key === "Backspace") {
-        e.preventDefault();
-        const newFilter = filter.slice(0, -1);
-        if (newFilter === "") {
-          onShowFilterChange(false);
+        if (filter) {
+          e.preventDefault();
+          onFilterChange("");
         }
-        onFilterChange(newFilter);
         return;
       }
       
-      if (e.key === "/") {
+      // Skip other shortcuts if in an input
+      if (isInInput) return;
+      
+      // "/" focuses the filter input
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
-        onShowFilterChange(true);
+        filterInputRef.current?.focus();
         return;
       }
       
+      // Backspace removes last character from filter
+      if (e.key === "Backspace" && filter) {
+        e.preventDefault();
+        onFilterChange(filter.slice(0, -1));
+        return;
+      }
+      
+      // Typing characters appends to filter
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
-        onShowFilterChange(true);
         onFilterChange(filter + e.key);
       }
     }
 
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [filter, onFilterChange, onShowFilterChange]);
+  }, [filter, onFilterChange]);
 
   // Handle Tab navigation between dashboard groups and filter input
   useEffect(() => {
@@ -377,7 +371,7 @@ export function Dashboard({
         .map(section => section.querySelector(`.${classes.cellButton}`) as HTMLElement | null)
         .filter((btn): btn is HTMLElement => btn !== null);
 
-      const filterInput = document.querySelector(`.${classes.filterInput}`) as HTMLElement | null;
+      const filterInput = filterInputRef.current;
 
       const tabStops: HTMLElement[] = [...groupFirstButtons];
       if (filterInput) {
@@ -389,7 +383,7 @@ export function Dashboard({
       const activeElement = document.activeElement as HTMLElement;
       
       const isOnCellButton = activeElement?.classList.contains(classes.cellButton);
-      const isOnFilterInput = activeElement?.classList.contains(classes.filterInput);
+      const isOnFilterInput = activeElement === filterInput;
       
       if (!isOnCellButton && !isOnFilterInput) return;
 
@@ -424,63 +418,43 @@ export function Dashboard({
 
     document.addEventListener("keydown", handleTabNavigation, true);
     return () => document.removeEventListener("keydown", handleTabNavigation, true);
-  }, [showFilter]);
-
-  useEffect(() => {
-    if (showFilter) {
-      setTimeout(() => {
-        inputRef.current?.focus()
-      })
-    }
-  }, [showFilter])
+  }, []);
 
   const filterWords = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+  // Handle focusing first button when Enter is pressed in filter
+  const handleFilterSubmit = () => {
+    const firstButton = document.querySelector(`.${classes.cellButton}`) as HTMLElement | null;
+    firstButton?.focus();
+  };
 
   return (
     <div class={classes.dashboard}>
       <div class={classes.body}>
-        {config.groups.map((group) => (
-          <DashboardTable 
-            key={group.name} 
-            group={group} 
-            filterWords={filterWords}
-            onCellClick={onCellClick}
-          />
-        ))}
+        <NavigationBar
+          navigationStack={[]}
+          onNavigateToNode={() => {}}
+          filterText={filter}
+          onFilterTextChange={onFilterChange}
+          onFilterClear={() => onFilterChange("")}
+          filterInputRef={filterInputRef}
+          filterInputTabIndex={0}
+          onFilterSubmit={handleFilterSubmit}
+        />
 
-        {showFilter && (
-          <div class={classes.filterOverlay}>
-            <input
-              ref={inputRef}
-              type="text"
-              class={classes.filterInput}
-              value={filter}
-              onInput={(e) => onFilterChange((e.target as HTMLInputElement).value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  onShowFilterChange(false);
-                  onFilterChange("");
-                } else if (e.key === "Enter") {
-                  // TODO: on enter, focus first button in grid
-                  // handleCellKeyDown(e, )
-                }
-              }}
-              placeholder="Type to filter..."
+        <div class={classes.content}>
+          {config.groups.map((group) => (
+            <DashboardTable 
+              key={group.name} 
+              group={group} 
+              filterWords={filterWords}
+              onCellClick={onCellClick}
             />
-            <button 
-              class={classes.filterClear}
-              onClick={() => {
-                onShowFilterChange(false);
-                onFilterChange("");
-              }}
-            >
-              ×
-            </button>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
 
-      <DashboardShortcutsBar onFilter={() => onShowFilterChange(true)}/>
+      <DashboardShortcutsBar onFilter={() => filterInputRef.current?.focus()}/>
     </div>
   );
 }

@@ -53,7 +53,6 @@ function App() {
   const [lastSelectedCell, setLastSelectedCell] = useState<{ context: string; namespace: string } | null>(null);
   // Filter state lifted here to persist across navigation
   const [filter, setFilter] = useState("");
-  const [showFilter, setShowFilter] = useState(false);
 
   useEffect(() => {
     async function fetchConfig() {
@@ -317,9 +316,7 @@ function App() {
         config={config}
         lastSelectedCell={lastSelectedCell}
         filter={filter}
-        showFilter={showFilter}
         onFilterChange={setFilter}
-        onShowFilterChange={setShowFilter}
         onCellClick={handleCellClick}
       />
     </main>
