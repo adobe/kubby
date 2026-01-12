@@ -486,7 +486,7 @@ export function ResourceList({
   }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit, filterText])
 
   return (
-    <div class={classes.resourceList}>
+    <div class={classes.ResourceList}>
       <header class={classes.header}>
         <div class={classes.headerInfo}>
           <Label label="Resource" shortcut="Opt+R">
