@@ -16,10 +16,10 @@ interface ResourceListShortcutsBarProps {
 // Shortcut configurations by resource type
 const DEPLOYMENT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Pods', shortcut: 'Enter' },
-  { label: 'Replica Sets', shortcut: 'Z' },
   { label: 'Describe', shortcut: 'D' },
   { label: 'Edit', shortcut: 'E' },
   { label: 'Logs', shortcut: 'L' },
+  { label: 'Replica Sets', shortcut: 'Z' },
   { label: 'Rolling Restart', shortcut: 'R' },
   { label: 'Scale', shortcut: 'S' },
   { label: 'Delete', shortcut: 'Ctrl+D' },
@@ -29,6 +29,13 @@ const POD_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Containers', shortcut: 'Enter' },
   { label: 'Describe', shortcut: 'D' },
   { label: 'Edit', shortcut: 'E' },
+  { label: 'Logs', shortcut: 'L' },
+  { label: 'Port-Forward', shortcut: 'Shift+F' },
+  { label: 'Show PortForward', shortcut: 'F' },
+  { label: 'Shell', shortcut: 'S' },
+]
+
+const CONTAINER_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Logs', shortcut: 'L' },
   { label: 'Port-Forward', shortcut: 'Shift+F' },
   { label: 'Show PortForward', shortcut: 'F' },
@@ -52,11 +59,14 @@ function getShortcutsForResourceType(resourceType: string, hasSelection: boolean
   if (normalizedType === 'pods' || normalizedType === 'pod') {
     return POD_SHORTCUTS
   }
+
+  if (normalizedType === 'containers' || normalizedType === 'container') {
+    return CONTAINER_SHORTCUTS
+  }
   
   // Default: show basic shortcuts for other resource types
   return [
     { label: 'Describe', shortcut: 'D' },
-    { label: 'Edit', shortcut: 'E' },
     { label: 'Delete', shortcut: 'Ctrl+D' },
   ]
 }
