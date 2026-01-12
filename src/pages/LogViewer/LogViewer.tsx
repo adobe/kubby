@@ -9,6 +9,74 @@ import { isControlModifierPressed } from '../../navigation/keyboardShortcuts.ts'
 const MAX_LOG_LINES = 10_000
 const LOG_BATCH_INTERVAL_MS = 50 // Batch log updates every 50ms to reduce re-renders
 
+// Helper to escape HTML and prevent XSS
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+// Parse a log line into components
+// Format with prefix: [pod/pod-name/container-name] 2026-01-11T08:00:39.783922111Z log text
+// Format without prefix (single container): 2026-01-11T08:00:39.783922111Z log text
+interface ParsedLogLine {
+  podName: string       // The pod name (middle segment), empty if no prefix
+  containerName: string // The container name (last segment), empty if no prefix
+  timestamp: string
+  text: string
+  hasPrefix: boolean    // Whether the line had a [prefix]
+}
+
+function parseLogLine(line: string): ParsedLogLine | null {
+  // Try format with prefix first: [prefix] timestamp text
+  const prefixMatch = line.match(/^\[([^\]]+)\]\s+(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\s+(.*)$/)
+  if (prefixMatch) {
+    const fullPrefix = prefixMatch[1]
+    const segments = fullPrefix.split('/')
+
+    // Expected format: "pod/pod-name/container-name" or "deployment/deploy-name/container-name"
+    // segments[0] = resource type (pod, deployment, etc.)
+    // segments[1] = resource name (pod name for pods, or parent resource name)
+    // segments[2] = container name
+    let podName = ''
+    let containerName = ''
+
+    if (segments.length >= 3) {
+      podName = segments[1]
+      containerName = segments[2]
+    } else if (segments.length === 2) {
+      // Fallback: resource-type/name
+      podName = segments[1]
+      containerName = segments[1]
+    } else {
+      containerName = fullPrefix
+    }
+
+    return {
+      podName,
+      containerName,
+      timestamp: prefixMatch[2],
+      text: prefixMatch[3],
+      hasPrefix: true,
+    }
+  }
+
+  // Try format without prefix (single container): timestamp text
+  const noPrefixMatch = line.match(/^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\s+(.*)$/)
+  if (noPrefixMatch) {
+    return {
+      podName: '',
+      containerName: '',
+      timestamp: noPrefixMatch[1],
+      text: noPrefixMatch[2],
+      hasPrefix: false,
+    }
+  }
+
+  return null
+}
+
 interface LogViewerProps {
   context: string
   namespace: string
@@ -40,12 +108,6 @@ export function LogViewer({
   // Refs for batching log updates
   const pendingLogsRef = useRef<string[]>([])
   const batchTimeoutRef = useRef<number | null>(null)
-  const timestampsRef = useRef(timestamps)
-  
-  // Keep timestampsRef in sync
-  useEffect(() => {
-    timestampsRef.current = timestamps
-  }, [timestamps])
 
   // Flush pending logs to state (batched update)
   const flushPendingLogs = useCallback(() => {
@@ -64,7 +126,7 @@ export function LogViewer({
     })
   }, [])
 
-  // Start log stream
+  // Start log stream - always fetch with timestamps, visibility is controlled in the view
   const startStream = useCallback(async () => {
     setError(null)
     setLogs([]) // Clear logs on restart
@@ -76,7 +138,7 @@ export function LogViewer({
         resourceName,
         context,
         namespace,
-        timestamps: timestampsRef.current,
+        timestamps: true, // Always fetch timestamps, visibility controlled in view
         containerName: containerName || null,
       })
       setIsStreaming(true)
@@ -115,6 +177,7 @@ export function LogViewer({
         const msg = event.payload.error
         // Skip kubectl informational messages that go to stderr
         if (msg.startsWith('Defaulted container')) return
+        if (msg.startsWith('Found ') && msg.includes(' pods, using ')) return
         setError(msg)
       })
 
@@ -147,18 +210,39 @@ export function LogViewer({
     }
   }, [startStream, flushPendingLogs])
 
-  // Restart stream when timestamps toggle changes (skip initial)
-  const initialMountRef = useRef(true)
-  useEffect(() => {
-    if (initialMountRef.current) {
-      initialMountRef.current = false
-      return
-    }
-    startStream()
-  }, [timestamps, startStream])
+  // Determine what prefix to show based on context:
+  // - Container logs (containerName is set): no prefix (single container)
+  // - Pod logs: show [container-name]
+  // - Deployment/other: show [pod-name/container-name]
+  const isPodResource = resourceType === 'pod' || resourceType === 'pods'
+  const isContainerView = !!containerName
 
-  // Memoize the log text to avoid expensive joins on every render
-  const logText = useMemo(() => logs.join('\n'), [logs])
+  // Memoize parsed and styled log HTML to avoid expensive processing on every render
+  const logHtml = useMemo(() => {
+    return logs.map(line => {
+      const parsed = parseLogLine(line)
+      if (parsed) {
+        // Build prefix based on viewing context (only if line has prefix and not container view)
+        let prefixPart = ''
+        if (parsed.hasPrefix && !isContainerView) {
+          const prefixText = isPodResource
+            ? parsed.containerName  // Pod: just container name
+            : `${parsed.podName}/${parsed.containerName}`  // Deployment: pod/container
+          prefixPart = `<span class="${classes.containerName}">[${escapeHtml(prefixText)}]</span> `
+        }
+
+        const timestampPart = timestamps
+          ? `<span class="${classes.timestamp}">${escapeHtml(parsed.timestamp)}</span> `
+          : ''
+
+        return prefixPart +
+               timestampPart +
+               `<span class="${classes.logText}">${escapeHtml(parsed.text)}</span>`
+      }
+      // Fallback for lines that don't match the expected format
+      return escapeHtml(line)
+    }).join('\n')
+  }, [logs, timestamps, isPodResource, isContainerView])
 
   // Autoscroll effect
   useEffect(() => {
@@ -292,9 +376,10 @@ export function LogViewer({
           ) : logs.length === 0 && isStreaming ? (
             <div class={classes.loading}>Waiting for logs...</div>
           ) : (
-            <pre class={`${classes.logContent} ${wrap ? classes.wrap : classes.nowrap}`}>
-              {logText}
-            </pre>
+            <pre
+              class={`${classes.logContent} ${wrap ? classes.wrap : classes.nowrap}`}
+              dangerouslySetInnerHTML={{ __html: logHtml }}
+            />
           )}
           <div ref={scrollAnchorRef} class={classes.scrollAnchor} />
         </div>

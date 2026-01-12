@@ -376,10 +376,10 @@ async fn start_log_stream(
     if let Some(container) = container_name {
         args.push("-c".to_string());
         args.push(container);
-    } else if resource_type == "pod" || resource_type == "pods" {
-        // Show logs from all containers when viewing a pod (no specific container)
+    } else {
+        // Show logs from all containers when viewing a pod or higher-level resource (deployment, etc.)
         args.push("--all-containers".to_string());
-        args.push("--prefix".to_string()); // Prefix each line with container name
+        args.push("--prefix".to_string()); // Prefix each line with pod/container name
     }
     
     if timestamps {

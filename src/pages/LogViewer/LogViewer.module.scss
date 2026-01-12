@@ -98,6 +98,19 @@
     }
   }
 
+  .containerName {
+    color: var(--color-accent);
+    opacity: 0.85;
+  }
+
+  .timestamp {
+    color: var(--color-dimmed);
+  }
+
+  .logText {
+    color: var(--color);
+  }
+
   .logLine {
     display: block;
     padding: 0 0.25rem;
