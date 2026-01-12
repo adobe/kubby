@@ -384,6 +384,13 @@ export function ResourceList({
         return
       }
 
+      // Alternative resource shortcut : (as in k9s)
+      if (e.key === ':' && !isContainersView) {
+        e.preventDefault()
+        resourceComboboxRef.current?.focus()
+        return
+      }
+
       // Opt+C - Focus context combobox
       // Use e.code because Opt+letter produces special characters on macOS (e.g., Opt+C → 'ç')
       if (e.code === 'KeyC' && isAltModifierPressed(e)) {
