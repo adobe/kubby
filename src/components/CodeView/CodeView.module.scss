@@ -8,24 +8,37 @@
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--color);
+}
 
-  // Shiki-highlighted code view
-  .codeViewHighlighted {
+// Shiki-highlighted code view
+.codeViewHighlighted {
+  margin: 0;
+  padding: 0;
+
+  :global(pre) {
     margin: 0;
     padding: 0;
-
-    :global(pre) {
-      margin: 0;
-      padding: 0;
-      border-radius: 4px;
-      overflow-x: auto;
-    }
-
-    :global(code) {
-      font-family: 'Fira Code', monospace;
-      font-size: 0.75rem;
-      line-height: 1.5;
-    }
+    border-radius: 4px;
+    overflow-x: auto;
   }
 
+  :global(code) {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    counter-reset: step;
+    counter-increment: step 0;
+  }
+
+  :global(code .line::before) {
+    content: counter(step);
+    background-color: var(--surface-muted);
+    counter-increment: step;
+    width: 2rem;
+    padding: 0 0.5rem;
+    margin-right: 0.5rem;
+    display: inline-block;
+    text-align: right;
+    color: rgba(115, 138, 148, 0.4);
+  }
 }
