@@ -7,10 +7,25 @@ use tokio::time::{timeout, Duration};
 
 const KUBECTL_TIMEOUT_SECS: u64 = 10;
 
+// Run command configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RunCommand {
+    pub name: String,
+    pub command: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ResourcesConfig {
+    #[serde(default)]
+    pub run: Vec<RunCommand>,
+}
+
 // Dashboard config types
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DashboardConfig {
     pub dashboard: Dashboard,
+    #[serde(default)]
+    pub resources: Option<ResourcesConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -62,6 +77,7 @@ pub struct NamespaceGroup {
 #[derive(Debug, Serialize)]
 pub struct NormalizedDashboardConfig {
     pub groups: Vec<NormalizedDashboardGroup>,
+    pub run_commands: Vec<RunCommand>,
 }
 
 #[derive(Debug, Serialize)]
@@ -137,6 +153,11 @@ impl DashboardConfig {
                     },
                 })
                 .collect(),
+            run_commands: self
+                .resources
+                .as_ref()
+                .map(|r| r.run.clone())
+                .unwrap_or_default(),
         }
     }
 }
@@ -375,6 +396,16 @@ pub fn create_kubby_config(
     yaml.push_str("        # Optional: restrict a namespace to specific contexts:\n");
     yaml.push_str("        # - name: \"dev-only-ns\"\n");
     yaml.push_str("        #   contexts: [\"dev-context\"]  # Only shows for these contexts\n");
+    yaml.push_str("\n");
+    yaml.push_str("# Resource commands configuration\n");
+    yaml.push_str("# These commands can be run from the resource list using the Run... [U] shortcut.\n");
+    yaml.push_str("# Placeholders: $context, $namespace, $labels (formatted as key=value,key=value)\n");
+    yaml.push_str("resources:\n");
+    yaml.push_str("  run:\n");
+    yaml.push_str("    - name: \"Test Network Multitool\"\n");
+    yaml.push_str("      command: \"kubectl run test-network-multitool --context $context --namespace $namespace --image=praqma/network-multitool --labels=$labels --restart=Never --command -- sleep infinity\"\n");
+    yaml.push_str("    - name: \"Test Curl\"\n");
+    yaml.push_str("      command: \"kubectl run test-curl --context $context --namespace $namespace --image=curlimages/curl --labels=$labels --restart=Never --command -- sleep infinity\"\n");
 
     fs::write(&config_path, &yaml)
         .map_err(|e| format!("Failed to write config file: {}", e))?;

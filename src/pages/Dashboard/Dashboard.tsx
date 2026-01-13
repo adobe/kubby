@@ -30,8 +30,14 @@ export interface DashboardGroup {
   namespace_groups: NamespaceGroup[];
 }
 
+export interface RunCommand {
+  name: string;
+  command: string;
+}
+
 export interface DashboardConfig {
   groups: DashboardGroup[];
+  run_commands: RunCommand[];
 }
 
 interface ParsedContext {

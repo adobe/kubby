@@ -11,6 +11,8 @@ interface ResourceListShortcutsBarProps {
   resourceType: string
   hasSelection: boolean
   disabled: boolean
+  hasRunCommands: boolean
+  onRunClick?: () => void
 }
 
 // Shortcut configurations by resource type
@@ -33,6 +35,7 @@ const POD_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Port-Forward', shortcut: 'Shift+F' },
   { label: 'Show PortForward', shortcut: 'F' },
   { label: 'Shell', shortcut: 'S' },
+  { label: 'Delete', shortcut: 'Ctrl+D' },
 ]
 
 const CONTAINER_SHORTCUTS: ShortcutConfig[] = [
@@ -40,6 +43,7 @@ const CONTAINER_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Port-Forward', shortcut: 'Shift+F' },
   { label: 'Show PortForward', shortcut: 'F' },
   { label: 'Shell', shortcut: 'S' },
+  // { label: 'Run...', shortcut: 'U' },
 ]
 
 const NO_SELECTION_SHORTCUTS: ShortcutConfig[] = [
@@ -71,7 +75,13 @@ function getShortcutsForResourceType(resourceType: string, hasSelection: boolean
   ]
 }
 
-export function ResourceListShortcutsBar({ resourceType, hasSelection, disabled }: ResourceListShortcutsBarProps) {
+export function ResourceListShortcutsBar({ 
+  resourceType, 
+  hasSelection, 
+  disabled,
+  hasRunCommands,
+  onRunClick,
+}: ResourceListShortcutsBarProps) {
   const shortcuts = getShortcutsForResourceType(resourceType, hasSelection)
   
   return (
@@ -86,6 +96,15 @@ export function ResourceListShortcutsBar({ resourceType, hasSelection, disabled 
           disabled={disabled}
         />
       ))}
+      {hasRunCommands && hasSelection && (
+        <Button
+          label="Run..."
+          shortcut="U"
+          onClick={onRunClick}
+          tabIndex={0}
+          disabled={disabled}
+        />
+      )}
     </ShortcutsBar>
   )
 }

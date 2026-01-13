@@ -16,6 +16,7 @@ import type {LabelSelector} from '../../kubectl/resourceTypes.ts'
 import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
 import {getResourceNameFilter, toLabelSelectors} from '../../kubectl/filterTypes.ts'
 import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
+import {RunModal} from '../../components/RunModal/RunModal.tsx'
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -202,6 +203,11 @@ export function ResourceList({
   const [editError, setEditError] = useState<string | null>(null)
   const [editingResourceName, setEditingResourceName] = useState<string | null>(null)
 
+  // Run modal state
+  const [isRunModalOpen, setIsRunModalOpen] = useState(false)
+  const runCommands = dashboardConfig.run_commands ?? []
+  const hasRunCommands = runCommands.length > 0
+
   // Handle edit resource
   const handleEdit = useCallback(async () => {
     if (editingResourceName || selectedIndex < 0 || !resources[selectedIndex]) return
@@ -225,6 +231,30 @@ export function ResourceList({
       setEditingResourceName(null)
     }
   }, [editingResourceName, selectedIndex, resources, resourceType, context, namespace, refresh])
+
+  // Handle shell into pod/container
+  const handleShell = useCallback(async () => {
+    if (selectedIndex < 0 || !resources[selectedIndex]) return
+    const resource = resources[selectedIndex]
+    
+    // Build kubectl exec command
+    let command: string
+    if (isContainersView && parentResourceName) {
+      // For containers view: exec into specific container
+      command = `kubectl exec -it ${parentResourceName} -c ${resource.name} --context ${context} -n ${namespace} -- /bin/sh`
+    } else if (resourceType === 'pods' || resourceType === 'pod') {
+      // For pods: exec into pod (first container)
+      command = `kubectl exec -it ${resource.name} --context ${context} -n ${namespace} -- /bin/sh`
+    } else {
+      return // Shell only available for pods/containers
+    }
+    
+    try {
+      await invoke('open_terminal_with_command', { command })
+    } catch (e) {
+      console.error('Failed to open shell:', e)
+    }
+  }, [selectedIndex, resources, isContainersView, parentResourceName, resourceType, context, namespace])
 
   // Reset selection and filter when navigating to a different resource list
   // Use initialSelectedIndex if returning to same node, otherwise start fresh
@@ -488,12 +518,29 @@ export function ResourceList({
           }
           return
         }
+
+        // S - Open shell to selected pod/container
+        if (e.code === 'KeyS' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
+          const normalizedType = resourceType.toLowerCase()
+          if (normalizedType === 'pods' || normalizedType === 'pod' || normalizedType === 'containers') {
+            e.preventDefault()
+            handleShell()
+          }
+          return
+        }
+
+        // U - Open Run modal
+        if (e.code === 'KeyU' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0 && hasRunCommands) {
+          e.preventDefault()
+          setIsRunModalOpen(true)
+          return
+        }
       }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit, handleShell, hasRunCommands])
 
   return (
     <div class={classes.ResourceList}>
@@ -652,6 +699,17 @@ export function ResourceList({
         resourceType={resourceType}
         hasSelection={selectedIndex >= 0}
         disabled={error !== null}
+        hasRunCommands={hasRunCommands}
+        onRunClick={() => setIsRunModalOpen(true)}
+      />
+
+      <RunModal
+        isOpen={isRunModalOpen}
+        onClose={() => setIsRunModalOpen(false)}
+        runCommands={runCommands}
+        context={context}
+        namespace={namespace}
+        labels={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : []}
       />
     </div>
   )

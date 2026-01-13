@@ -1,0 +1,12 @@
+---
+name: frontend
+description: Frontend rules
+---
+
+# Overview
+
+Rules for frontend code.
+
+## General
+
+- use pnpm to run frontend build
