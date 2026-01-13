@@ -357,6 +357,12 @@ export function ResourceList({
           // Let the combobox handle Escape to close itself
           return
         }
+        // If focused on an input (like a combobox), blur it instead of going back
+        if (isInput) {
+          (target as HTMLInputElement).blur()
+          e.preventDefault()
+          return
+        }
         e.preventDefault()
         onBack()
         return
