@@ -3,7 +3,7 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{ColumnConfig, ResourceColumnConfig};
+use crate::types::{ColumnConfig, ResourceColumnConfig};
 
 // Column definition types for resource column discovery
 #[derive(Debug, Serialize, Deserialize)]
@@ -589,6 +589,7 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
     Some(ResourceColumnConfig { columns })
 }
 
+#[tauri::command]
 pub fn get_resource_columns(
     resource_type: String,
     context: String,

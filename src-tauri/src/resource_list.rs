@@ -4,9 +4,10 @@ use tokio::time::{timeout, Duration};
 use serde_json::Value;
 use serde_json_path::JsonPath;
 
-const KUBECTL_TIMEOUT_SECS: u64 = 5;
-
-use crate::{ResourceColumnConfig, ResourceItem, ResourceListResponse, LabelSelector, ColumnType, ColumnConfig};
+use crate::types::{
+    ColumnConfig, ColumnType, LabelSelector, ResourceColumnConfig, ResourceItem,
+    ResourceListResponse, KUBECTL_TIMEOUT_SECS,
+};
 use crate::resource_columns;
 
 fn format_age(timestamp: &str) -> String {
