@@ -53,6 +53,14 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [navigationStack, setNavigationStack] = useState<NavigationNode[]>([]);
   const [lastSelectedCell, setLastSelectedCell] = useState<{ context: string; namespace: string } | null>(null);
+  // Last used resource type - persisted to localStorage
+  const [lastResourceType, setLastResourceType] = useState(() => {
+    try {
+      return localStorage.getItem("kubby-last-resource-type") || "deployments";
+    } catch {
+      return "deployments";
+    }
+  });
   // Filter state lifted here to persist across navigation and page reloads
   const [filter, setFilter] = useState(() => {
     try {
@@ -70,6 +78,15 @@ function App() {
       // Ignore localStorage errors
     }
   }, [filter]);
+
+  // Persist last resource type to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("kubby-last-resource-type", lastResourceType);
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [lastResourceType]);
 
   // Function to load the config
   const loadConfig = useCallback(async () => {
@@ -117,7 +134,7 @@ function App() {
     const initialNode = createNavigationNode(
       context,
       namespace,
-      "deployments",
+      lastResourceType,
       "Dashboard"
     );
     setNavigationStack([initialNode]);
@@ -306,6 +323,7 @@ function App() {
           onNavigateToNode={handleNavigateToNode}
           onBack={handleBackNavigation}
           onResourceTypeChange={(newResourceType) => {
+            setLastResourceType(newResourceType);
             const updatedNode: NavigationNode = {
               ...currentNode,
               resourceType: newResourceType,
