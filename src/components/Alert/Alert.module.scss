@@ -5,6 +5,18 @@
   white-space: pre-wrap;
   margin: 0.5rem;
 
+  .title {
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    margin: 0 0 0.25rem 0;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
   &.error {
     color: var(--error-color);
     background: var(--error-bg);

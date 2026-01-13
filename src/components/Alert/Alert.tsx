@@ -1,4 +1,5 @@
 import classes from './Alert.module.scss'
+import {ReactElement} from 'preact/compat'
 
 export type AlertType = 'error' | 'warning' | 'info'
 
@@ -8,7 +9,7 @@ interface ErrorProps {
   /** The label shown before the error message (e.g., "Error", "Edit failed") */
   label: string
   /** The error message to display. If null/undefined, nothing is rendered. */
-  message: string | null | undefined
+  message: ReactElement | string | null | undefined
 }
 
 /**
@@ -31,7 +32,7 @@ export function Alert({ type, label, message }: ErrorProps) {
   const { alertClass, icon } = props()
   return (
     <div class={`${classes.Alert} ${alertClass}`}>
-      <div>{icon} <strong>{label}:</strong></div>
+      <div class={classes.title}>{icon} <strong>{label}:</strong></div>
       <div>{message ?? 'Unknown error'}</div>
     </div>
   )

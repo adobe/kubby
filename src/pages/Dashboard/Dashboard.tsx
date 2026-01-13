@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
 import classes from "./Dashboard.module.scss";
-import {Button} from '../../components/Button/Button.tsx'
 import {ShortcutsBar} from '../../components/ShortcutsBar/ShortcutsBar.tsx'
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 

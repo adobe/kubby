@@ -1,0 +1,307 @@
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 2rem;
+  overflow: auto;
+}
+
+.header {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem 0;
+  color: var(--color);
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--color-dimmed);
+  margin: 0;
+}
+
+.warningSection {
+  margin: -0.5rem;
+}
+
+.content {
+  margin-top: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.section {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.sectionTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  color: var(--color);
+}
+
+.kubeconfigPath {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-dimmed);
+  margin-bottom: 1rem;
+  
+  code {
+    background: var(--surface-muted);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+  }
+}
+
+.contextList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.contextItem {
+  background: var(--background-color);
+  border: 1px solid var(--border-muted);
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.contextHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.contextName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color);
+}
+
+.currentBadge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 0.15rem 0.4rem;
+  background: var(--accent-bg);
+  border-radius: 3px;
+  color: var(--color-dimmed);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.namespaceList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.namespaceTag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  color: var(--color-dimmed);
+}
+
+.contextError {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--error-color);
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--error-bg);
+  border-radius: 4px;
+}
+
+.errorTextCollapsed {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.errorTextExpanded {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.expandButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--error-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--error-color);
+  line-height: 1;
+  box-shadow: none;
+  
+  &:hover {
+    background: var(--error-border);
+  }
+}
+
+.contextLoading {
+  font-size: 0.75rem;
+  color: var(--color-dimmed);
+  font-style: italic;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--selection-bg);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--selection-color);
+  transition: background-color 0.15s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  
+  &:hover:not(:disabled) {
+    background: var(--selection-bg-hover);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--color);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  box-shadow: none;
+  
+  &:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--border-color);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.successSection {
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.successTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  color: var(--info-color);
+}
+
+.configPath {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  
+  code {
+    flex: 1;
+    background: var(--background-color);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    color: var(--color);
+    word-break: break-all;
+  }
+}
+
+.pathActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-dimmed);
+  font-size: 0.85rem;
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+  color: var(--error-color);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.noContexts {
+  color: var(--color-dimmed);
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 1rem;
+  text-align: center;
+}

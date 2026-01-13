@@ -1,10 +1,11 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useState, useCallback } from "preact/hooks";
 import { invoke } from "@tauri-apps/api/core";
 import classes from "./App.module.scss";
 import { Dashboard, DashboardConfig } from "./pages/Dashboard/Dashboard.tsx";
 import { ResourceList } from "./pages/ResourceList/ResourceList.tsx";
 import { ResourceDetail } from "./pages/ResourceDetail/ResourceDetail.tsx";
 import { LogViewer } from "./pages/LogViewer/LogViewer.tsx";
+import { Onboarding } from "./pages/Onboarding/Onboarding.tsx";
 import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
 import { 
@@ -45,6 +46,8 @@ function getNamespacesForContext(config: DashboardConfig, context: string): stri
 }
 
 function App() {
+  // Config existence state: null = checking, true = exists, false = doesn't exist
+  const [configExists, setConfigExists] = useState<boolean | null>(null);
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,20 +71,45 @@ function App() {
     }
   }, [filter]);
 
+  // Function to load the config
+  const loadConfig = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await invoke<DashboardConfig>("get_dashboard_config");
+      setConfig(result);
+      setError(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Check if config exists on mount, then load if it does
   useEffect(() => {
-    async function fetchConfig() {
+    async function checkAndLoadConfig() {
       try {
-        const result = await invoke<DashboardConfig>("get_dashboard_config");
-        setConfig(result);
-        setError(null);
+        const exists = await invoke<boolean>("check_config_exists");
+        setConfigExists(exists);
+        
+        if (exists) {
+          await loadConfig();
+        } else {
+          setLoading(false);
+        }
       } catch (e) {
         setError(String(e));
-      } finally {
         setLoading(false);
       }
     }
-    fetchConfig();
-  }, []);
+    checkAndLoadConfig();
+  }, [loadConfig]);
+
+  // Handler for when onboarding is complete
+  const handleOnboardingComplete = useCallback(async () => {
+    setConfigExists(true);
+    await loadConfig();
+  }, [loadConfig]);
 
   const handleCellClick = (context: string, namespace: string) => {
     setLastSelectedCell({ context, namespace });
@@ -241,6 +269,8 @@ function App() {
             namespace={currentNode.namespace}
             resourceType={currentNode.resourceType}
             resourceName={currentNode.resourceName}
+            navigationStack={navigationStack}
+            onNavigateToNode={handleNavigateToNode}
             onBack={handleBackNavigation}
           />
         </main>
@@ -300,10 +330,20 @@ function App() {
     );
   }
 
-  if (loading) {
+  // Show loading while checking if config exists
+  if (configExists === null || loading) {
     return (
       <main class={classes.App}>
-        <div class={classes.loading}>Loading dashboard config...</div>
+        <div class={classes.loading}>Loading...</div>
+      </main>
+    );
+  }
+
+  // Show onboarding if config doesn't exist
+  if (configExists === false) {
+    return (
+      <main class={classes.App}>
+        <Onboarding onComplete={handleOnboardingComplete} />
       </main>
     );
   }

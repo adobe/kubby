@@ -243,6 +243,31 @@ fn get_editor() -> String {
     }
 }
 
+/// Open a file in the default editor
+#[tauri::command]
+fn open_file_in_editor(path: String) -> Result<(), String> {
+    let editor = get_editor();
+    
+    // Parse editor command - it might contain arguments (e.g., "code --wait")
+    let editor_parts: Vec<&str> = editor.split_whitespace().collect();
+    let (editor_cmd, editor_args) = if editor_parts.is_empty() {
+        ("vi", Vec::new())
+    } else {
+        (editor_parts[0], editor_parts[1..].to_vec())
+    };
+    
+    let mut cmd = std::process::Command::new(editor_cmd);
+    for arg in editor_args {
+        cmd.arg(arg);
+    }
+    cmd.arg(&path);
+    
+    cmd.spawn()
+        .map_err(|e| format!("Failed to open editor '{}': {}", editor, e))?;
+    
+    Ok(())
+}
+
 #[tauri::command]
 async fn edit_resource(
     resource_type: String,
@@ -491,9 +516,16 @@ async fn stop_log_stream() -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             kubectl,
             dashboard::get_dashboard_config,
+            dashboard::check_config_exists,
+            dashboard::get_kube_contexts,
+            dashboard::get_namespaces_for_context,
+            dashboard::get_kubby_config_path,
+            dashboard::create_kubby_config,
+            open_file_in_editor,
             get_resource_columns,
             get_resource_types,
             get_resource_detail,
