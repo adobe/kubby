@@ -14,6 +14,8 @@ interface ButtonProps {
   className?: string
   /** Tab index (-1 to exclude from tab order) */
   tabIndex?: number
+  /** Tooltip to show on mouse over - uses HTML title property */
+  tooltip?: string
 }
 
 export function Button({
@@ -23,6 +25,7 @@ export function Button({
   disabled = false,
   className = '',
   tabIndex = -1,
+  tooltip = undefined
 }: ButtonProps) {
   return (
     <button 
@@ -30,6 +33,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       tabIndex={tabIndex}
+      title={tooltip}
     >
       <span class={classes.shortcutLabel}>{label}</span>
       <span class={classes.shortcutKey}>{formatShortcut(shortcut)}</span>
