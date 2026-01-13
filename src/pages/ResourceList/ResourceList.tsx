@@ -208,7 +208,20 @@ export function ResourceList({
 
   // Run modal state
   const [isRunModalOpen, setIsRunModalOpen] = useState(false)
-  const runCommands = dashboardConfig.run_commands ?? []
+  const allRunCommands = dashboardConfig.run_commands ?? []
+  
+  // Filter run commands to only those applicable to the current resource type
+  const runCommands = useMemo(() => {
+    const normalizedType = resourceType.toLowerCase()
+    return allRunCommands.filter(cmd => {
+      // If resources is not specified or empty, command applies to all resources
+      if (!cmd.resources || cmd.resources.length === 0) {
+        return true
+      }
+      // Check if current resource type matches any in the list (case-insensitive)
+      return cmd.resources.some(r => r.toLowerCase() === normalizedType || r.toLowerCase() + 's' === normalizedType || r.toLowerCase() === normalizedType + 's')
+    })
+  }, [allRunCommands, resourceType])
   const hasRunCommands = runCommands.length > 0
 
   // Delete confirmation state

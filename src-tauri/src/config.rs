@@ -12,6 +12,10 @@ const KUBECTL_TIMEOUT_SECS: u64 = 10;
 pub struct RunCommand {
     pub name: String,
     pub command: String,
+    /// Optional list of resource types this command applies to.
+    /// If None or empty, the command applies to all resources.
+    #[serde(default)]
+    pub resources: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -404,8 +408,10 @@ pub fn create_kubby_config(
     yaml.push_str("  run:\n");
     yaml.push_str("    - name: \"Test Network Multitool\"\n");
     yaml.push_str("      command: \"kubectl run test-network-multitool --context $context --namespace $namespace --image=praqma/network-multitool --labels=$labels --restart=Never --command -- sleep infinity\"\n");
+    yaml.push_str("      resources: [\"pod\"]  # Only show this command when viewing pods\n");
     yaml.push_str("    - name: \"Test Curl\"\n");
     yaml.push_str("      command: \"kubectl run test-curl --context $context --namespace $namespace --image=curlimages/curl --labels=$labels --restart=Never --command -- sleep infinity\"\n");
+    yaml.push_str("      resources: [\"pod\"]  # Only show this command when viewing pods\n");
 
     fs::write(&config_path, &yaml)
         .map_err(|e| format!("Failed to write config file: {}", e))?;

@@ -33,6 +33,8 @@ export interface DashboardGroup {
 export interface RunCommand {
   name: string;
   command: string;
+  /** Optional list of resource types this command applies to. If empty/undefined, applies to all. */
+  resources?: string[];
 }
 
 export interface DashboardConfig {
