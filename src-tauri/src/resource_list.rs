@@ -2,10 +2,11 @@ use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
 use serde_json::Value;
+use serde_json_path::JsonPath;
 
 const KUBECTL_TIMEOUT_SECS: u64 = 5;
 
-use crate::{ResourceColumnConfig, ResourceItem, ResourceListResponse, LabelSelector};
+use crate::{ResourceColumnConfig, ResourceItem, ResourceListResponse, LabelSelector, ColumnType, ColumnConfig};
 use crate::resource_columns;
 
 fn format_age(timestamp: &str) -> String {
@@ -53,186 +54,149 @@ fn format_age(timestamp: &str) -> String {
     }
 }
 
-fn extract_timestamp(obj: &Value, json_path: &str) -> Option<String> {
-    if obj.is_null() {
-        return None;
-    }
-    
-    // Remove leading dot
-    let path = if json_path.starts_with('.') {
-        &json_path[1..]
-    } else {
-        json_path
-    };
-    
-    let parts: Vec<&str> = path.split('.').collect();
-    let mut current = obj;
-    
-    for part in parts {
-        if current.is_null() {
-            return None;
+// Format a single value according to its type
+fn format_value_by_type(value: &Value, column_type: &ColumnType) -> String {
+    match column_type {
+        ColumnType::Duration => {
+            // Parse as datetime and format as relative age
+            if let Some(timestamp) = value.as_str() {
+                format_age(timestamp)
+            } else {
+                "<none>".to_string()
+            }
         }
-        
-        current = match current.get(part) {
-            Some(val) => val,
-            None => return None,
-        };
-    }
-    
-    if current.is_null() {
-        return None;
-    }
-    
-    // Return the timestamp as a string, preserving RFC3339 format
-    if let Some(s) = current.as_str() {
-        Some(s.to_string())
-    } else {
-        None
+        ColumnType::Datetime => {
+            // Render as RFC3339 datetime string
+            if let Some(s) = value.as_str() {
+                s.to_string()
+            } else {
+                "<none>".to_string()
+            }
+        }
+        ColumnType::Bool => {
+            if let Some(b) = value.as_bool() {
+                if b { "True".to_string() } else { "False".to_string() }
+            } else {
+                "<none>".to_string()
+            }
+        }
+        ColumnType::Number => {
+            if let Some(n) = value.as_f64() {
+                // Format as integer if it's a whole number
+                if n.fract() == 0.0 {
+                    (n as i64).to_string()
+                } else {
+                    n.to_string()
+                }
+            } else if let Some(n) = value.as_i64() {
+                n.to_string()
+            } else if let Some(n) = value.as_u64() {
+                n.to_string()
+            } else {
+                "<none>".to_string()
+            }
+        }
+        ColumnType::Text => {
+            if value.is_null() {
+                "<none>".to_string()
+            } else if let Some(s) = value.as_str() {
+                s.to_string()
+            } else if value.is_array() {
+                value.as_array().unwrap().len().to_string()
+            } else if value.is_object() {
+                value.as_object().unwrap().len().to_string()
+            } else {
+                value.to_string().trim_matches('"').to_string()
+            }
+        }
     }
 }
 
-fn extract_value(obj: &Value, json_path: &str) -> String {
-    if obj.is_null() {
-        return "<none>".to_string();
-    }
+// Evaluate a single JSONPath expression and return formatted string
+fn evaluate_jsonpath(item: &Value, json_path: &str, column_type: &ColumnType) -> Result<String, String> {
+    // Parse the JSONPath expression
+    let path = JsonPath::parse(json_path)
+        .map_err(|e| format!("Invalid JSONPath '{}': {}", json_path, e))?;
     
-    // Handle special composite paths like ".status.readyReplicas/.spec.replicas"
-    if json_path.contains('/') {
-        let parts: Vec<&str> = json_path.split('/').collect();
-        if parts.len() == 2 {
-            let numerator = extract_value(obj, parts[0]);
-            let denominator = extract_value(obj, parts[1]);
-            return format!("{}/{}", numerator, denominator);
-        }
-    }
+    // Query the item
+    let nodes = path.query(item).all();
     
-    // Remove leading dot
-    let path = if json_path.starts_with('.') {
-        &json_path[1..]
+    // Format based on number of matches
+    if nodes.is_empty() {
+        Ok("<none>".to_string())
+    } else if nodes.len() == 1 {
+        Ok(format_value_by_type(nodes[0], column_type))
     } else {
-        json_path
-    };
-    
-    let parts: Vec<&str> = path.split('.').collect();
-    let mut current = obj;
-    
-    for part in parts {
-        if current.is_null() {
-            return "<none>".to_string();
-        }
+        // Multiple matches - decide what to do based on what we selected
         
-        // Handle array access like [0] or [*] or [-1]
-        if let Some(bracket_start) = part.find('[') {
-            if let Some(bracket_end) = part.find(']') {
-                let key = &part[..bracket_start];
-                let index_str = &part[bracket_start + 1..bracket_end];
-                
-                current = match current.get(key) {
-                    Some(val) => val,
-                    None => return "<none>".to_string(),
-                };
-                
-                if !current.is_array() {
-                    return "<none>".to_string();
-                }
-                
-                let arr = current.as_array().unwrap();
-                
-                if index_str == "*" {
-                    // Return all array values joined
-                    let values: Vec<String> = arr.iter().map(|item| {
-                        if item.is_object() {
-                            // For ports, format nicely
-                            if let Some(port) = item.get("port") {
-                                let port_str = port.as_u64().map(|p| p.to_string())
-                                    .unwrap_or_else(|| port.to_string());
-                                let target_port = item.get("targetPort")
-                                    .map(|tp| format!(":{}", tp))
-                                    .unwrap_or_default();
-                                let protocol = item.get("protocol")
-                                    .and_then(|p| p.as_str())
-                                    .map(|p| format!("/{}", p))
-                                    .unwrap_or_default();
-                                return format!("{}{}{}", port_str, target_port, protocol);
-                            }
-                            serde_json::to_string(item).unwrap_or_else(|_| "<none>".to_string())
-                        } else {
-                            item.to_string()
-                        }
-                    }).collect();
-                    return values.join(",");
-                } else if index_str == "-1" {
-                    current = arr.last().unwrap_or(&Value::Null);
-                } else if let Ok(index) = index_str.parse::<usize>() {
-                    current = arr.get(index).unwrap_or(&Value::Null);
-                } else {
-                    return "<none>".to_string();
-                }
+        // Check if we're selecting objects/arrays vs primitives
+        let first_is_primitive = nodes[0].is_null() 
+            || nodes[0].is_boolean() 
+            || nodes[0].is_number() 
+            || nodes[0].is_string();
+        
+        if !first_is_primitive {
+            // Selecting objects/arrays → COUNT them (e.g., containers, pods)
+            Ok(nodes.len().to_string())
+        } else if matches!(column_type, ColumnType::Number) {
+            // Selecting primitive numbers → SUM them (e.g., restart counts)
+            let sum: f64 = nodes
+                .iter()
+                .filter_map(|node| node.as_f64())
+                .sum();
+            // Format as integer if it's a whole number
+            if sum.fract() == 0.0 {
+                Ok((sum as i64).to_string())
             } else {
-                return "<none>".to_string();
-            }
-        } else if part.contains("['") && part.contains("']") {
-            // Handle label-style access like labels['node-role.kubernetes.io/']
-            if let Some(quote_start) = part.find("['") {
-                if let Some(quote_end) = part.find("']") {
-                    let key = &part[..quote_start];
-                    let label_prefix = &part[quote_start + 2..quote_end];
-                    
-                    current = match current.get(key) {
-                        Some(val) => val,
-                        None => return "<none>".to_string(),
-                    };
-                    
-                    if let Some(obj) = current.as_object() {
-                        let matching_keys: Vec<String> = obj.keys()
-                            .filter(|k| k.starts_with(label_prefix))
-                            .map(|k| k.replace(label_prefix, ""))
-                            .map(|k| if k.is_empty() { "master".to_string() } else { k })
-                            .collect();
-                        
-                        if matching_keys.is_empty() {
-                            return "<none>".to_string();
-                        } else {
-                            return matching_keys.join(",");
-                        }
-                    } else {
-                        return "<none>".to_string();
-                    }
-                }
+                Ok(sum.to_string())
             }
         } else {
-            current = match current.get(part) {
-                Some(val) => val,
-                None => return "<none>".to_string(),
-            };
+            // Selecting other primitives → JOIN them (e.g., ports, IPs, hostnames)
+            let formatted: Vec<String> = nodes
+                .iter()
+                .map(|node| format_value_by_type(node, column_type))
+                .collect();
+            Ok(formatted.join(","))
         }
     }
+}
+
+// Evaluate column config and format the result
+fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<String, String> {
+    let column_type = config.column_type.as_ref().unwrap_or(&ColumnType::Text);
     
-    if current.is_null() {
-        return "<none>".to_string();
+    // Evaluate each JSONPath
+    let mut results: Vec<String> = Vec::new();
+    for json_path in &config.json_paths {
+        let result = evaluate_jsonpath(item, json_path, column_type)?;
+        results.push(result);
     }
     
-    // Format different types
-    if current.is_array() {
-        return current.as_array().unwrap().len().to_string();
+    // Apply format if present
+    if let Some(format_str) = &config.format {
+        // Simple placeholder substitution: {0}, {1}, etc.
+        let mut formatted = format_str.clone();
+        for (i, result) in results.iter().enumerate() {
+            formatted = formatted.replace(&format!("{{{}}}", i), result);
+        }
+        
+        // Check if any placeholders remain (out of bounds)
+        if formatted.contains('{') && formatted.contains('}') {
+            return Err(format!("Format string references missing index"));
+        }
+        
+        Ok(formatted)
+    } else {
+        // No format: join with space
+        Ok(results.join(" "))
     }
-    
-    if current.is_object() {
-        return current.as_object().unwrap().len().to_string();
-    }
-    
-    if let Some(b) = current.as_bool() {
-        return if b { "True".to_string() } else { "False".to_string() };
-    }
-    
-    current.to_string()
 }
 
 fn parse_kubectl_json(
     stdout: &str,
     config: &ResourceColumnConfig,
-    resource_type: &str,
-) -> Result<Vec<ResourceItem>, String> {
+    _resource_type: &str,
+) -> Result<(Vec<ResourceItem>, Option<String>), String> {
     let data: Value = serde_json::from_str(stdout)
         .map_err(|e| format!("Failed to parse kubectl JSON output: {}", e))?;
     
@@ -240,6 +204,52 @@ fn parse_kubectl_json(
         Some(Value::Array(arr)) => arr.iter().collect(),
         _ => vec![&data],
     };
+    
+    // Pre-validate all column configs to detect errors early
+    let mut validation_error: Option<String> = None;
+    for col in &config.columns {
+        // Validate each JSONPath can be parsed
+        for json_path in &col.json_paths {
+            if let Err(e) = JsonPath::parse(json_path) {
+                validation_error = Some(format!("Column '{}': invalid JSONPath '{}': {}", col.name, json_path, e));
+                break;
+            }
+        }
+        
+        // Validate format string if present
+        if let Some(format_str) = &col.format {
+            // Find max placeholder index
+            let mut max_index = 0;
+            let mut i = 0;
+            let chars: Vec<char> = format_str.chars().collect();
+            while i < chars.len() {
+                if chars[i] == '{' && i + 1 < chars.len() {
+                    let mut j = i + 1;
+                    while j < chars.len() && chars[j].is_ascii_digit() {
+                        j += 1;
+                    }
+                    if j < chars.len() && chars[j] == '}' {
+                        if let Ok(idx) = chars[i+1..j].iter().collect::<String>().parse::<usize>() {
+                            max_index = max_index.max(idx);
+                        }
+                    }
+                    i = j;
+                } else {
+                    i += 1;
+                }
+            }
+            
+            if max_index >= col.json_paths.len() {
+                validation_error = Some(format!("Column '{}': format references {{{}}} but only {} jsonPaths provided", 
+                    col.name, max_index, col.json_paths.len()));
+                break;
+            }
+        }
+        
+        if validation_error.is_some() {
+            break;
+        }
+    }
     
     let mut result = Vec::new();
     
@@ -267,51 +277,22 @@ fn parse_kubectl_json(
         let mut columns = std::collections::HashMap::new();
         
         for col in &config.columns {
-            let mut value = if col.name == "AGE" || col.name == "LAST SCHEDULE" {
-                // Extract timestamp directly for AGE columns to preserve RFC3339 format
-                extract_timestamp(item, &col.json_path)
-                    .map(|ts| format_age(&ts))
-                    .unwrap_or_else(|| "<unknown>".to_string())
+            let value = if validation_error.is_some() {
+                // If there's a validation error, show <error> in cells
+                "<error>".to_string()
             } else {
-                extract_value(item, &col.json_path)
+                // Evaluate the column using JSONPath
+                match evaluate_column(item, col) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        // Set error on first occurrence
+                        if validation_error.is_none() {
+                            validation_error = Some(format!("Column '{}': {}", col.name, e));
+                        }
+                        "<error>".to_string()
+                    }
+                }
             };
-            
-            // Special handling for READY column in pods
-            if col.name == "READY" && resource_type == "pods" {
-                if let Some(statuses) = item.get("status")
-                    .and_then(|s| s.get("containerStatuses"))
-                    .and_then(|cs| cs.as_array())
-                {
-                    let ready = statuses.iter()
-                        .filter(|s| s.get("ready").and_then(|r| r.as_bool()).unwrap_or(false))
-                        .count();
-                    let total = statuses.len();
-                    value = format!("{}/{}", ready, total);
-                }
-            }
-            
-            // Special handling for RESTARTS
-            if col.name == "RESTARTS" {
-                if let Some(statuses) = item.get("status")
-                    .and_then(|s| s.get("containerStatuses"))
-                    .and_then(|cs| cs.as_array())
-                {
-                    let restarts: u64 = statuses.iter()
-                        .map(|s| s.get("restartCount").and_then(|r| r.as_u64()).unwrap_or(0))
-                        .sum();
-                    value = restarts.to_string();
-                }
-            }
-            
-            // Special handling for PORTS in ingress
-            if col.name == "PORTS" && resource_type == "ingresses" {
-                let has_tls = item.get("spec")
-                    .and_then(|s| s.get("tls"))
-                    .and_then(|t| t.as_array())
-                    .map(|arr| !arr.is_empty())
-                    .unwrap_or(false);
-                value = if has_tls { "80, 443".to_string() } else { "80".to_string() };
-            }
             
             columns.insert(col.name.clone(), value);
         }
@@ -319,7 +300,7 @@ fn parse_kubectl_json(
         result.push(ResourceItem { name, columns, labels });
     }
     
-    Ok(result)
+    Ok((result, validation_error))
 }
 
 #[tauri::command]
@@ -379,11 +360,12 @@ pub async fn get_resources(
     let stdout = String::from_utf8_lossy(&output.stdout);
     
     // Parse and process resources
-    let items = parse_kubectl_json(&stdout, &column_config, &resource_type)?;
+    let (items, evaluation_error) = parse_kubectl_json(&stdout, &column_config, &resource_type)?;
     
     Ok(ResourceListResponse {
         columns: column_config.columns,
         items,
+        evaluation_error,
     })
 }
 
@@ -454,23 +436,33 @@ pub async fn get_pod_containers(
     let columns = vec![
         crate::ColumnConfig {
             name: "IMAGE".to_string(),
-            json_path: ".image".to_string(),
+            json_paths: vec![".image".to_string()],
+            format: None,
+            column_type: None,
         },
         crate::ColumnConfig {
             name: "READY".to_string(),
-            json_path: ".ready".to_string(),
+            json_paths: vec![".ready".to_string()],
+            format: None,
+            column_type: None,
         },
         crate::ColumnConfig {
             name: "STATE".to_string(),
-            json_path: ".state".to_string(),
+            json_paths: vec![".state".to_string()],
+            format: None,
+            column_type: None,
         },
         crate::ColumnConfig {
             name: "RESTARTS".to_string(),
-            json_path: ".restartCount".to_string(),
+            json_paths: vec![".restartCount".to_string()],
+            format: None,
+            column_type: None,
         },
         crate::ColumnConfig {
             name: "PORTS".to_string(),
-            json_path: ".ports".to_string(),
+            json_paths: vec![".ports".to_string()],
+            format: None,
+            column_type: None,
         },
     ];
     
@@ -554,5 +546,6 @@ pub async fn get_pod_containers(
     Ok(ResourceListResponse {
         columns,
         items,
+        evaluation_error: None,
     })
 }

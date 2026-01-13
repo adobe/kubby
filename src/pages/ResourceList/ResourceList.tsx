@@ -171,6 +171,7 @@ export function ResourceList({
     cacheTimestamp,
     isRefreshing,
     error,
+    evaluationError,
     refresh,
     isStale,
   } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName})
@@ -577,6 +578,7 @@ export function ResourceList({
 
         <Alert type="error" label="Edit Failed" message={editError} />
         <Alert type="error" label="Alert" message={error} />
+        <Alert type="error" label="Column Evaluation Error" message={evaluationError} />
 
         {!error && (
           <div class={classes.tableWrapper}>

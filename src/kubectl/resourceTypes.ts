@@ -1,8 +1,12 @@
 // Shared types for resource data
 
+export type ColumnType = 'text' | 'number' | 'bool' | 'datetime' | 'duration';
+
 export interface ColumnConfig {
   name: string;
-  jsonPath: string;
+  jsonPaths: string[];
+  format?: string;
+  type?: ColumnType;
 }
 
 export interface ResourceItem {
@@ -14,6 +18,7 @@ export interface ResourceItem {
 export interface ResourceListResponse {
   columns: ColumnConfig[];
   items: ResourceItem[];
+  evaluationError?: string;
 }
 
 export interface LabelSelector {

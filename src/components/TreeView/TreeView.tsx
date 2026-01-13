@@ -189,7 +189,7 @@ function TreeViewInternal({
       <div class={classes.arrayContainer}>
         {data.map((item, index) => (
           <div key={index} class={classes.arrayItem}>
-            <span class={classes.arrayIndex}>[{index}]</span>
+            <span class={classes.arrayIndex}>[{index + 1}]</span>
             <TreeViewInternal
               data={item}
               level={level + 1}

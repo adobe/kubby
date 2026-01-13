@@ -13,6 +13,7 @@ export interface ResourceState {
   cacheTimestamp: number | null;
   isRefreshing: boolean;
   error: string | null;
+  evaluationError: string | null;
   resourcesCacheKey: string; // Track which cache key these resources belong to
 }
 
@@ -67,6 +68,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         cacheTimestamp: cached.timestamp,
         isRefreshing: true, // Will start refreshing immediately
         error: null,
+        evaluationError: cached.data.evaluationError || null,
         resourcesCacheKey: cacheKey,
       }
     }
@@ -76,6 +78,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
       cacheTimestamp: null,
       isRefreshing: true, // Loading state
       error: null,
+      evaluationError: null,
       resourcesCacheKey: cacheKey,
     }
   })
@@ -94,6 +97,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
       cacheTimestamp: cached?.timestamp || null,
       isRefreshing: true,
       error: null,
+      evaluationError: cached?.data?.evaluationError || null,
       resourcesCacheKey: cacheKey,
     })
   }, [cacheKey])
@@ -137,6 +141,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         cacheTimestamp: Date.now(),
         isRefreshing: false,
         error: null,
+        evaluationError: result.evaluationError || null,
         resourcesCacheKey: fetchCacheKey,
       }))
     } catch (e) {

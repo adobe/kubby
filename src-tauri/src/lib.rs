@@ -35,12 +35,33 @@ pub struct LabelSelector {
     pub value: String,
 }
 
+// Column type for formatting
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum ColumnType {
+    Text,
+    Number,
+    Bool,
+    Datetime,
+    Duration,
+}
+
+impl Default for ColumnType {
+    fn default() -> Self {
+        ColumnType::Text
+    }
+}
+
 // Frontend-facing column config
 #[derive(Debug, Serialize)]
 pub struct ColumnConfig {
     name: String,
-    #[serde(rename = "jsonPath")]
-    json_path: String,
+    #[serde(rename = "jsonPaths")]
+    json_paths: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<String>,
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    column_type: Option<ColumnType>,
 }
 
 #[derive(Debug, Serialize)]
@@ -61,6 +82,8 @@ pub struct ResourceItem {
 pub struct ResourceListResponse {
     columns: Vec<ColumnConfig>,
     items: Vec<ResourceItem>,
+    #[serde(rename = "evaluationError", skip_serializing_if = "Option::is_none")]
+    evaluation_error: Option<String>,
 }
 
 
