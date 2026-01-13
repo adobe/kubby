@@ -23,7 +23,7 @@ pub struct ResourcesConfig {
 // Dashboard config types
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DashboardConfig {
-    pub dashboard: Dashboard,
+    pub contexts: Dashboard,
     #[serde(default)]
     pub resources: Option<ResourcesConfig>,
 }
@@ -110,7 +110,7 @@ impl DashboardConfig {
     pub fn normalize(&self) -> NormalizedDashboardConfig {
         NormalizedDashboardConfig {
             groups: self
-                .dashboard
+                .contexts
                 .groups
                 .iter()
                 .map(|g| NormalizedDashboardGroup {
@@ -349,7 +349,7 @@ pub fn create_kubby_config(
     yaml.push_str("# Kubby Dashboard Configuration\n");
     yaml.push_str("# This file defines which Kubernetes contexts and namespaces appear on the dashboard.\n");
     yaml.push_str("\n");
-    yaml.push_str("dashboard:\n");
+    yaml.push_str("contexts:\n");
     yaml.push_str("  # Groups organize contexts and namespaces into logical sections on the dashboard.\n");
     yaml.push_str("  # You can have multiple groups (e.g., \"Production\", \"Staging\", \"Development\").\n");
     yaml.push_str("  groups:\n");

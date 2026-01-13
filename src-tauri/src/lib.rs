@@ -1,4 +1,4 @@
-mod dashboard;
+mod config;
 mod resource_columns;
 mod resource_list;
 
@@ -266,6 +266,44 @@ fn open_file_in_editor(path: String) -> Result<(), String> {
         .map_err(|e| format!("Failed to open editor '{}': {}", editor, e))?;
     
     Ok(())
+}
+
+#[tauri::command]
+async fn delete_resource(
+    resource_type: String,
+    resource_name: String,
+    context: String,
+    namespace: String,
+) -> Result<String, String> {
+    // Build kubectl delete command
+    let args = vec![
+        "delete".to_string(),
+        resource_type.clone(),
+        resource_name.clone(),
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+    ];
+    
+    // Execute kubectl delete command asynchronously with timeout
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl delete timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl delete: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to delete resource: {}", stderr));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.trim().to_string())
 }
 
 #[tauri::command]
@@ -601,17 +639,18 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             kubectl,
-            dashboard::get_dashboard_config,
-            dashboard::check_config_exists,
-            dashboard::get_kube_contexts,
-            dashboard::get_namespaces_for_context,
-            dashboard::get_kubby_config_path,
-            dashboard::create_kubby_config,
+            config::get_dashboard_config,
+            config::check_config_exists,
+            config::get_kube_contexts,
+            config::get_namespaces_for_context,
+            config::get_kubby_config_path,
+            config::create_kubby_config,
             open_file_in_editor,
             get_resource_columns,
             get_resource_types,
             get_resource_detail,
             edit_resource,
+            delete_resource,
             resource_list::get_resources,
             resource_list::get_pod_containers,
             start_log_stream,
