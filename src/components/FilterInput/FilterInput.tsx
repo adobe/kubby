@@ -20,6 +20,8 @@ export function FilterInput({
   inputRef,
 }: FilterInputProps) {
   const [placeholder, setPlaceholder] = useState<string>('Type / to filter...')
+  const [isFocused, setIsFocused] = useState(false)
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -27,11 +29,26 @@ export function FilterInput({
       onSubmit?.()
     }
     if (e.key === 'Escape') {
-      // Blur the input so keyboard navigation works on the list
-      // The global Esc handler will clear the filter or go back
+      e.stopPropagation() // Prevent global handler from calling onBack
+      if (value) {
+        onClear()
+      }
       ;(e.target as HTMLInputElement).blur()
     }
   }
+
+  const handleFocus = () => {
+    setIsFocused(true)
+    setPlaceholder('Type to filter')
+  }
+
+  const handleBlur = () => {
+    setIsFocused(false)
+    setPlaceholder('Type / to filter...')
+  }
+
+  // Show button when focused (as Esc hint) or when there's a value (as clear button)
+  const showButton = isFocused || value
 
   return (
     <span class={classes.FilterInput}>
@@ -41,16 +58,18 @@ export function FilterInput({
         autocorrect="off"
         autocapitalize="off"
         autocomplete="off"
+        spellcheck={false}
+        data-form-type="other"
         class={classes.input}
         value={value}
         onInput={(e) => onChange((e.target as HTMLInputElement).value)}
         onKeyDown={handleKeyDown}
-        onFocus={() => setPlaceholder('Type to filter')}
-        onBlur={() => setPlaceholder('Type / to filter...')}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder={placeholder}
         tabIndex={tabIndex}
       />
-      {value && (
+      {showButton && (
         <button
           className={classes.clearButton}
           onClick={(e) => {
@@ -60,7 +79,7 @@ export function FilterInput({
           tabIndex={tabIndex !== undefined ? tabIndex + 1 : undefined}
           aria-label="Clear filter"
         >
-          <span className={classes.clearIcon}>×</span>
+          {value && <span className={classes.clearIcon}>×</span>}
           <span className={classes.shortcutKey}>Esc</span>
         </button>
       )}

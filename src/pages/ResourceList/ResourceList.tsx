@@ -350,18 +350,14 @@ export function ResourceList({
       const target = e.target as HTMLElement
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
-      // Escape - clear filter if set, otherwise go back (but not if any combobox is open - let it close first)
+      // Escape - go back (but not if any combobox is open - let it close first)
+      // Note: FilterInput handles its own Escape (blur/clear) and stops propagation
       if (e.key === 'Escape') {
         if (isAnyComboboxOpen) {
           // Let the combobox handle Escape to close itself
           return
         }
         e.preventDefault()
-        // If filter text is set, clear it first
-        if (filterText) {
-          setFilterText('')
-          return
-        }
         onBack()
         return
       }
@@ -491,7 +487,7 @@ export function ResourceList({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit, filterText])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit])
 
   return (
     <div class={classes.ResourceList}>
