@@ -56,9 +56,10 @@ function parseContextName(contextName: string): ParsedContext {
   };
 }
 
-function findCommonPrefix(strings: string[], minCount: number = 5): string {
-  if (strings.length < minCount) return "";
+function findCommonPrefix(strings: string[]): string {
+  if (strings.length < 2) return "";
   
+  // Build a map of all prefixes (at separator boundaries) and their occurrence counts
   const prefixCounts = new Map<string, number>();
   
   for (const str of strings) {
@@ -72,21 +73,25 @@ function findCommonPrefix(strings: string[], minCount: number = 5): string {
     }
   }
   
-  let bestPrefix = "";
-  for (const [prefix, count] of prefixCounts) {
-    if (count >= minCount && prefix.length > bestPrefix.length) {
-      bestPrefix = prefix;
+  // Try to find the longest common prefix, starting with one shared by all strings,
+  // then progressively lowering the threshold until we find something
+  for (let threshold = strings.length; threshold >= 2; threshold--) {
+    let bestPrefix = "";
+    for (const [prefix, count] of prefixCounts) {
+      if (count >= threshold && prefix.length > bestPrefix.length) {
+        bestPrefix = prefix;
+      }
+    }
+    if (bestPrefix) {
+      return bestPrefix;
     }
   }
   
-  return bestPrefix;
+  return "";
 }
 
-function getNamespacePrefix(group: DashboardGroup): string {
-  const allNamespaces = group.namespace_groups.flatMap((ng) =>
-    ng.namespaces.map((ns) => ns.name)
-  );
-  return findCommonPrefix(allNamespaces);
+function getNamespacePrefixForGroup(namespaces: NamespaceItem[]): string {
+  return findCommonPrefix(namespaces.map((ns) => ns.name));
 }
 
 function handleCellKeyDown(e: KeyboardEvent, tableRef: HTMLTableElement | null) {
@@ -465,7 +470,6 @@ interface DashboardTableProps {
 function DashboardTable({ group, filterWords, onCellClick }: DashboardTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const hasNamespaceGroups = group.namespace_groups.some((ng) => ng.name !== null);
-  const namespacePrefix = getNamespacePrefix(group);
 
   const { filtered: filteredContextGroups } = filterContextGroups(group.context_groups, filterWords);
   const { filtered: filteredNamespaceGroups } = filterNamespaces(group.namespace_groups, filterWords);
@@ -547,6 +551,7 @@ function DashboardTable({ group, filterWords, onCellClick }: DashboardTableProps
               if (ng.namespaces.length === 0) return null;
               const startRowIndex = runningRowIndex;
               runningRowIndex += ng.namespaces.length;
+              const namespacePrefix = getNamespacePrefixForGroup(ng.namespaces);
               return (
                 <NamespaceGroupRows
                   key={ng.name ?? ngIndex}
