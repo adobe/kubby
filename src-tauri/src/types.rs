@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 /// Timeout for kubectl commands in seconds
-pub const KUBECTL_TIMEOUT_SECS: u64 = 5;
+pub const KUBECTL_TIMEOUT_SECS: u64 = 10;
+
+/// Timeout for kubectl delete commands in seconds (longer because delete can take time)
+pub const KUBECTL_DELETE_TIMEOUT_SECS: u64 = 30;
 
 /// Label selector for filtering resources
 #[derive(Debug, Serialize, Deserialize, Clone)]

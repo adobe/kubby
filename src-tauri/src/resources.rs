@@ -1,7 +1,7 @@
 use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
-use crate::types::KUBECTL_TIMEOUT_SECS;
+use crate::types::{KUBECTL_TIMEOUT_SECS, KUBECTL_DELETE_TIMEOUT_SECS};
 
 #[tauri::command]
 pub async fn get_resource_types(context: String) -> Result<Vec<String>, String> {
@@ -111,6 +111,8 @@ pub async fn delete_resource(
     namespace: String,
 ) -> Result<String, String> {
     // Build kubectl delete command
+    // Use --wait=false to return immediately after delete is initiated
+    // (otherwise kubectl waits for finalizers which can take a long time)
     let args = vec![
         "delete".to_string(),
         resource_type.clone(),
@@ -119,17 +121,19 @@ pub async fn delete_resource(
         context,
         "-n".to_string(),
         namespace,
+        "--wait=false".to_string(),
     ];
     
     // Execute kubectl delete command asynchronously with timeout
+    // Delete operations can take longer, so we use a longer timeout
     let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Duration::from_secs(KUBECTL_DELETE_TIMEOUT_SECS),
         Command::new("kubectl")
             .args(&args)
             .output()
     )
     .await
-    .map_err(|_| format!("kubectl delete timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|_| format!("kubectl delete timed out after {}s", KUBECTL_DELETE_TIMEOUT_SECS))?
     .map_err(|e| format!("Failed to execute kubectl delete: {}", e))?;
     
     if !output.status.success() {

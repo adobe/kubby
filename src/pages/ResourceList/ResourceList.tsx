@@ -17,7 +17,7 @@ import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
 import {getResourceNameFilter, toLabelSelectors} from '../../kubectl/filterTypes.ts'
 import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
 import {RunModal} from '../../components/RunModal/RunModal.tsx'
-import {Modal} from '../../components/Modal/Modal.tsx'
+import {ConfirmModal} from '../../components/ConfirmModal/ConfirmModal.tsx'
 import type {ActionCode} from './resourceActions.ts'
 import {executeShell, executeEdit, executeDelete} from './resourceActions.ts'
 
@@ -478,6 +478,7 @@ export function ResourceList({
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
       // Escape - go back (but not if any combobox is open - let it close first)
+      // Note: Modals capture all keyboard events, so this won't run when a modal is open
       // Note: FilterInput handles its own Escape (blur/clear) and stops propagation
       if (e.key === 'Escape') {
         if (isAnyComboboxOpen) {
@@ -565,6 +566,7 @@ export function ResourceList({
         }
 
         // Enter activates selected resource
+        // Note: Modals capture all keyboard events, so this won't run when a modal is open
         if (e.key === 'Enter' && selectedIndex >= 0) {
           e.preventDefault()
           handleRowActivate(selectedIndex)
@@ -808,50 +810,22 @@ export function ResourceList({
         labels={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : []}
       />
 
-      <Modal
+      <ConfirmModal
         isOpen={deleteConfirmation !== null}
         onClose={() => {
-          if (!isDeleting) {
-            setDeleteConfirmation(null)
-            setDeleteError(null)
-          }
+          setDeleteConfirmation(null)
+          setDeleteError(null)
         }}
+        onConfirm={handleConfirmDelete}
         title="Delete Resource"
-      >
-        <div class={classes.deleteModal}>
-          <p class={classes.deleteMessage}>
-            Are you sure you want to delete <strong>{deleteConfirmation?.resourceName}</strong>?
-          </p>
-          <p class={classes.deleteWarning}>
-            This action cannot be undone.
-          </p>
-          {deleteError && (
-            <div class={classes.deleteError}>
-              {deleteError}
-            </div>
-          )}
-          <div class={classes.deleteActions}>
-            <Button
-              label="Cancel"
-              shortcut="Esc"
-              onClick={() => {
-                setDeleteConfirmation(null)
-                setDeleteError(null)
-              }}
-              disabled={isDeleting}
-              tabIndex={0}
-            />
-            <Button
-              label={isDeleting ? 'Deleting...' : 'Delete'}
-              shortcut="Enter"
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
-              tabIndex={0}
-              className={classes.deleteButton}
-            />
-          </div>
-        </div>
-      </Modal>
+        message={<>Are you sure you want to delete <strong>{deleteConfirmation?.resourceName}</strong>?</>}
+        warningText="This action cannot be undone."
+        confirmLabel="Delete"
+        confirmingLabel="Deleting..."
+        isConfirming={isDeleting}
+        error={deleteError}
+        destructive
+      />
     </div>
   )
 }

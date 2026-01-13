@@ -11,55 +11,75 @@ interface ModalProps {
   title: string
   /** Content to render inside the modal */
   children: ComponentChildren
+  /** Optional keyboard event handler for custom key handling (called after Escape/Tab are processed) */
+  onKeyDown?: (e: KeyboardEvent) => void
 }
 
 /**
  * Generic modal dialog with transparent overlay background.
  * Supports close button, Escape key to dismiss, and focus trap.
+ * 
+ * Important: When open, this modal captures ALL keyboard events in the capture phase
+ * to prevent them from reaching global handlers. This ensures modal isolation.
  */
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, onKeyDown }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const previousActiveElement = useRef<HTMLElement | null>(null)
 
-  // Handle Escape key to close modal
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+  // Capture ALL keyboard events when modal is open to prevent them from reaching global handlers
+  // This runs in the capture phase (before bubble phase) so it intercepts events first
+  const handleCaptureKeyDown = useCallback((e: KeyboardEvent) => {
+    // Always stop propagation to prevent global handlers from receiving the event
+    e.stopPropagation()
+
+    // Handle Escape to close modal
     if (e.key === 'Escape') {
       e.preventDefault()
-      e.stopPropagation()
       onClose()
+      return
     }
-  }, [onClose])
 
-  // Focus trap - keep focus within modal
-  const handleFocusTrap = useCallback((e: KeyboardEvent) => {
-    if (e.key !== 'Tab' || !modalRef.current) return
+    // Handle Tab for focus trap
+    if (e.key === 'Tab' && modalRef.current) {
+      const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
 
-    const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-    const firstElement = focusableElements[0]
-    const lastElement = focusableElements[focusableElements.length - 1]
-
-    if (e.shiftKey) {
-      if (document.activeElement === firstElement) {
-        e.preventDefault()
-        lastElement?.focus()
-      }
-    } else {
-      if (document.activeElement === lastElement) {
+      // If focus is outside the modal, force it back in
+      if (!modalRef.current.contains(document.activeElement)) {
         e.preventDefault()
         firstElement?.focus()
+        return
       }
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault()
+          lastElement?.focus()
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault()
+          firstElement?.focus()
+        }
+      }
+      return
     }
-  }, [])
+
+    // Call custom key handler for other keys (e.g., Enter for ConfirmModal)
+    onKeyDown?.(e)
+  }, [onClose, onKeyDown])
 
   // Store previous focus and focus modal on open
   useEffect(() => {
     if (isOpen) {
       previousActiveElement.current = document.activeElement as HTMLElement
-      // Focus the first focusable element in the modal
+      // Focus the first focusable element in the content area (not the close button)
       requestAnimationFrame(() => {
-        const firstButton = modalRef.current?.querySelector<HTMLElement>('button')
+        const content = modalRef.current?.querySelector(`.${classes.content}`)
+        const firstButton = content?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
         firstButton?.focus()
       })
     } else if (previousActiveElement.current) {
@@ -69,18 +89,17 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     }
   }, [isOpen])
 
-  // Add keyboard event listeners
+  // Add capture-phase keyboard event listener when modal is open
   useEffect(() => {
     if (!isOpen) return
 
-    document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('keydown', handleFocusTrap)
+    // Use capture phase to intercept events before they reach other handlers
+    document.addEventListener('keydown', handleCaptureKeyDown, { capture: true })
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('keydown', handleFocusTrap)
+      document.removeEventListener('keydown', handleCaptureKeyDown, { capture: true })
     }
-  }, [isOpen, handleKeyDown, handleFocusTrap])
+  }, [isOpen, handleCaptureKeyDown])
 
   if (!isOpen) return null
 
