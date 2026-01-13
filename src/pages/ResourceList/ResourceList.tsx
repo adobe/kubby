@@ -17,8 +17,9 @@ import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
 import {getResourceNameFilter, toLabelSelectors} from '../../kubectl/filterTypes.ts'
 import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
 import {RunModal} from '../../components/RunModal/RunModal.tsx'
+import {Modal} from '../../components/Modal/Modal.tsx'
 import type {ActionCode} from './resourceActions.ts'
-import {executeShell, executeEdit} from './resourceActions.ts'
+import {executeShell, executeEdit, executeDelete} from './resourceActions.ts'
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -210,6 +211,11 @@ export function ResourceList({
   const runCommands = dashboardConfig.run_commands ?? []
   const hasRunCommands = runCommands.length > 0
 
+  // Delete confirmation state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ resourceName: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
   // Handle action from shortcuts bar or keyboard
   const handleAction = useCallback(async (code: ActionCode) => {
     // Actions that don't require a selection
@@ -285,10 +291,15 @@ export function ResourceList({
         break
       }
 
+      case 'delete':
+        // Open delete confirmation modal
+        setDeleteConfirmation({ resourceName: resource.name })
+        setDeleteError(null)
+        break
+
       case 'replica_sets':
       case 'rolling_restart':
       case 'scale':
-      case 'delete':
       case 'port_forward':
       case 'show_port_forward':
         // TODO: Implement these actions
@@ -300,6 +311,34 @@ export function ResourceList({
     parentResourceName, isContainersView, editingResourceName,
     hasRunCommands, onResourceClick, onDescribe, onLogs, refresh
   ])
+
+  // Handle confirmed delete
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteConfirmation) return
+    
+    setIsDeleting(true)
+    setDeleteError(null)
+    
+    try {
+      const result = await executeDelete({
+        context,
+        namespace,
+        resourceType,
+        resourceName: deleteConfirmation.resourceName,
+      })
+      
+      if (result.success) {
+        setDeleteConfirmation(null)
+        refresh()
+      } else {
+        setDeleteError(result.error || 'Failed to delete resource')
+      }
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [deleteConfirmation, context, namespace, resourceType, refresh])
 
   // Reset selection and filter when navigating to a different resource list
   // Use initialSelectedIndex if returning to same node, otherwise start fresh
@@ -569,6 +608,16 @@ export function ResourceList({
           handleAction('run')
           return
         }
+
+        // Ctrl+D - Delete selected resource (not available for containers)
+        if (e.code === 'KeyD' && isControlModifierPressed(e) && selectedIndex >= 0) {
+          const normalizedType = resourceType.toLowerCase()
+          if (normalizedType !== 'containers') {
+            e.preventDefault()
+            handleAction('delete')
+          }
+          return
+        }
       }
     }
 
@@ -745,6 +794,51 @@ export function ResourceList({
         namespace={namespace}
         labels={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : []}
       />
+
+      <Modal
+        isOpen={deleteConfirmation !== null}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteConfirmation(null)
+            setDeleteError(null)
+          }
+        }}
+        title="Delete Resource"
+      >
+        <div class={classes.deleteModal}>
+          <p class={classes.deleteMessage}>
+            Are you sure you want to delete <strong>{deleteConfirmation?.resourceName}</strong>?
+          </p>
+          <p class={classes.deleteWarning}>
+            This action cannot be undone.
+          </p>
+          {deleteError && (
+            <div class={classes.deleteError}>
+              {deleteError}
+            </div>
+          )}
+          <div class={classes.deleteActions}>
+            <Button
+              label="Cancel"
+              shortcut="Esc"
+              onClick={() => {
+                setDeleteConfirmation(null)
+                setDeleteError(null)
+              }}
+              disabled={isDeleting}
+              tabIndex={0}
+            />
+            <Button
+              label={isDeleting ? 'Deleting...' : 'Delete'}
+              shortcut="Enter"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              tabIndex={0}
+              className={classes.deleteButton}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

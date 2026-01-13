@@ -85,6 +85,25 @@ export async function executeEdit(ctx: ActionContext): Promise<ActionResult> {
 }
 
 /**
+ * Delete a resource
+ */
+export async function executeDelete(ctx: ActionContext): Promise<ActionResult> {
+  const { context, namespace, resourceType, resourceName } = ctx
+  
+  try {
+    await invoke('delete_resource', {
+      resourceType,
+      resourceName,
+      context,
+      namespace,
+    })
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/**
  * Check if an action is available for a given resource type
  */
 export function isActionAvailable(action: ActionCode, resourceType: string): boolean {
