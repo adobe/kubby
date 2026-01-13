@@ -432,7 +432,7 @@ export function Dashboard({
 
   return (
     <div class={classes.dashboard}>
-      <div class={classes.body}>
+      <div class={classes.header}>
         <NavigationBar
           navigationStack={[]}
           onNavigateToNode={() => {}}
@@ -443,7 +443,9 @@ export function Dashboard({
           filterInputTabIndex={0}
           onFilterSubmit={handleFilterSubmit}
         />
+      </div>
 
+      <div class={classes.body}>
         <div class={classes.content}>
           {config.groups.map((group) => (
             <DashboardTable 

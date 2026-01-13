@@ -1,5 +1,6 @@
 import type { Ref } from 'preact'
 import classes from './FilterInput.module.scss'
+import {useState} from 'preact/hooks'
 
 interface FilterInputProps {
   value: string;
@@ -8,7 +9,6 @@ interface FilterInputProps {
   onSubmit?: () => void;
   tabIndex?: number;
   inputRef?: Ref<HTMLInputElement>;
-  placeholder?: string;
 }
 
 export function FilterInput({
@@ -18,8 +18,8 @@ export function FilterInput({
   onSubmit,
   tabIndex,
   inputRef,
-  placeholder = '/ to filter...',
 }: FilterInputProps) {
+  const [placeholder, setPlaceholder] = useState<string>('Type / to filter...')
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -38,10 +38,15 @@ export function FilterInput({
       <input
         ref={inputRef}
         type="text"
+        autocorrect="off"
+        autocapitalize="off"
+        autocomplete="off"
         class={classes.input}
         value={value}
         onInput={(e) => onChange((e.target as HTMLInputElement).value)}
         onKeyDown={handleKeyDown}
+        onFocus={() => setPlaceholder('Type to filter')}
+        onBlur={() => setPlaceholder('Type / to filter...')}
         placeholder={placeholder}
         tabIndex={tabIndex}
       />
