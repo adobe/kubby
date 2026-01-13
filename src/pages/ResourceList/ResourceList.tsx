@@ -17,6 +17,8 @@ import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
 import {getResourceNameFilter, toLabelSelectors} from '../../kubectl/filterTypes.ts'
 import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
 import {RunModal} from '../../components/RunModal/RunModal.tsx'
+import type {ActionCode} from './resourceActions.ts'
+import {executeShell, executeEdit} from './resourceActions.ts'
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -208,53 +210,96 @@ export function ResourceList({
   const runCommands = dashboardConfig.run_commands ?? []
   const hasRunCommands = runCommands.length > 0
 
-  // Handle edit resource
-  const handleEdit = useCallback(async () => {
-    if (editingResourceName || selectedIndex < 0 || !resources[selectedIndex]) return
-    
-    const resource = resources[selectedIndex]
-    setEditingResourceName(resource.name)
-    setEditError(null)
-    
-    try {
-      await invoke('edit_resource', {
-        resourceType,
-        resourceName: resource.name,
-        context,
-        namespace,
-      })
-      // On success, refresh the resource data
-      refresh()
-    } catch (e) {
-      setEditError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setEditingResourceName(null)
+  // Handle action from shortcuts bar or keyboard
+  const handleAction = useCallback(async (code: ActionCode) => {
+    // Actions that don't require a selection
+    if (code === 'run') {
+      if (hasRunCommands) {
+        setIsRunModalOpen(true)
+      }
+      return
     }
-  }, [editingResourceName, selectedIndex, resources, resourceType, context, namespace, refresh])
 
-  // Handle shell into pod/container
-  const handleShell = useCallback(async () => {
+    // All other actions require a selection
     if (selectedIndex < 0 || !resources[selectedIndex]) return
     const resource = resources[selectedIndex]
-    
-    // Build kubectl exec command
-    let command: string
-    if (isContainersView && parentResourceName) {
-      // For containers view: exec into specific container
-      command = `kubectl exec -it ${parentResourceName} -c ${resource.name} --context ${context} -n ${namespace} -- /bin/sh`
-    } else if (resourceType === 'pods' || resourceType === 'pod') {
-      // For pods: exec into pod (first container)
-      command = `kubectl exec -it ${resource.name} --context ${context} -n ${namespace} -- /bin/sh`
-    } else {
-      return // Shell only available for pods/containers
+
+    switch (code) {
+      case 'pods':
+      case 'containers':
+        // Navigate to child resources (same as Enter/double-click)
+        if (onResourceClick) {
+          onResourceClick(resourceType, resource.name, resource.labels)
+        }
+        break
+
+      case 'describe':
+        if (onDescribe) {
+          onDescribe(resourceType, resource.name)
+        }
+        break
+
+      case 'edit':
+        if (editingResourceName) return // Already editing
+        setEditingResourceName(resource.name)
+        setEditError(null)
+        try {
+          const result = await executeEdit({
+            context,
+            namespace,
+            resourceType,
+            resourceName: resource.name,
+          })
+          if (!result.success && result.error) {
+            setEditError(result.error)
+          } else {
+            refresh()
+          }
+        } finally {
+          setEditingResourceName(null)
+        }
+        break
+
+      case 'logs':
+        if (onLogs) {
+          if (isContainersView && parentResourceName) {
+            // For containers, get logs from the parent pod with this container selected
+            onLogs('pod', parentResourceName, resource.name)
+          } else {
+            onLogs(resourceType, resource.name)
+          }
+        }
+        break
+
+      case 'shell': {
+        const result = await executeShell({
+          context,
+          namespace,
+          resourceType,
+          resourceName: resource.name,
+          parentResourceName,
+        })
+        if (!result.success) {
+          console.error('Shell failed:', result.error)
+        }
+        break
+      }
+
+      case 'replica_sets':
+      case 'rolling_restart':
+      case 'scale':
+      case 'delete':
+      case 'port_forward':
+      case 'show_port_forward':
+        // TODO: Implement these actions
+        console.log(`Action ${code} not yet implemented`)
+        break
     }
-    
-    try {
-      await invoke('open_terminal_with_command', { command })
-    } catch (e) {
-      console.error('Failed to open shell:', e)
-    }
-  }, [selectedIndex, resources, isContainersView, parentResourceName, resourceType, context, namespace])
+  }, [
+    selectedIndex, resources, resourceType, context, namespace,
+    parentResourceName, isContainersView, editingResourceName,
+    hasRunCommands, onResourceClick, onDescribe, onLogs, refresh
+  ])
 
   // Reset selection and filter when navigating to a different resource list
   // Use initialSelectedIndex if returning to same node, otherwise start fresh
@@ -490,32 +535,21 @@ export function ResourceList({
         // D - Describe selected resource
         if (e.code === 'KeyD' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
           e.preventDefault()
-          const resource = resources[selectedIndex]
-          if (resource && onDescribe) {
-            onDescribe(resourceType, resource.name)
-          }
+          handleAction('describe')
           return
         }
 
         // E - Edit selected resource
         if (e.code === 'KeyE' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
           e.preventDefault()
-          handleEdit()
+          handleAction('edit')
           return
         }
 
         // L - View logs for selected resource
         if (e.code === 'KeyL' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
           e.preventDefault()
-          const resource = resources[selectedIndex]
-          if (resource && onLogs) {
-            if (isContainersView && parentResourceName) {
-              // For containers, get logs from the parent pod with this container selected
-              onLogs('pod', parentResourceName, resource.name)
-            } else {
-              onLogs(resourceType, resource.name)
-            }
-          }
+          handleAction('logs')
           return
         }
 
@@ -524,15 +558,15 @@ export function ResourceList({
           const normalizedType = resourceType.toLowerCase()
           if (normalizedType === 'pods' || normalizedType === 'pod' || normalizedType === 'containers') {
             e.preventDefault()
-            handleShell()
+            handleAction('shell')
           }
           return
         }
 
         // U - Open Run modal
-        if (e.code === 'KeyU' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0 && hasRunCommands) {
+        if (e.code === 'KeyU' && !e.metaKey && !e.ctrlKey && !e.altKey && hasRunCommands) {
           e.preventDefault()
-          setIsRunModalOpen(true)
+          handleAction('run')
           return
         }
       }
@@ -540,7 +574,7 @@ export function ResourceList({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, isContainersView, onDescribe, onLogs, handleEdit, handleShell, hasRunCommands])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, hasRunCommands, handleAction])
 
   return (
     <div class={classes.ResourceList}>
@@ -700,7 +734,7 @@ export function ResourceList({
         hasSelection={selectedIndex >= 0}
         disabled={error !== null}
         hasRunCommands={hasRunCommands}
-        onRunClick={() => setIsRunModalOpen(true)}
+        onAction={handleAction}
       />
 
       <RunModal
