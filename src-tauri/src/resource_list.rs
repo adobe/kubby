@@ -124,11 +124,7 @@ fn evaluate_jsonpath(item: &Value, json_path: &str, column_type: &ColumnType) ->
     // Format based on number of matches
     if nodes.is_empty() {
         Ok("<none>".to_string())
-    } else if nodes.len() == 1 {
-        Ok(format_value_by_type(nodes[0], column_type))
     } else {
-        // Multiple matches - decide what to do based on what we selected
-        
         // Check if we're selecting objects/arrays vs primitives
         let first_is_primitive = nodes[0].is_null() 
             || nodes[0].is_boolean() 
@@ -137,7 +133,11 @@ fn evaluate_jsonpath(item: &Value, json_path: &str, column_type: &ColumnType) ->
         
         if !first_is_primitive {
             // Selecting objects/arrays → COUNT them (e.g., containers, pods)
+            // This applies to both single and multiple matches
             Ok(nodes.len().to_string())
+        } else if nodes.len() == 1 {
+            // Single primitive value - format it
+            Ok(format_value_by_type(nodes[0], column_type))
         } else if matches!(column_type, ColumnType::Number) {
             // Selecting primitive numbers → SUM them (e.g., restart counts)
             let sum: f64 = nodes
