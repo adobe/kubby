@@ -671,8 +671,8 @@ export function ResourceList({
           return
         }
 
-        // Ctrl+D - Delete selected resource (not available for containers)
-        if (e.code === 'KeyD' && isControlModifierPressed(e) && selectedIndex >= 0) {
+        // Delete - Delete selected resource (not available for containers)
+        if (e.key === 'Delete' && selectedIndex >= 0) {
           const normalizedType = resourceType.toLowerCase()
           if (normalizedType !== 'containers') {
             e.preventDefault()

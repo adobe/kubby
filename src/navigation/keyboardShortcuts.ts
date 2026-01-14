@@ -37,6 +37,7 @@ const MAC_SYMBOLS: Record<string, string> = {
   'Tab': '⇥',
   'Backspace': '⌫',
   'Delete': '⌦',
+  'Del': '⌦',
   'Space': '␣',
 }
 
