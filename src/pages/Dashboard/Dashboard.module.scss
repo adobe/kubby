@@ -12,8 +12,8 @@
   justify-content: space-between;
   gap: 0.25rem;
   padding: 0.5rem;
-  background-color: var(--surface-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bgColor-muted);
+  border-bottom: 1px solid var(--borderColor-muted);
 }
 
 .body {
@@ -41,9 +41,9 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color);
+  color: var(--fgColor-default);
   vertical-align: middle;
-  background: var(--background-color);
+  background: var(--bgColor-default);
 }
 
 .tableWrapper {
@@ -68,7 +68,7 @@
   th {
     position: sticky;
     z-index: 1;
-    background: var(--background-color);
+    background: var(--bgColor-default);
   }
 }
 
@@ -77,7 +77,7 @@
   position: sticky;
   left: 0;
   z-index: 2;
-  background: var(--background-color);
+  background: var(--bgColor-default);
   padding: 0.35rem 0.75rem !important;
   text-align: left;
   white-space: nowrap;
@@ -89,7 +89,7 @@
     right: 0;
     bottom: 0;
     width: 1px;
-    background: var(--border-muted);
+    background: var(--borderColor-muted);
   }
 }
 
@@ -110,16 +110,16 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-dimmed);
+  color: var(--fgColor-neutral);
   padding: 0.5rem 0.5rem 0.25rem 0.5rem !important;
   text-align: left;
-  border-right: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--borderColor-muted);
+  border-bottom: 1px solid var(--borderColor-muted);
 }
 
 // Vertical border to separate context groups
 .groupBorder {
-  border-left: 2px solid var(--border-muted);
+  border-left: 2px solid var(--borderColor-muted);
 }
 
 // Individual context header row
@@ -136,8 +136,8 @@
 .contextHeader {
   padding: 0.25rem 0.15rem 0.5rem;
   vertical-align: bottom;
-  border-right: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-muted);
+  border-right: 1px solid var(--borderColor-muted);
+  border-bottom: 1px solid var(--borderColor-muted);
 }
 
 .contextLabel {
@@ -151,7 +151,7 @@
 .contextEnv {
   font-size: 0.55rem;
   font-weight: 500;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -160,7 +160,7 @@
   font-size: 0.75rem;
   font-weight: 700;
   padding: 0 0.25rem;
-  color: var(--color);
+  color: var(--fgColor-default);
 }
 
 .contextRegionHidden {
@@ -173,7 +173,7 @@
 .contextCluster {
   font-size: 0.5rem;
   font-weight: 400;
-  color: var(--color-dimmed);
+  color: var(--fgColor-default);
   overflow: hidden;
   padding: 0 0.25rem;
   text-overflow: ellipsis;
@@ -184,7 +184,7 @@
   td {
     position: sticky;
     top: calc(var(--header-row-height) * 2);
-    background: var(--surface-muted);
+    background: var(--bgColor-emphasis);
   }
   
   .stickyCol {
@@ -197,7 +197,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-dimmed);
+  color: var(--header-fgColor-default);
   text-align: left;
 }
 
@@ -209,11 +209,11 @@
 .namespaceRow {
   &:hover {
     .stickyCol {
-      background: var(--surface-hover);
+      background: var(--control-bgColor-hover);
     }
     
     .cell {
-      background: var(--surface-subtle);
+      background: var(--bgColor-muted);
     }
   }
 }
@@ -225,13 +225,13 @@
 .namespacePrefix {
   font-size: 0.55rem;
   font-weight: 400;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
 }
 
 .namespaceSuffix {
   font-size: 0.7rem;
   font-weight: 500;
-  color: var(--color);
+  color: var(--fgColor-default);
 }
 
 // Matrix cells
@@ -239,8 +239,8 @@
   padding: 0.2rem;
   text-align: center;
   vertical-align: middle;
-  border-right: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--borderColor-muted);
+  border-bottom: 1px solid var(--borderColor-muted);
 }
 
 .cellButton {
@@ -250,9 +250,9 @@
   min-height: 22px;
   padding: 0;
   margin: 0;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--borderColor-muted);
   border-radius: 3px;
-  background: var(--surface-subtle);
+  background: var(--bgColor-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -262,30 +262,30 @@
   outline: none;
   
   &:hover {
-    border-color: var(--border-color);
-    background: var(--accent-bg);
+    border-color: var(--borderColor-default);
+    background: var(--bgColor-accent-muted);
     transform: scale(1.1);
   }
   
   &:focus {
-    border-color: var(--accent-color, #4a9eff);
-    box-shadow: 0 0 0 2px var(--accent-bg, rgba(74, 158, 255, 0.3));
+    border-color: var(--fgColor-accent);
+    box-shadow: 0 0 0 2px var(--bgColor-accent-muted);
     transform: scale(1.1);
   }
   
   &:active {
     transform: scale(0.95);
-    background: var(--accent-bg-active);
+    background: var(--bgColor-accent-emphasis);
   }
 }
 
 .bullet {
   font-size: 8px;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   line-height: 1;
   
   .cellButton:hover & {
-    color: var(--border-color);
+    color: var(--borderColor-default);
   }
 }
 

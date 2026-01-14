@@ -34,7 +34,7 @@
   .nestedValue {
     margin-left: 1rem;
     padding-left: 0.5rem;
-    border-left: 1px solid var(--border-subtle);
+    border-left: 1px solid var(--borderColor-muted);
   }
 
   .collapseToggle {
@@ -44,7 +44,7 @@
     margin: 0 0 0 -0.75rem; // so it is outside the normal tree line
     cursor: pointer;
     font-size: 0.6rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     width: 0.5rem;
     height: 1rem;
     display: flex;
@@ -54,14 +54,14 @@
     box-shadow: none;
 
     &:hover {
-      color: var(--color);
+      color: var(--fgColor-default);
       border-color: transparent;
     }
   }
 
   .collapsedIndicator {
     font-size: 0.7rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-style: italic;
     margin-left: 0.25rem;
   }
@@ -81,7 +81,7 @@
 
   .arrayIndex {
     font-size: 0.45rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     flex-shrink: 0;
     min-width: 1.4rem;
   }
@@ -116,7 +116,7 @@
   }
 
   .valueNull {
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.75rem;
     font-style: italic;
   }
@@ -131,19 +131,19 @@
   }
 
   .valueEmpty {
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.75rem;
   }
 
   // Plain text (for labels in linearized values)
   .valueText {
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.75rem;
   }
 
   // Separator for linearized values
   .valueSeparator {
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.75rem;
     opacity: 0.5;
     margin: 0 0.15rem;
@@ -172,7 +172,7 @@
     }
 
     .expandDots {
-      color: var(--color-dimmed)
+      color: var(--fgColor-muted)
     }
   }
 
@@ -222,7 +222,7 @@
 
   .expandIcon {
     font-size: 0.55rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     flex-shrink: 0;
   }
 
@@ -230,6 +230,6 @@
     margin: 0 -0.25rem;
     padding: 0.5rem;
     background: none;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid var(--borderColor-muted);
   }
 }

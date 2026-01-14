@@ -7,26 +7,26 @@
   .message {
     margin: 0;
     font-size: 0.875rem;
-    color: var(--color);
+    color: var(--fgColor-default);
 
     :global(strong) {
       font-weight: 600;
-      color: var(--color-bright);
+      color: var(--fgColor-default);
     }
   }
 
   .warning {
     margin: 0;
     font-size: 0.75rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 
   .error {
     padding: 0.5rem 0.75rem;
     font-size: 0.75rem;
-    color: var(--error-color);
-    background: var(--error-bg);
-    border: 1px solid var(--error-border);
+    color: var(--fgColor-danger);
+    background: var(--bgColor-danger-muted);
+    border: 1px solid var(--borderColor-danger-muted);
     border-radius: 4px;
   }
 
@@ -38,12 +38,12 @@
   }
 
   .destructiveButton {
-    background: var(--error-color, #dc2626) !important;
-    border-color: var(--error-color, #dc2626) !important;
+    background: var(--bgColor-danger-emphasis) !important;
+    border-color: var(--borderColor-danger-emphasis) !important;
 
     &:hover:not(:disabled) {
-      background: var(--error-color-hover, #b91c1c) !important;
-      border-color: var(--error-color-hover, #b91c1c) !important;
+      background: var(--button-danger-bgColor-hover) !important;
+      border-color: var(--button-danger-bgColor-hover) !important;
     }
   }
 }

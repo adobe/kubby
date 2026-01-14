@@ -7,7 +7,7 @@
     align-items: center;
     gap: 0.35rem;
     margin-left: 0.25rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.65rem;
     line-height: 1;
     text-transform: uppercase;
@@ -16,12 +16,12 @@
   .shortcutHint {
     font-size: 0.75rem;
     letter-spacing: 0.1rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 
   .value {
     font-weight: 500;
-    color: var(--color);
+    color: var(--fgColor-default);
   }
 
 }

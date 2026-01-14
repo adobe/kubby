@@ -11,8 +11,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.25rem;
-    background-color: var(--surface-subtle);
-    border-bottom: 1px solid var(--border-subtle);
+    background-color: var(--bgColor-muted);
+    border-bottom: 1px solid var(--borderColor-muted);
     padding: 0.25rem;
   }
 
@@ -30,7 +30,7 @@
 
   .resourceType {
     font-size: 0.75rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 
   .streamingIndicator {
@@ -38,18 +38,18 @@
     align-items: center;
     gap: 0.35rem;
     font-size: 0.7rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     
     .dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background-color: var(--success-color, #22c55e);
+      background-color: var(--fgColor-success);
       animation: pulse 1.5s ease-in-out infinite;
     }
     
     &.paused .dot {
-      background-color: var(--warning-color, #f59e0b);
+      background-color: var(--fgColor-attention);
       animation: none;
     }
   }
@@ -79,7 +79,7 @@
     flex: 1;
     overflow: auto;
     padding: 0.5rem;
-    background: var(--background-color);
+    background: var(--bgColor-default);
 
     // Subtle focus style for keyboard scrolling
     &:focus {
@@ -95,7 +95,7 @@
     font-family: var(--font-mono, 'Fira Code', monospace);
     font-size: 0.75rem;
     line-height: 17px; // Fixed height for virtualization (matches LINE_HEIGHT constant)
-    color: var(--color);
+    color: var(--fgColor-default);
     padding: 0 0.25rem;
     box-sizing: border-box;
     
@@ -109,22 +109,22 @@
     }
     
     &:hover {
-      background: var(--hover-bg);
+      background: var(--control-bgColor-hover);
     }
   }
 
   .containerName {
-    color: var(--color-accent);
+    color: var(--fgColor-accent);
     opacity: 0.85;
   }
 
   // K8s timestamp (from kubectl)
   .timestamp {
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 
   .logText {
-    color: var(--color);
+    color: var(--fgColor-default);
   }
 
   // App timestamp (from the log message itself)
@@ -145,7 +145,7 @@
 
   // Message text (plain text after parsing)
   .messageText {
-    color: var(--color);
+    color: var(--fgColor-default);
   }
 
   // JSON message styling
@@ -176,22 +176,22 @@
     padding: 0.1rem 0.4rem;
     font-family: inherit;
     font-size: 0.65rem;
-    color: var(--color-dimmed);
-    background: var(--surface-subtle);
-    border: 1px solid var(--border-subtle);
+    color: var(--fgColor-muted);
+    background: var(--bgColor-muted);
+    border: 1px solid var(--borderColor-muted);
     border-radius: 3px;
     cursor: pointer;
     vertical-align: middle;
     transition: background-color 0.15s, border-color 0.15s, visibility 0s;
 
     &:hover {
-      background: var(--hover-bg);
-      border-color: var(--hover-border-color);
-      color: var(--color);
+      background: var(--control-bgColor-hover);
+      border-color: var(--borderColor-accent-emphasis);
+      color: var(--fgColor-default);
     }
 
     &:active {
-      background: var(--accent-bg-active);
+      background: var(--bgColor-accent-emphasis);
     }
   }
 
@@ -230,7 +230,7 @@
     align-items: center;
     justify-content: center;
     padding: 3rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.85rem;
   }
 
@@ -240,7 +240,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 3rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.9rem;
   }
 
@@ -253,30 +253,30 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.35rem 0.5rem;
-    background: var(--shortcuts-bar-bg);
-    border-top: 1px solid var(--shortcuts-bar-border);
+    background: var(--bgColor-emphasis);
+    border-top: 1px solid var(--borderColor-muted);
 
     .label {
-      color: var(--color-dimmed);
+      color: var(--fgColor-muted);
       font-size: 0.75rem;
     }
 
     .separator {
       width: 1px;
       height: 1rem;
-      background: var(--border-subtle);
+      background: var(--borderColor-muted);
       margin: 0 0.25rem;
     }
   }
 
   .activeButton {
-    background: var(--accent-bg-active);
-    border-color: var(--hover-border-color);
+    background: var(--bgColor-accent-emphasis);
+    border-color: var(--borderColor-accent-emphasis);
   }
 
   .lineCount {
     margin-left: auto;
     font-size: 0.7rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 }

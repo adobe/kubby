@@ -1,3 +1,6 @@
+// Import GitHub theme colors
+@use './themes/github.scss';
+
 @font-face {
   font-family: 'Fira Code';
   font-style: normal;
@@ -49,69 +52,19 @@ html, body {
   height: 100%;
 }
 
+// Set GitHub theme mode (automatic based on system preference)
+html {
+  color-scheme: dark light;
+}
+
 :root {
   font-family: 'Fira Code', monospace;
   font-size: 16px;
   line-height: 16px;
   font-weight: 400;
 
-  // Base colors
-  --color: #202124;
-  --color-dimmed: #6a6a6a;
-  --background-color: #f6f6f6;
-  
-  // Link colors
-  --link-color: #646cff;
-  --link-hover-color: #535bf2;
-  
-  // Accent / border colors
-  --border-color: #6a6a6a;
-  --hover-border-color: #396cd8;
-  --active-border-color: #396cd8;
-  --active-background-color: #e8e8e8;
-  
-  // Surface colors (for subtle backgrounds)
-  --surface-subtle: #f1f1f1;
-  --surface-muted: #efefef;
-  --surface-hover: #ededed;
-  
-  // Border shades
-  --border-subtle: #eaeaea;
-  --border-muted: #e3e3e3;
-  --border-soft: #dedede;
-  
-  // Error colors
-  --error-color: #c0392b;
-  --error-bg: #fbeae8;
-  --error-border: #e6a9a3;
-  
-  // Warning colors
-  --warning-color: #e67e22;
-  --warning-bg: #fef5e7;
-  --warning-border: #f4c88a;
-  
-  // Info colors
-  --info-color: #3498db;
-  --info-bg: #ebf5fb;
-  --info-border: #aed6f1;
-  
-  // Accent backgrounds
-  --accent-bg: #e3ebf7;
-  --accent-bg-active: #d0ddef;
-  
-  // Selection colors
-  --selection-bg: #0078d4;
-  --selection-bg-hover: #106ebe;
-  --selection-color: #ffffff;
-  
-  // Shortcuts bar
-  --shortcuts-bar-bg: var(--surface-muted);
-  --shortcuts-bar-border: var(--border-muted);
-  --shortcut-key-bg: var(--surface-subtle);
-  --shortcut-key-border: var(--border-color);
-
-  color: var(--color);
-  background-color: var(--background-color);
+  color: var(--fgColor-default);
+  background-color: var(--bgColor-default);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -122,11 +75,11 @@ html, body {
 
 a {
   font-weight: 500;
-  color: var(--link-color);
+  color: var(--fgColor-accent);
   text-decoration: inherit;
 
   &:hover {
-    color: var(--link-hover-color);
+    color: var(--fgColor-accent);
   }
 }
 
@@ -149,11 +102,11 @@ button {
 }
 
 button:hover {
-  border-color: var(--hover-border-color);
+  border-color: var(--borderColor-accent-emphasis);
 }
 button:active {
-  border-color: var(--active-border-color);
-  background-color: var(--active-background-color);
+  border-color: var(--borderColor-accent-emphasis);
+  background-color: var(--control-bgColor-active);
 }
 
 input,
@@ -162,7 +115,7 @@ button {
 }
 
 a:hover {
-  color: var(--link-hover-color);
+  color: var(--fgColor-accent);
 }
 
 pre {
@@ -172,51 +125,4 @@ pre {
 
 code {
   font-size: 0.75rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    // Base colors
-    --color: #BCBEC4;
-    --color-dimmed: #73777e;
-    --color-accent: #c38768;
-    --background-color: #1E1F22;
-    
-    // Link colors
-    --link-hover-color: #24c8db;
-    
-    // Surface colors (for subtle backgrounds)
-    --surface-subtle: #1d1d1d;
-    --surface-muted: #222222;
-    --surface-hover: #1f2525;
-    
-    // Border shades
-    --border-subtle: #222222;
-    --border-muted: #2a2a2a;
-    --border-soft: #313131;
-    
-    // Error colors
-    --error-color: #e74c3c;
-    --error-bg: #2d1f1e;
-    --error-border: #5c2a25;
-    
-    // Warning colors
-    --warning-color: #f39c12;
-    --warning-bg: #3d2f1e;
-    --warning-border: #6b4e1f;
-    
-    // Info colors
-    --info-color: #3498db;
-    --info-bg: #1e2a3d;
-    --info-border: #2d4a5c;
-    
-    // Accent backgrounds
-    --accent-bg: #1e2a3d;
-    --accent-bg-active: #253652;
-    
-    // Selection colors (dark mode)
-    --selection-bg: #2d5a88;
-    --selection-bg-hover: #3a6fa0;
-    --selection-color: #ffffff;
-  }
 }

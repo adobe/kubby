@@ -5,15 +5,15 @@
 }
 
 .loading {
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   padding: 2rem;
   text-align: center;
 }
 
 .error {
-  color: var(--error-color);
-  background: var(--error-bg);
-  border: 1px solid var(--error-border);
+  color: var(--fgColor-danger);
+  background: var(--bgColor-danger-muted);
+  border: 1px solid var(--borderColor-danger-muted);
   border-radius: 4px;
   padding: 0.75rem 1rem;
   font-family: monospace;

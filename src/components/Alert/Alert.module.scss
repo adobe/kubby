@@ -18,20 +18,20 @@
   }
 
   &.error {
-    color: var(--error-color);
-    background: var(--error-bg);
-    border: 1px solid var(--error-border);
+    color: var(--fgColor-danger);
+    background: var(--bgColor-danger-muted);
+    border: 1px solid var(--borderColor-danger-muted);
   }
 
   &.warning {
-    color: var(--warning-color);
-    background: var(--warning-bg);
-    border: 1px solid var(--warning-border);
+    color: var(--fgColor-attention);
+    background: var(--bgColor-attention-muted);
+    border: 1px solid var(--borderColor-attention-muted);
   }
 
   &.info {
-    color: var(--info-color);
-    background: var(--info-bg);
-    border: 1px solid var(--info-border);
+    color: var(--fgColor-accent);
+    background: var(--bgColor-accent-muted);
+    border: 1px solid var(--borderColor-accent-muted);
   }
 }

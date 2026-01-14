@@ -8,27 +8,27 @@
 .message {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--color);
+  color: var(--fgColor-default);
 
   :global(strong) {
     font-weight: 600;
-    color: var(--color-bright);
+    color: var(--fgColor-default);
   }
 }
 
 .loading {
   padding: 1rem;
   text-align: center;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   font-size: 0.85rem;
 }
 
 .error {
   padding: 0.5rem 0.75rem;
   font-size: 0.75rem;
-  color: var(--error-color);
-  background: var(--error-bg);
-  border: 1px solid var(--error-border);
+  color: var(--fgColor-danger);
+  background: var(--bgColor-danger-muted);
+  border: 1px solid var(--borderColor-danger-muted);
   border-radius: 4px;
 }
 
@@ -42,8 +42,8 @@
 }
 
 .section {
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
   border-radius: 6px;
   padding: 0.75rem;
 }
@@ -53,7 +53,7 @@
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.05em;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
 }
 
 .grid {
@@ -64,12 +64,12 @@
   font-size: 0.8rem;
 
   dt {
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 
   dd {
     margin: 0;
-    color: var(--color);
+    color: var(--fgColor-default);
     font-weight: 500;
     text-align: right;
   }
@@ -83,16 +83,16 @@
 }
 
 .restartButton {
-  background: var(--selection-bg) !important;
-  border-color: var(--selection-bg) !important;
+  background: var(--bgColor-accent-emphasis) !important;
+  border-color: var(--bgColor-accent-emphasis) !important;
 
   &:hover:not(:disabled) {
-    background: var(--selection-bg-hover) !important;
-    border-color: var(--selection-bg-hover) !important;
+    background: var(--control-checked-bgColor-hover) !important;
+    border-color: var(--control-checked-bgColor-hover) !important;
   }
 }
 
 .notFound {
   font-size: 0.75rem;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
 }

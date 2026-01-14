@@ -12,8 +12,8 @@
     justify-content: space-between;
     gap: 0.25rem;
     padding: 0.5rem;
-    background-color: var(--surface-subtle);
-    border-bottom: 1px solid var(--border-subtle);
+    background-color: var(--bgColor-muted);
+    border-bottom: 1px solid var(--borderColor-muted);
 
     .headerButtons {
       display: flex;
@@ -47,7 +47,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 3rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.9rem;
   }
 
@@ -59,8 +59,8 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.75rem;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
+    border-top: 1px solid var(--borderColor-muted);
+    border-bottom: 1px solid var(--borderColor-muted);
 
     th, td {
       padding: 0.25rem 0.5rem;
@@ -72,16 +72,16 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--color-dimmed);
-      background: var(--surface-muted);
-      border-bottom: 1px solid var(--border-muted);
+      color: var(--fgColor-default);
+      background: var(--bgColor-muted);
+      border-bottom: 1px solid var(--borderColor-muted);
       position: sticky;
       top: 0;
       z-index: 1;
     }
 
     td {
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--borderColor-muted);
     }
   }
 
@@ -103,8 +103,8 @@
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.03em;
-        color: var(--color);
-        background: var(--warning-color, #d97706);
+        color: var(--fgColor-default);
+        background: var(--fgColor-attention);
         border-radius: 3px;
         white-space: nowrap;
         animation: pulse 1.5s ease-in-out infinite;
@@ -124,7 +124,7 @@
   }
 
   .dataCell {
-    color: var(--color);
+    color: var(--fgColor-default);
     font-variant-numeric: tabular-nums;
   }
 
@@ -133,7 +133,7 @@
     cursor: pointer;
 
     &:hover {
-      background: var(--surface-subtle);
+      background: var(--bgColor-muted);
     }
 
     &:last-child td {
@@ -141,32 +141,32 @@
     }
 
     &.resourceRowSelected {
-      background: var(--selection-bg);
+      background: var(--bgColor-accent-emphasis);
 
       td {
-        color: var(--selection-color);
+        color: var(--fgColor-onEmphasis);
       }
 
       .nameCell {
-        color: var(--selection-color);
+        color: var(--fgColor-onEmphasis);
       }
 
       &:hover {
-        background: var(--selection-bg-hover);
+        background: var(--control-checked-bgColor-hover);
       }
     }
   }
 
   .emptyRow {
     text-align: center !important;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     padding: 2rem !important;
   }
 
   .footer {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     text-align: right;
   }
 
@@ -177,7 +177,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--surface-muted);
+    background: var(--bgColor-emphasis);
     border-radius: 6px;
     padding: 0.25rem 0.5rem 0.15rem 0.5rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -185,7 +185,7 @@
     backdrop-filter: blur(8px);
     font-size: 0.75rem;
     line-height: 1;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 
   .refreshError {
@@ -195,9 +195,9 @@
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
     margin-bottom: 0.75rem;
-    color: var(--error-color);
-    background: var(--error-bg);
-    border: 1px solid var(--error-border);
+    color: var(--fgColor-danger);
+    background: var(--bgColor-danger-muted);
+    border: 1px solid var(--borderColor-danger-muted);
     border-radius: 4px;
     font-size: 0.8rem;
 
@@ -209,7 +209,7 @@
   .refreshErrorDismiss {
     background: transparent;
     border: none;
-    color: var(--error-color);
+    color: var(--fgColor-danger);
     cursor: pointer;
     font-size: 1.2rem;
     line-height: 1;

@@ -15,12 +15,12 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0 0 1.5rem 0;
-  color: var(--color);
+  color: var(--fgColor-default);
 }
 
 .subtitle {
   font-size: 0.85rem;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   margin: 0;
 }
 
@@ -37,8 +37,8 @@
 }
 
 .section {
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
   border-radius: 6px;
 }
 
@@ -46,7 +46,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
-  color: var(--color);
+  color: var(--fgColor-default);
 }
 
 .kubeconfigPath {
@@ -54,11 +54,11 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.75rem;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   margin-bottom: 1rem;
   
   code {
-    background: var(--surface-muted);
+    background: var(--bgColor-emphasis);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-family: 'Fira Code', monospace;
@@ -72,8 +72,8 @@
 }
 
 .contextItem {
-  background: var(--background-color);
-  border: 1px solid var(--border-muted);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-muted);
   border-radius: 4px;
   padding: 0.75rem;
 }
@@ -88,16 +88,16 @@
 .contextName {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color);
+  color: var(--fgColor-default);
 }
 
 .currentBadge {
   font-size: 0.65rem;
   font-weight: 500;
   padding: 0.15rem 0.4rem;
-  background: var(--accent-bg);
+  background: var(--bgColor-accent-muted);
   border-radius: 3px;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -112,10 +112,10 @@
 .namespaceTag {
   font-size: 0.7rem;
   padding: 0.15rem 0.4rem;
-  background: var(--surface-muted);
-  border: 1px solid var(--border-subtle);
+  background: var(--bgColor-emphasis);
+  border: 1px solid var(--borderColor-muted);
   border-radius: 3px;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
 }
 
 .contextError {
@@ -123,10 +123,10 @@
   align-items: flex-start;
   gap: 0.5rem;
   font-size: 0.75rem;
-  color: var(--error-color);
+  color: var(--fgColor-danger);
   margin-top: 0.5rem;
   padding: 0.5rem;
-  background: var(--error-bg);
+  background: var(--bgColor-danger-muted);
   border-radius: 4px;
 }
 
@@ -152,24 +152,24 @@
   height: 1.2rem;
   padding: 0;
   background: transparent;
-  border: 1px solid var(--error-border);
+  border: 1px solid var(--borderColor-danger-muted);
   border-radius: 3px;
   cursor: pointer;
   font-family: inherit;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--error-color);
+  color: var(--fgColor-danger);
   line-height: 1;
   box-shadow: none;
   
   &:hover {
-    background: var(--error-border);
+    background: var(--borderColor-danger-muted);
   }
 }
 
 .contextLoading {
   font-size: 0.75rem;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   font-style: italic;
 }
 
@@ -186,19 +186,19 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.6rem 1.2rem;
-  background: var(--selection-bg);
+  background: var(--bgColor-accent-emphasis);
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-family: inherit;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--selection-color);
+  color: var(--fgColor-onEmphasis);
   transition: background-color 0.15s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   
   &:hover:not(:disabled) {
-    background: var(--selection-bg-hover);
+    background: var(--control-checked-bgColor-hover);
   }
   
   &:active:not(:disabled) {
@@ -217,19 +217,19 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.4rem 0.8rem;
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
   font-size: 0.75rem;
-  color: var(--color);
+  color: var(--fgColor-default);
   transition: background-color 0.15s ease, border-color 0.15s ease;
   box-shadow: none;
   
   &:hover:not(:disabled) {
-    background: var(--surface-hover);
-    border-color: var(--border-color);
+    background: var(--control-bgColor-hover);
+    border-color: var(--borderColor-default);
   }
   
   &:disabled {
@@ -239,8 +239,8 @@
 }
 
 .successSection {
-  background: var(--info-bg);
-  border: 1px solid var(--info-border);
+  background: var(--bgColor-accent-muted);
+  border: 1px solid var(--borderColor-accent-muted);
   border-radius: 6px;
   padding: 1rem;
   margin-top: 1rem;
@@ -250,7 +250,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
-  color: var(--info-color);
+  color: var(--fgColor-accent);
 }
 
 .configPath {
@@ -261,12 +261,12 @@
   
   code {
     flex: 1;
-    background: var(--background-color);
+    background: var(--bgColor-default);
     padding: 0.5rem 0.75rem;
     border-radius: 4px;
     font-family: 'Fira Code', monospace;
     font-size: 0.75rem;
-    color: var(--color);
+    color: var(--fgColor-default);
     word-break: break-all;
   }
 }
@@ -281,7 +281,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   font-size: 0.85rem;
 }
 
@@ -292,14 +292,14 @@
   justify-content: center;
   height: 100%;
   gap: 1rem;
-  color: var(--error-color);
+  color: var(--fgColor-danger);
   font-size: 0.85rem;
   text-align: center;
   padding: 2rem;
 }
 
 .noContexts {
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   font-size: 0.85rem;
   font-style: italic;
   padding: 1rem;

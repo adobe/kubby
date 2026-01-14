@@ -13,8 +13,8 @@
 }
 
 .modal {
-  background: var(--background-color);
-  border: 1px solid var(--border-color);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
   border-radius: 8px;
   min-width: 400px;
   max-width: 90vw;
@@ -29,8 +29,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--borderColor-muted);
+  background: var(--bgColor-muted);
   border-radius: 8px 8px 0 0;
 }
 
@@ -38,7 +38,7 @@
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--color);
+  color: var(--fgColor-default);
 }
 
 .closeButton {
@@ -51,20 +51,20 @@
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
   cursor: pointer;
   font-size: 0.85rem;
   box-shadow: none;
   transition: background-color 0.15s ease, color 0.15s ease;
 
   &:hover {
-    background: var(--surface-hover);
-    color: var(--color);
+    background: var(--control-bgColor-hover);
+    color: var(--fgColor-default);
     border-color: transparent;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--selection-bg);
+    outline: 2px solid var(--bgColor-accent-emphasis);
     outline-offset: 1px;
   }
 }

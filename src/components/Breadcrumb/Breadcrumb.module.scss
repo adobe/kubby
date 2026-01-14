@@ -4,14 +4,13 @@
   gap: 0;
   font-size: 0.75rem;
 
-
   .segment {
     display: flex;
     align-items: center;
   }
 
   .separator {
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     margin: 0 0.15rem;
     font-size: 1rem;
     user-select: none;
@@ -24,18 +23,18 @@
     margin: -0.15rem 0;
     font: inherit;
     font-size: 0.75rem;
-    color: var(--link-color);
+    color: var(--fgColor-accent);
     cursor: pointer;
     border-radius: 3px;
     transition: all 0.15s ease;
 
     &:hover {
-      background: var(--surface-subtle);
-      color: var(--link-color-hover, var(--link-color));
+      background: var(--bgColor-muted);
+      color: var(--fgColor-accent);
     }
 
     &:focus {
-      outline: 2px solid var(--selection-bg);
+      outline: 2px solid var(--bgColor-accent-emphasis);
       outline-offset: 1px;
     }
 
@@ -46,7 +45,7 @@
 
   .current {
     font-weight: 600;
-    color: var(--color);
+    color: var(--fgColor-default);
     padding: 0.15rem 0;
     margin: -0.15rem 0;
   }

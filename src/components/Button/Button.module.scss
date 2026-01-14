@@ -4,29 +4,29 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.2rem 0.4rem;
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
   font-size: 0.75rem;
-  color: var(--color);
+  color: var(--fgColor-default);
   transition: background-color 0.15s ease, border-color 0.15s ease;
   box-shadow: none;
   outline: 2px solid transparent;
   outline-offset: 1px;
   
   &:hover:not(:disabled) {
-    background: var(--surface-hover);
-    border-color: var(--border-color);
+    background: var(--control-bgColor-hover);
+    border-color: var(--borderColor-default);
   }
   
   &:focus-visible {
-    outline-color: var(--selection-bg);
+    outline-color: var(--bgColor-accent-emphasis);
   }
   
   &:active:not(:disabled) {
-    background: var(--active-background-color);
+    background: var(--control-bgColor-active);
   }
   
   &:disabled {
@@ -36,7 +36,7 @@
 
 
   .shortcutLabel {
-    color: var(--color);
+    color: var(--fgColor-default);
     white-space: nowrap;
   }
 
@@ -46,14 +46,14 @@
     justify-content: center;
     min-width: 1.2em;
     padding: 0.05rem 0.25rem;
-    background: var(--shortcut-key-bg);
-    border: 1px solid var(--shortcut-key-border);
+    background: var(--bgColor-muted);
+    border: 1px solid var(--borderColor-default);
     border-radius: 3px;
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.1rem;
     line-height: 1.2;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
   }
 

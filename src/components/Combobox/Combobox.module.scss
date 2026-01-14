@@ -16,19 +16,19 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 3px;
-    color: var(--color);
+    color: var(--fgColor-default);
     outline: 2px solid transparent;
     outline-offset: 1px;
     cursor: text;
     width: 250px !important;
 
     &::placeholder {
-      color: var(--color-dimmed);
+      color: var(--fgColor-muted);
       opacity: 0.6;
     }
 
     &:focus {
-      outline-color: var(--selection-bg);
+      outline-color: var(--bgColor-accent-emphasis);
     }
   }
 
@@ -39,8 +39,8 @@
     margin: 0.25rem 0 0 0;
     padding: 0;
     list-style: none;
-    background: var(--surface-muted);
-    border: 1px solid var(--border-color);
+    background: var(--bgColor-emphasis);
+    border: 1px solid var(--borderColor-default);
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     max-height: 300px;
@@ -54,25 +54,25 @@
     padding: 0.35rem 0.5rem;
     font-size: 0.75rem;
     cursor: pointer;
-    color: var(--color);
+    color: var(--fgColor-default);
     transition: background-color 0.1s ease;
 
     &:hover {
-      background: var(--surface-hover);
+      background: var(--control-bgColor-hover);
     }
 
     &.comboboxItemHighlighted {
-      background: var(--selection-bg);
-      color: var(--selection-color);
+      background: var(--bgColor-accent-emphasis);
+      color: var(--fgColor-onEmphasis);
     }
 
     &.comboboxItemSelected {
-      background: var(--surface-subtle);
+      background: var(--bgColor-muted);
       font-weight: 500;
 
       &.comboboxItemHighlighted {
-        background: var(--selection-bg);
-        color: var(--selection-color);
+        background: var(--bgColor-accent-emphasis);
+        color: var(--fgColor-onEmphasis);
         font-weight: 500;
       }
     }

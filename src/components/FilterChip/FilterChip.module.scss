@@ -3,9 +3,9 @@
   align-items: center;
   gap: 0.1rem;
   padding: 0.05rem 0.25rem;
-  background: var(--surface-muted);
-  border-left: 2px solid var(--border-color);
-  border-right: 2px solid var(--border-color);
+  background: var(--bgColor-emphasis);
+  border-left: 2px solid var(--borderColor-default);
+  border-right: 2px solid var(--borderColor-default);
   border-radius: 5px;
   font-size: 0.7rem;
   line-height: 1;
@@ -13,22 +13,22 @@
   transition: background 0.15s ease;
 
   &:hover {
-    background: var(--surface-hover);
+    background: var(--control-bgColor-hover);
   }
 
   .key {
     font-weight: 400;
-    color: var(--color);
+    color: var(--fgColor-default);
   }
 
   .operator {
-    color: var(--color-muted);
+    color: var(--fgColor-muted);
     font-weight: 400;
   }
 
   .value {
     font-weight: 500;
-    color: var(--color-emphasis);
+    color: var(--fgColor-accent);
   }
 
   .removeButton {
@@ -42,7 +42,7 @@
     background: transparent;
     border: none;
     border-radius: 2px;
-    color: var(--color-muted);
+    color: var(--fgColor-muted);
     font-weight: normal;
     font-size: 1.1rem;
     line-height: 1;
@@ -50,8 +50,8 @@
     transition: all 0.15s ease;
 
     &:hover {
-      background: var(--surface-active);
-      color: var(--color-danger, #e74c3c);
+      background: var(--control-bgColor-active);
+      color: var(--fgColor-danger);
     }
 
     &:active {

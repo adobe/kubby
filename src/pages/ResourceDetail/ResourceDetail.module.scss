@@ -11,8 +11,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.25rem;
-    background-color: var(--surface-subtle);
-    border-bottom: 1px solid var(--border-subtle);
+    background-color: var(--bgColor-muted);
+    border-bottom: 1px solid var(--borderColor-muted);
     padding: 0.25rem;
   }
 
@@ -30,7 +30,7 @@
 
   .resourceType {
     font-size: 0.75rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 
   .headerButtons {
@@ -44,7 +44,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 3rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.9rem;
   }
 
@@ -53,7 +53,7 @@
     align-items: center;
     justify-content: center;
     padding: 3rem;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.85rem;
   }
 
@@ -81,7 +81,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--surface-muted);
+    background: var(--bgColor-emphasis);
     border-radius: 6px;
     padding: 0.25rem 0.5rem 0.15rem 0.5rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -89,17 +89,17 @@
     backdrop-filter: blur(8px);
     font-size: 0.75rem;
     line-height: 1;
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
   }
 
   .label {
-    color: var(--color-dimmed);
+    color: var(--fgColor-muted);
     font-size: 0.75rem;
   }
 
   .activeViewButton {
-    background: var(--accent-bg-active);
-    border-color: var(--hover-border-color);
+    background: var(--bgColor-accent-emphasis);
+    border-color: var(--borderColor-accent-emphasis);
   }
 
 }

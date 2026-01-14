@@ -6,8 +6,8 @@
 }
 
 .commandItem {
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -17,14 +17,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  background: var(--surface-muted);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bgColor-emphasis);
+  border-bottom: 1px solid var(--borderColor-muted);
 }
 
 .commandName {
   font-weight: 600;
   font-size: 0.85rem;
-  color: var(--color);
+  color: var(--fgColor-default);
 }
 
 .commandActions {
@@ -37,10 +37,10 @@
   align-items: center;
   justify-content: center;
   padding: 0.25rem 0.6rem;
-  background: var(--selection-bg);
+  background: var(--bgColor-accent-emphasis);
   border: none;
   border-radius: 4px;
-  color: var(--selection-color);
+  color: var(--fgColor-onEmphasis);
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
@@ -48,17 +48,17 @@
   transition: background-color 0.15s ease;
 
   &:hover {
-    background: var(--selection-bg-hover);
+    background: var(--control-checked-bgColor-hover);
     border-color: transparent;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--selection-bg);
+    outline: 2px solid var(--bgColor-accent-emphasis);
     outline-offset: 2px;
   }
 
   &:active {
-    background: var(--selection-bg);
+    background: var(--bgColor-accent-emphasis);
   }
 }
 
@@ -67,8 +67,8 @@
   margin: 0;
   font-size: 0.7rem;
   line-height: 1.4;
-  color: var(--color-dimmed);
-  background: var(--background-color);
+  color: var(--fgColor-muted);
+  background: var(--bgColor-default);
   white-space: pre-wrap;
   word-break: break-all;
   overflow-x: auto;
@@ -77,14 +77,14 @@
 .empty {
   text-align: center;
   padding: 1rem;
-  color: var(--color-dimmed);
+  color: var(--fgColor-muted);
 
   p {
     margin: 0.5rem 0;
   }
 
   code {
-    background: var(--surface-subtle);
+    background: var(--bgColor-muted);
     padding: 0.15rem 0.4rem;
     border-radius: 3px;
     font-size: 0.8rem;
