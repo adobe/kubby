@@ -82,7 +82,7 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                         color: ColorState::Muted,
                     },
                     ColorRule {
-                        expression: "{0} === 0 && {1} > 0".to_string(),
+                        expression: "({0} === '<none>' || {0} === 0) && 0 < {1}".to_string(),
                         color: ColorState::Danger,
                     },
                     ColorRule {
@@ -102,15 +102,15 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 Some(crate::ColumnType::PodStatus),
                 vec![
                     ColorRule {
-                        expression: "['Running', 'Succeeded'].some(status => status.includes({0}))".to_string(),
+                        expression: "['Running', 'Succeeded'].some(status => {0}.includes(status))".to_string(),
                         color: ColorState::Success,
                     },
                     ColorRule {
-                        expression: "['Unknown', 'Pending', 'PodScheduled', 'PodReadyToStartContainers', 'ContainersReady', 'ContainersNotReady', 'ContainerCreating', 'Initialized', 'Ready', 'DisruptionTarget', 'PodResizePending', 'PodResizeInProgress'].some(status => status.includes({0}))".to_string(),
+                        expression: "['Unknown', 'Pending', 'PodScheduled', 'PodReadyToStartContainers', 'ContainersReady', 'ContainersNotReady', 'ContainerCreating', 'ContainerStatusUnknown', 'Completed', 'Initialized', 'Ready', 'DisruptionTarget', 'PodResizePending', 'PodResizeInProgress'].some(status => {0}.includes(status))".to_string(),
                         color: ColorState::Attention,
                     },
                     ColorRule {
-                        expression: "['Error', 'Failed', 'CrashLoopBackOff'].some(status => status.includes({0}))".to_string(),
+                        expression: "['Error', 'Failed', 'CrashLoopBackOff'].some(status => {0}.includes(status))".to_string(),
                         color: ColorState::Danger,
                     },
                 ]
