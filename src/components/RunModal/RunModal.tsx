@@ -23,6 +23,8 @@ interface RunModalProps {
   namespace: string
   /** Labels from the selected resource */
   labels: LabelSelector[]
+  /** Name of the selected resource */
+  resourceName: string
   /** Whether in read-only mode (disables execute, keeps copy enabled) */
   readOnly: boolean
 }
@@ -65,13 +67,15 @@ function substituteCommand(
   command: string,
   context: string,
   namespace: string,
-  labels: LabelSelector[]
+  labels: LabelSelector[],
+  resourceName: string
 ): string {
   const labelsStr = formatLabels(labels)
   return command
     .replace(/\$context/g, context)
     .replace(/\$namespace/g, namespace)
     .replace(/\$labels/g, labelsStr)
+    .replace(/\$name/g, resourceName)
 }
 
 /**
@@ -84,26 +88,27 @@ export function RunModal({
   context,
   namespace,
   labels,
+  resourceName,
   readOnly,
 }: RunModalProps) {
   const handleExecute = useCallback(async (command: RunCommand) => {
-    const substitutedCommand = substituteCommand(command.command, context, namespace, labels)
+    const substitutedCommand = substituteCommand(command.command, context, namespace, labels, resourceName)
     try {
       await invoke('open_terminal_with_command', { command: substitutedCommand })
       onClose()
     } catch (e) {
       console.error('Failed to open terminal:', e)
     }
-  }, [context, namespace, labels, onClose])
+  }, [context, namespace, labels, resourceName, onClose])
 
   const handleCopy = useCallback(async (command: RunCommand) => {
-    const substitutedCommand = substituteCommand(command.command, context, namespace, labels)
+    const substitutedCommand = substituteCommand(command.command, context, namespace, labels, resourceName)
     try {
       await writeText(substitutedCommand)
     } catch (e) {
       console.error('Failed to copy to clipboard:', e)
     }
-  }, [context, namespace, labels])
+  }, [context, namespace, labels, resourceName])
 
   if (runCommands.length === 0) {
     return (
@@ -122,7 +127,7 @@ export function RunModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Run Command">
       <div class={classes.commandList}>
         {runCommands.map((cmd, index) => {
-          const substitutedCommand = substituteCommand(cmd.command, context, namespace, labels)
+          const substitutedCommand = substituteCommand(cmd.command, context, namespace, labels, resourceName)
           return (
             <div key={index} class={classes.commandItem}>
               <div class={classes.commandHeader}>

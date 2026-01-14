@@ -856,6 +856,7 @@ export function ResourceList({
         context={context}
         namespace={namespace}
         labels={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : []}
+        resourceName={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].name : ''}
         readOnly={readOnly}
       />
 
