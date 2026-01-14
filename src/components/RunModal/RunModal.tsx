@@ -23,6 +23,8 @@ interface RunModalProps {
   namespace: string
   /** Labels from the selected resource */
   labels: LabelSelector[]
+  /** Whether in read-only mode (disables execute, keeps copy enabled) */
+  readOnly: boolean
 }
 
 /**
@@ -82,6 +84,7 @@ export function RunModal({
   context,
   namespace,
   labels,
+  readOnly,
 }: RunModalProps) {
   const handleExecute = useCallback(async (command: RunCommand) => {
     const substitutedCommand = substituteCommand(command.command, context, namespace, labels)
@@ -128,7 +131,8 @@ export function RunModal({
                   <button
                     class={classes.actionButton}
                     onClick={() => handleExecute(cmd)}
-                    title="Execute in terminal"
+                    title={readOnly ? "Disabled in read-only mode" : "Execute in terminal"}
+                    disabled={readOnly}
                   >
                     Execute
                   </button>

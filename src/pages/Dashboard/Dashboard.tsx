@@ -40,6 +40,7 @@ export interface RunCommand {
 export interface DashboardConfig {
   groups: DashboardGroup[];
   run_commands: RunCommand[];
+  read_only: boolean;
 }
 
 interface ParsedContext {

@@ -116,6 +116,7 @@ interface ResourceListProps {
   filters?: ResourceFilter[];
   navigationStack: NavigationNode[];
   dashboardConfig: DashboardConfig;
+  readOnly: boolean;
   onNavigateToNode: (index: number) => void;
   onBack: () => void;
   onResourceTypeChange?: (resourceType: string) => void;
@@ -139,6 +140,7 @@ export function ResourceList({
                                filters = [],
                                navigationStack,
                                dashboardConfig,
+                               readOnly,
                                onNavigateToNode,
                                onBack,
                                onResourceTypeChange,
@@ -235,6 +237,13 @@ export function ResourceList({
 
   // Handle action from shortcuts bar or keyboard
   const handleAction = useCallback(async (code: ActionCode) => {
+    // Check if action is a modification action and we're in read-only mode
+    const modificationActions: ActionCode[] = ['edit', 'delete', 'rolling_restart', 'shell', 'run', 'scale', 'port_forward']
+    if (readOnly && modificationActions.includes(code)) {
+      // No-op in read-only mode
+      return
+    }
+
     // Actions that don't require a selection
     if (code === 'run') {
       if (hasRunCommands) {
@@ -330,7 +339,7 @@ export function ResourceList({
   }, [
     selectedIndex, resources, resourceType, context, namespace,
     parentResourceName, isContainersView, editingResourceName,
-    hasRunCommands, onResourceClick, onDescribe, onLogs, refresh
+    hasRunCommands, readOnly, onResourceClick, onDescribe, onLogs, refresh
   ])
 
   // Handle confirmed delete
@@ -816,6 +825,7 @@ export function ResourceList({
         hasSelection={selectedIndex >= 0}
         disabled={error !== null}
         hasRunCommands={hasRunCommands}
+        readOnly={readOnly}
         onAction={handleAction}
       />
 
@@ -826,6 +836,7 @@ export function ResourceList({
         context={context}
         namespace={namespace}
         labels={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : []}
+        readOnly={readOnly}
       />
 
       <ConfirmModal
@@ -843,6 +854,7 @@ export function ResourceList({
         isConfirming={isDeleting}
         error={deleteError}
         destructive
+        readOnly={readOnly}
       />
 
       <RollingRestartModal
@@ -851,6 +863,7 @@ export function ResourceList({
         deploymentName={rollingRestartTarget ?? ''}
         context={context}
         namespace={namespace}
+        readOnly={readOnly}
       />
     </div>
   )

@@ -7,6 +7,7 @@ interface ShortcutConfig {
   shortcut: string
   code: ActionCode
   tooltip: string
+  isModifying?: boolean
 }
 
 interface ResourceListShortcutsBarProps {
@@ -14,42 +15,43 @@ interface ResourceListShortcutsBarProps {
   hasSelection: boolean
   disabled: boolean
   hasRunCommands: boolean
+  readOnly: boolean
   onAction: (code: ActionCode) => void
 }
 
 // Shortcut configurations by resource type
 const DEPLOYMENT_SHORTCUTS: ShortcutConfig[] = [
-  { label: 'Pods', shortcut: 'Enter', code: 'pods', tooltip: 'Show the pods for this deployment' },
-  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information' },
-  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor' },
-  { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this deployment' },
-  { label: 'Replica Sets', shortcut: 'Z', code: 'replica_sets', tooltip: 'Show replica sets for this deployment' },
-  { label: 'Rolling Restart...', shortcut: 'R', code: 'rolling_restart', tooltip: 'Perform a rolling restart of the deployment' },
-  { label: 'Scale', shortcut: 'S', code: 'scale', tooltip: 'Scale the number of replicas' },
-  { label: 'Delete...', shortcut: 'Ctrl+D', code: 'delete', tooltip: 'Delete this resource' },
+  { label: 'Pods', shortcut: 'Enter', code: 'pods', tooltip: 'Show the pods for this deployment', isModifying: false },
+  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
+  { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this deployment', isModifying: false },
+  { label: 'Replica Sets', shortcut: 'Z', code: 'replica_sets', tooltip: 'Show replica sets for this deployment', isModifying: false },
+  { label: 'Rolling Restart...', shortcut: 'R', code: 'rolling_restart', tooltip: 'Perform a rolling restart of the deployment', isModifying: true },
+  { label: 'Scale', shortcut: 'S', code: 'scale', tooltip: 'Scale the number of replicas', isModifying: true },
+  { label: 'Delete...', shortcut: 'Ctrl+D', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 
 const POD_SHORTCUTS: ShortcutConfig[] = [
-  { label: 'Containers', shortcut: 'Enter', code: 'containers', tooltip: 'Show containers in this pod' },
-  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information' },
-  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor' },
-  { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this pod' },
-  { label: 'Port-Forward', shortcut: 'Shift+F', code: 'port_forward', tooltip: 'Configure port-forwards for this pod' },
-  { label: 'Show Forwards', shortcut: 'F', code: 'show_port_forward', tooltip: 'Show existing port forwards' },
-  { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this pod' },
-  { label: 'Delete', shortcut: 'Ctrl+D', code: 'delete', tooltip: 'Delete this resource' },
+  { label: 'Containers', shortcut: 'Enter', code: 'containers', tooltip: 'Show containers in this pod', isModifying: false },
+  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
+  { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this pod', isModifying: false },
+  { label: 'Port-Forward', shortcut: 'Shift+F', code: 'port_forward', tooltip: 'Configure port-forwards for this pod', isModifying: true },
+  { label: 'Show Forwards', shortcut: 'F', code: 'show_port_forward', tooltip: 'Show existing port forwards', isModifying: false },
+  { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this pod', isModifying: true },
+  { label: 'Delete', shortcut: 'Ctrl+D', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 
 const CONTAINER_SHORTCUTS: ShortcutConfig[] = [
-  { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this container' },
-  { label: 'Port-Forward', shortcut: 'Shift+F', code: 'port_forward', tooltip: 'Configure port-forwards for this container' },
-  { label: 'Show Forwards', shortcut: 'F', code: 'show_port_forward', tooltip: 'Show existing port forwards' },
-  { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this container' },
+  { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this container', isModifying: false },
+  { label: 'Port-Forward', shortcut: 'Shift+F', code: 'port_forward', tooltip: 'Configure port-forwards for this container', isModifying: true },
+  { label: 'Show Forwards', shortcut: 'F', code: 'show_port_forward', tooltip: 'Show existing port forwards', isModifying: false },
+  { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this container', isModifying: true },
 ]
 
 const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
-  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information' },
-  { label: 'Delete...', shortcut: 'Ctrl+D', code: 'delete', tooltip: 'Delete this resource' },
+  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
+  { label: 'Delete...', shortcut: 'Ctrl+D', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 
 function getShortcutsForResourceType(resourceType: string, hasSelection: boolean, hasRunCommands: boolean): ShortcutConfig[] {
@@ -72,7 +74,7 @@ function getShortcutsForResourceType(resourceType: string, hasSelection: boolean
   
   // Add Run command if available
   if (hasRunCommands) {
-    return [...shortcuts, { label: 'Run...', shortcut: 'U', code: 'run', tooltip: 'Run a custom command' }]
+    return [...shortcuts, { label: 'Run...', shortcut: 'U', code: 'run', tooltip: 'Run a custom command', isModifying: true }]
   }
   
   return shortcuts
@@ -83,23 +85,31 @@ export function ResourceListShortcutsBar({
   hasSelection, 
   disabled,
   hasRunCommands,
+  readOnly,
   onAction,
 }: ResourceListShortcutsBarProps) {
   const shortcuts = getShortcutsForResourceType(resourceType, hasSelection, hasRunCommands)
   
   return (
     <ShortcutsBar disabled={disabled}>
-      {shortcuts.map((shortcut) => (
-        <Button
-          key={shortcut.code}
-          label={shortcut.label}
-          shortcut={shortcut.shortcut}
-          onClick={() => onAction(shortcut.code)}
-          tabIndex={0}
-          disabled={disabled}
-          tooltip={shortcut.tooltip}
-        />
-      ))}
+      {shortcuts.map((shortcut) => {
+        const isDisabled = disabled || (readOnly && shortcut.isModifying)
+        const tooltip = readOnly && shortcut.isModifying 
+          ? 'Disabled in read-only mode' 
+          : shortcut.tooltip
+        
+        return (
+          <Button
+            key={shortcut.code}
+            label={shortcut.label}
+            shortcut={shortcut.shortcut}
+            onClick={() => onAction(shortcut.code)}
+            tabIndex={0}
+            disabled={isDisabled}
+            tooltip={tooltip}
+          />
+        )
+      })}
     </ShortcutsBar>
   )
 }

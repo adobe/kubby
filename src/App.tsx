@@ -320,6 +320,7 @@ function App() {
           filters={currentNode.filters}
           navigationStack={navigationStack}
           dashboardConfig={config}
+          readOnly={config.read_only}
           onNavigateToNode={handleNavigateToNode}
           onBack={handleBackNavigation}
           onResourceTypeChange={(newResourceType) => {

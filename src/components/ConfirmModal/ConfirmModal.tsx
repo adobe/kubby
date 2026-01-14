@@ -27,6 +27,8 @@ interface ConfirmModalProps {
   error?: string | null
   /** Whether the confirm button should be styled as destructive (red) */
   destructive?: boolean
+  /** Whether in read-only mode (disables confirm action) */
+  readOnly?: boolean
 }
 
 /**
@@ -45,6 +47,7 @@ export function ConfirmModal({
   isConfirming = false,
   error,
   destructive = false,
+  readOnly = false,
 }: ConfirmModalProps) {
   const handleClose = () => {
     if (!isConfirming) {
@@ -54,11 +57,11 @@ export function ConfirmModal({
 
   // Handle Enter key to confirm (called by Modal's onKeyDown)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Enter' && !isConfirming) {
+    if (e.key === 'Enter' && !isConfirming && !readOnly) {
       e.preventDefault()
       onConfirm()
     }
-  }, [isConfirming, onConfirm])
+  }, [isConfirming, readOnly, onConfirm])
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={title} onKeyDown={handleKeyDown}>
@@ -78,9 +81,10 @@ export function ConfirmModal({
             label={isConfirming ? confirmingLabel : confirmLabel}
             shortcut="Enter"
             onClick={onConfirm}
-            disabled={isConfirming}
+            disabled={isConfirming || readOnly}
             tabIndex={0}
             className={destructive ? classes.destructiveButton : undefined}
+            tooltip={readOnly ? 'Disabled in read-only mode' : undefined}
           />
         </div>
       </div>

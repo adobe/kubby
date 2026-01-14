@@ -30,6 +30,8 @@ pub struct DashboardConfig {
     pub contexts: Dashboard,
     #[serde(default)]
     pub resources: Option<ResourcesConfig>,
+    #[serde(default)]
+    pub read_only: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -82,6 +84,7 @@ pub struct NamespaceGroup {
 pub struct NormalizedDashboardConfig {
     pub groups: Vec<NormalizedDashboardGroup>,
     pub run_commands: Vec<RunCommand>,
+    pub read_only: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -162,6 +165,7 @@ impl DashboardConfig {
                 .as_ref()
                 .map(|r| r.run.clone())
                 .unwrap_or_default(),
+            read_only: self.read_only,
         }
     }
 }

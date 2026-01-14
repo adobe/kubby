@@ -33,6 +33,7 @@ interface RollingRestartModalProps {
   deploymentName: string
   context: string
   namespace: string
+  readOnly: boolean
 }
 
 /**
@@ -96,6 +97,7 @@ export function RollingRestartModal({
                                       deploymentName,
                                       context,
                                       namespace,
+                                      readOnly,
                                     }: RollingRestartModalProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [loadingError, setLoadingError] = useState<string | null>(null)
@@ -187,11 +189,11 @@ export function RollingRestartModal({
 
   // Handle Enter key to confirm
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Enter' && !isRestarting && !isLoading && deploymentInfo) {
+    if (e.key === 'Enter' && !isRestarting && !isLoading && deploymentInfo && !readOnly) {
       e.preventDefault()
       handleConfirm()
     }
-  }, [isRestarting, isLoading, deploymentInfo, handleConfirm])
+  }, [isRestarting, isLoading, deploymentInfo, readOnly, handleConfirm])
 
   const formatValue = (value: string | number | null | undefined): string => {
     if (value === null || value === undefined) return '-'
@@ -304,9 +306,10 @@ export function RollingRestartModal({
             label={isRestarting ? 'Restarting...' : 'Restart'}
             shortcut="Enter"
             onClick={handleConfirm}
-            disabled={isRestarting || isLoading || !deploymentInfo}
+            disabled={isRestarting || isLoading || !deploymentInfo || readOnly}
             tabIndex={0}
             className={classes.restartButton}
+            tooltip={readOnly ? 'Disabled in read-only mode' : undefined}
           />
         </div>
       </div>
