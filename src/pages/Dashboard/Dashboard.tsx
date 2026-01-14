@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "preact/hooks";
 import classes from "./Dashboard.module.scss";
-import {ShortcutsBar} from '../../components/ShortcutsBar/ShortcutsBar.tsx'
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
+import {DashboardShortcutsBar} from './DashboardShortcutsBar.tsx'
 
 export interface ContextGroup {
   name: string;
@@ -291,16 +291,6 @@ function filterNamespaces(
   return { filtered, hasMatches: true };
 }
 
-/**
- * Shortcuts bar for dashboard view
- */
-function DashboardShortcutsBar({}: {}) {
-  return (
-    <ShortcutsBar>
-      <span></span>
-    </ShortcutsBar>
-  )
-}
 
 interface DashboardProps {
   config: DashboardConfig;
@@ -320,6 +310,250 @@ export function Dashboard({
   const filterInputRef = useRef<HTMLInputElement>(null);
   // Track last focused position (row, col) per group
   const groupPositionsRef = useRef<Map<number, { row: number; col: number }>>(new Map());
+  // Track the last focused group index and element
+  const lastFocusedRef = useRef<{ groupIndex: number; element: HTMLElement } | null>(null);
+
+  // Update last focused position whenever a cell button is focused
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains(classes.cellButton)) {
+        const section = target.closest(`.${classes.dashboardSection}`);
+        if (section) {
+          const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
+          const groupIndex = sections.indexOf(section);
+          if (groupIndex !== -1) {
+            lastFocusedRef.current = { groupIndex, element: target };
+            const row = parseInt(target.dataset.row || "0", 10);
+            const col = parseInt(target.dataset.col || "0", 10);
+            groupPositionsRef.current.set(groupIndex, { row, col });
+          }
+        }
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    return () => document.removeEventListener('focusin', handleFocusIn);
+  }, []);
+
+  // Navigate between groups
+  const navigateToGroup = (direction: 'next' | 'previous') => {
+    const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
+    const filterInput = filterInputRef.current;
+    if (sections.length === 0) return;
+
+    const activeElement = document.activeElement as HTMLElement;
+    const isOnCellButton = activeElement?.classList.contains(classes.cellButton);
+    const isOnFilterInput = activeElement === filterInput;
+
+    let currentSectionIndex = -1;
+    let isCurrentlyOnFilter = false;
+
+    if (isOnFilterInput) {
+      isCurrentlyOnFilter = true;
+    } else if (isOnCellButton) {
+      const currentSection = activeElement.closest(`.${classes.dashboardSection}`);
+      if (currentSection) {
+        currentSectionIndex = sections.indexOf(currentSection);
+        if (currentSectionIndex !== -1) {
+          const row = parseInt(activeElement.dataset.row || "0", 10);
+          const col = parseInt(activeElement.dataset.col || "0", 10);
+          groupPositionsRef.current.set(currentSectionIndex, { row, col });
+        }
+      }
+    } else if (lastFocusedRef.current) {
+      // If focus is elsewhere (e.g., shortcuts bar button), use last focused position
+      currentSectionIndex = lastFocusedRef.current.groupIndex;
+    } else {
+      // No previous focus, start from first group
+      currentSectionIndex = -1;
+    }
+
+    let targetSectionIndex = -1;
+    let targetIsFilter = false;
+    const totalSections = sections.length;
+    const hasFilter = filterInput !== null;
+
+    if (direction === 'previous') {
+      if (isCurrentlyOnFilter) {
+        targetSectionIndex = totalSections - 1;
+      } else if (currentSectionIndex === 0) {
+        if (hasFilter) {
+          targetIsFilter = true;
+        } else {
+          targetSectionIndex = totalSections - 1;
+        }
+      } else {
+        targetSectionIndex = currentSectionIndex - 1;
+      }
+    } else {
+      if (isCurrentlyOnFilter) {
+        targetSectionIndex = 0;
+      } else if (currentSectionIndex === totalSections - 1) {
+        if (hasFilter) {
+          targetIsFilter = true;
+        } else {
+          targetSectionIndex = 0;
+        }
+      } else {
+        targetSectionIndex = currentSectionIndex + 1;
+      }
+    }
+
+    if (targetIsFilter && filterInput) {
+      filterInput.focus();
+      filterInput.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    } else if (targetSectionIndex !== -1) {
+      const targetSection = sections[targetSectionIndex] as HTMLElement;
+      const allButtons = Array.from(targetSection.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
+      if (allButtons.length === 0) return;
+
+      const storedPos = groupPositionsRef.current.get(targetSectionIndex);
+      let targetButton: HTMLElement | null = null;
+
+      if (storedPos) {
+        targetButton = targetSection.querySelector(
+          `.${classes.cellButton}[data-row="${storedPos.row}"][data-col="${storedPos.col}"]`
+        ) as HTMLElement | null;
+
+        if (!targetButton) {
+          let minDistance = Infinity;
+          for (const btn of allButtons) {
+            const row = parseInt(btn.dataset.row || "0", 10);
+            const col = parseInt(btn.dataset.col || "0", 10);
+            const distance = Math.abs(row - storedPos.row) + Math.abs(col - storedPos.col);
+            if (distance < minDistance) {
+              minDistance = distance;
+              targetButton = btn;
+            }
+          }
+        }
+      }
+
+      if (!targetButton) {
+        targetButton = allButtons[0];
+      }
+
+      if (targetButton) {
+        targetButton.focus();
+        targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        lastFocusedRef.current = { groupIndex: targetSectionIndex, element: targetButton };
+      }
+    }
+  };
+
+  // Handle arrow navigation
+  const handleArrowNavigation = (direction: 'up' | 'down' | 'left' | 'right') => {
+    let activeElement = document.activeElement as HTMLElement;
+    let currentSection: Element | null = null;
+    let currentRow: number;
+    let currentCol: number;
+
+    // If currently on a cell button, use it
+    if (activeElement?.classList.contains(classes.cellButton)) {
+      currentSection = activeElement.closest(`.${classes.dashboardSection}`);
+      currentRow = parseInt(activeElement.dataset.row || "0", 10);
+      currentCol = parseInt(activeElement.dataset.col || "0", 10);
+    } 
+    // Otherwise, use last focused position
+    else if (lastFocusedRef.current) {
+      activeElement = lastFocusedRef.current.element;
+      currentSection = activeElement.closest(`.${classes.dashboardSection}`);
+      currentRow = parseInt(activeElement.dataset.row || "0", 10);
+      currentCol = parseInt(activeElement.dataset.col || "0", 10);
+    } 
+    // No previous focus, can't navigate
+    else {
+      return;
+    }
+
+    if (!currentSection) return;
+
+    const tableRef = currentSection.querySelector(`.${classes.matrix}`) as HTMLTableElement | null;
+    if (!tableRef) return;
+
+    let targetRow = currentRow;
+    let targetCol = currentCol;
+
+    switch (direction) {
+      case 'up':
+        targetRow = currentRow - 1;
+        break;
+      case 'down':
+        targetRow = currentRow + 1;
+        break;
+      case 'left':
+        targetCol = currentCol - 1;
+        break;
+      case 'right':
+        targetCol = currentCol + 1;
+        break;
+    }
+
+    let targetButton = tableRef.querySelector(
+      `.${classes.cellButton}[data-row="${targetRow}"][data-col="${targetCol}"]`
+    ) as HTMLElement | null;
+
+    if (!targetButton) {
+      const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
+
+      if (direction === 'up' || direction === 'down') {
+        const sameColButtons = allButtons.filter(btn =>
+          parseInt(btn.dataset.col || "0", 10) === currentCol
+        );
+
+        if (direction === 'up') {
+          const above = sameColButtons.filter(btn =>
+            parseInt(btn.dataset.row || "0", 10) < currentRow
+          );
+          if (above.length > 0) {
+            targetButton = above[above.length - 1];
+          }
+        } else {
+          const below = sameColButtons.filter(btn =>
+            parseInt(btn.dataset.row || "0", 10) > currentRow
+          );
+          if (below.length > 0) {
+            targetButton = below[0];
+          }
+        }
+      } else {
+        const sameRowButtons = allButtons.filter(btn =>
+          parseInt(btn.dataset.row || "0", 10) === currentRow
+        );
+
+        if (direction === 'left') {
+          const left = sameRowButtons.filter(btn =>
+            parseInt(btn.dataset.col || "0", 10) < currentCol
+          );
+          if (left.length > 0) {
+            targetButton = left[left.length - 1];
+          }
+        } else {
+          const right = sameRowButtons.filter(btn =>
+            parseInt(btn.dataset.col || "0", 10) > currentCol
+          );
+          if (right.length > 0) {
+            targetButton = right[0];
+          }
+        }
+      }
+    }
+
+    if (targetButton) {
+      targetButton.focus();
+      targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+
+      const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
+      const groupIndex = sections.indexOf(currentSection);
+      if (groupIndex !== -1) {
+        const row = parseInt(targetButton.dataset.row || "0", 10);
+        const col = parseInt(targetButton.dataset.col || "0", 10);
+        groupPositionsRef.current.set(groupIndex, { row, col });
+        lastFocusedRef.current = { groupIndex, element: targetButton };
+      }
+    }
+  };
 
   // Focus button when dashboard is shown (restore last selection or focus first)
   useEffect(() => {
@@ -339,6 +573,16 @@ export function Dashboard({
       if (targetButton) {
         targetButton.focus();
         targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        
+        // Set initial lastFocusedRef
+        const section = targetButton.closest(`.${classes.dashboardSection}`);
+        if (section) {
+          const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
+          const groupIndex = sections.indexOf(section);
+          if (groupIndex !== -1) {
+            lastFocusedRef.current = { groupIndex, element: targetButton };
+          }
+        }
       }
     });
   }, [lastSelectedCell]);
@@ -549,7 +793,11 @@ export function Dashboard({
         </div>
       </div>
 
-      <DashboardShortcutsBar />
+      <DashboardShortcutsBar 
+        onNextGroup={() => navigateToGroup('next')}
+        onPreviousGroup={() => navigateToGroup('previous')}
+        onArrowNavigation={handleArrowNavigation}
+      />
     </div>
   );
 }
