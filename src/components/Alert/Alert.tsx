@@ -32,7 +32,7 @@ export function Alert({ type, label, message }: ErrorProps) {
   const { alertClass, icon } = props()
   return (
     <div class={`${classes.Alert} ${alertClass}`}>
-      <div class={classes.title}>{icon} <strong>{label}:</strong></div>
+      <div class={classes.title}>{icon} <strong>{label}</strong></div>
       <div>{message ?? 'Unknown error'}</div>
     </div>
   )

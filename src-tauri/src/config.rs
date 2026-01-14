@@ -228,7 +228,7 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
             .output()
     )
     .await
-    .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|_| format!("kubectl timed out after {}s, check your connection", KUBECTL_TIMEOUT_SECS))?
     .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
 
     if !output.status.success() {
@@ -251,7 +251,7 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
             .output()
     )
     .await
-    .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|_| format!("kubectl timed out after {}s, check your connection", KUBECTL_TIMEOUT_SECS))?
     .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
 
     let current_context = if current_output.status.success() {
@@ -291,7 +291,7 @@ pub async fn get_namespaces_for_context(context: String) -> Result<Vec<String>, 
             .output()
     )
     .await
-    .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|_| format!("kubectl timed out after {}s, check your connection", KUBECTL_TIMEOUT_SECS))?
     .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
 
     if !output.status.success() {

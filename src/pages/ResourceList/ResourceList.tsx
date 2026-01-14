@@ -18,6 +18,7 @@ import {getResourceNameFilter, toLabelSelectors} from '../../kubectl/filterTypes
 import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
 import {RunModal} from '../../components/RunModal/RunModal.tsx'
 import {ConfirmModal} from '../../components/ConfirmModal/ConfirmModal.tsx'
+import {RollingRestartModal} from '../../components/RollingRestartModal/RollingRestartModal.tsx'
 import type {ActionCode} from './resourceActions.ts'
 import {executeShell, executeEdit, executeDelete} from './resourceActions.ts'
 
@@ -229,6 +230,9 @@ export function ResourceList({
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // Rolling restart modal state
+  const [rollingRestartTarget, setRollingRestartTarget] = useState<string | null>(null)
+
   // Handle action from shortcuts bar or keyboard
   const handleAction = useCallback(async (code: ActionCode) => {
     // Actions that don't require a selection
@@ -310,8 +314,12 @@ export function ResourceList({
         setDeleteError(null)
         break
 
-      case 'replica_sets':
       case 'rolling_restart':
+        // Open rolling restart modal (deployments only)
+        setRollingRestartTarget(resource.name)
+        break
+
+      case 'replica_sets':
       case 'scale':
       case 'port_forward':
       case 'show_port_forward':
@@ -624,6 +632,16 @@ export function ResourceList({
           return
         }
 
+        // R - Rolling restart (deployments only)
+        if (e.code === 'KeyR' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
+          const normalizedType = resourceType.toLowerCase()
+          if (normalizedType === 'deployments' || normalizedType === 'deployment') {
+            e.preventDefault()
+            handleAction('rolling_restart')
+          }
+          return
+        }
+
         // Ctrl+D - Delete selected resource (not available for containers)
         if (e.code === 'KeyD' && isControlModifierPressed(e) && selectedIndex >= 0) {
           const normalizedType = resourceType.toLowerCase()
@@ -724,7 +742,7 @@ export function ResourceList({
         />
 
         <Alert type="error" label="Edit Failed" message={editError} />
-        <Alert type="error" label="Alert" message={error} />
+        <Alert type="error" label="Loading Error" message={error} />
         <Alert type="error" label="Column Evaluation Error" message={evaluationError} />
 
         {!error && (
@@ -825,6 +843,14 @@ export function ResourceList({
         isConfirming={isDeleting}
         error={deleteError}
         destructive
+      />
+
+      <RollingRestartModal
+        isOpen={rollingRestartTarget !== null}
+        onClose={() => setRollingRestartTarget(null)}
+        deploymentName={rollingRestartTarget ?? ''}
+        context={context}
+        namespace={namespace}
       />
     </div>
   )

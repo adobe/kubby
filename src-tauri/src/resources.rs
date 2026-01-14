@@ -144,3 +144,185 @@ pub async fn delete_resource(
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(stdout.trim().to_string())
 }
+
+#[tauri::command]
+pub async fn rolling_restart_deployment(
+    deployment_name: String,
+    context: String,
+    namespace: String,
+) -> Result<String, String> {
+    // Build kubectl rollout restart command
+    let args = vec![
+        "rollout".to_string(),
+        "restart".to_string(),
+        "deployment".to_string(),
+        deployment_name.clone(),
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+    ];
+    
+    // Execute kubectl rollout restart command asynchronously with timeout
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl rollout restart timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl rollout restart: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to restart deployment: {}", stderr));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.trim().to_string())
+}
+
+#[tauri::command]
+pub async fn get_hpa_for_target(
+    target_kind: String,
+    target_name: String,
+    context: String,
+    namespace: String,
+) -> Result<Option<serde_json::Value>, String> {
+    // Get all HPAs in the namespace as JSON
+    let args = vec![
+        "get".to_string(),
+        "hpa".to_string(),
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+        "-o".to_string(),
+        "json".to_string(),
+    ];
+    
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl get hpa timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl get hpa: {}", e))?;
+    
+    // If no HPAs exist, kubectl returns an error - treat as empty
+    if !output.status.success() {
+        return Ok(None);
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let hpa_list: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse HPA JSON: {}", e))?;
+    
+    // Find HPA that targets the specified resource
+    let target_kind_lower = target_kind.to_lowercase();
+    if let Some(items) = hpa_list.get("items").and_then(|v| v.as_array()) {
+        for item in items {
+            if let Some(spec) = item.get("spec") {
+                if let Some(scale_target_ref) = spec.get("scaleTargetRef") {
+                    let kind = scale_target_ref.get("kind")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+                    let name = scale_target_ref.get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    
+                    if kind == target_kind_lower && name == target_name {
+                        return Ok(Some(item.clone()));
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(None)
+}
+
+#[tauri::command]
+pub async fn get_pdb_for_deployment(
+    deployment_name: String,
+    context: String,
+    namespace: String,
+) -> Result<Option<serde_json::Value>, String> {
+    // First, get the deployment to find its selector labels
+    let deployment = get_resource_detail(
+        "deployment".to_string(),
+        deployment_name,
+        context.clone(),
+        namespace.clone(),
+    ).await?;
+    
+    // Extract the deployment's matchLabels from spec.selector.matchLabels
+    let deployment_labels = deployment
+        .get("spec")
+        .and_then(|s| s.get("selector"))
+        .and_then(|s| s.get("matchLabels"))
+        .and_then(|v| v.as_object());
+    
+    let deployment_labels = match deployment_labels {
+        Some(labels) => labels,
+        None => return Ok(None), // No selector labels found
+    };
+    
+    // Get all PDBs in the namespace as JSON
+    let args = vec![
+        "get".to_string(),
+        "pdb".to_string(),
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+        "-o".to_string(),
+        "json".to_string(),
+    ];
+    
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl get pdb timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl get pdb: {}", e))?;
+    
+    // If no PDBs exist, kubectl returns an error - treat as empty
+    if !output.status.success() {
+        return Ok(None);
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let pdb_list: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse PDB JSON: {}", e))?;
+    
+    // Find PDB whose selector matches the deployment's labels
+    if let Some(items) = pdb_list.get("items").and_then(|v| v.as_array()) {
+        for item in items {
+            if let Some(pdb_selector) = item
+                .get("spec")
+                .and_then(|s| s.get("selector"))
+                .and_then(|s| s.get("matchLabels"))
+                .and_then(|v| v.as_object())
+            {
+                // Check if all PDB selector labels match the deployment's labels
+                let matches = pdb_selector.iter().all(|(key, value)| {
+                    deployment_labels.get(key) == Some(value)
+                });
+                
+                if matches && !pdb_selector.is_empty() {
+                    return Ok(Some(item.clone()));
+                }
+            }
+        }
+    }
+    
+    Ok(None)
+}
