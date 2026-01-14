@@ -8,7 +8,6 @@ import type {NavigationNode} from '../../navigation/navigationTypes.ts'
 import {ResourceListShortcutsBar} from './ResourceListShortcutsBar.tsx'
 import {Alert} from '../../components/Alert/Alert.tsx'
 import {Button} from '../../components/Button/Button.tsx'
-import {Label} from '../../components/Label/Label.tsx'
 import {Combobox} from '../../components/Combobox/Combobox.tsx'
 import type {ComboboxHandle} from '../../components/Combobox/Combobox.tsx'
 import {isAltModifierPressed, isControlModifierPressed} from '../../navigation/keyboardShortcuts.ts'
@@ -692,46 +691,46 @@ export function ResourceList({
     <div class={classes.ResourceList}>
       <header class={classes.header}>
         <div class={classes.headerInfo}>
-          <Label label="Resource" shortcut="Opt+R">
-            <Combobox
-              ref={resourceComboboxRef}
-              items={resourceTypes}
-              selectedItem={resourceType}
-              onSelectedItemChange={handleResourceTypeSelect}
-              itemToString={(item) => item || ''}
-              filterItems={filterResourceTypes}
-              placeholder="Select resource type..."
-              emptyMessage="No resource types found"
-              tabIndex={1}
-              onOpenChange={setIsResourceComboboxOpen}
-            />
-          </Label>
-          <Label label="Context" shortcut="Opt+C">
-            <Combobox
-              ref={contextComboboxRef}
-              items={allContexts}
-              selectedItem={context}
-              onSelectedItemChange={handleContextSelect}
-              itemToString={(item) => item || ''}
-              placeholder="Select context..."
-              emptyMessage="No contexts found"
-              tabIndex={2}
-              onOpenChange={setIsContextComboboxOpen}
-            />
-          </Label>
-          <Label label="Namespace" shortcut="Opt+N">
-            <Combobox
-              ref={namespaceComboboxRef}
-              items={availableNamespaces}
-              selectedItem={namespace}
-              onSelectedItemChange={handleNamespaceSelect}
-              itemToString={(item) => item || ''}
-              placeholder="Select namespace..."
-              emptyMessage="No namespaces found"
-              tabIndex={3}
-              onOpenChange={setIsNamespaceComboboxOpen}
-            />
-          </Label>
+          <Combobox
+            ref={resourceComboboxRef}
+            items={resourceTypes}
+            selectedItem={resourceType}
+            onSelectedItemChange={handleResourceTypeSelect}
+            itemToString={(item) => item || ''}
+            filterItems={filterResourceTypes}
+            placeholder="Select resource type..."
+            emptyMessage="No resource types found"
+            tabIndex={1}
+            onOpenChange={setIsResourceComboboxOpen}
+            label="Resource"
+            shortcut="Opt+R"
+          />
+          <Combobox
+            ref={contextComboboxRef}
+            items={allContexts}
+            selectedItem={context}
+            onSelectedItemChange={handleContextSelect}
+            itemToString={(item) => item || ''}
+            placeholder="Select context..."
+            emptyMessage="No contexts found"
+            tabIndex={2}
+            onOpenChange={setIsContextComboboxOpen}
+            label="Context"
+            shortcut="Opt+C"
+          />
+          <Combobox
+            ref={namespaceComboboxRef}
+            items={availableNamespaces}
+            selectedItem={namespace}
+            onSelectedItemChange={handleNamespaceSelect}
+            itemToString={(item) => item || ''}
+            placeholder="Select namespace..."
+            emptyMessage="No namespaces found"
+            tabIndex={3}
+            onOpenChange={setIsNamespaceComboboxOpen}
+            label="Namespace"
+            shortcut="Opt+N"
+          />
         </div>
         <div class={classes.headerButtons}>
           <Button

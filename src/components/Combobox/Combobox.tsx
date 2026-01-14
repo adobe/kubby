@@ -3,6 +3,7 @@ import {forwardRef} from 'preact/compat'
 import {useCombobox} from 'downshift'
 import type {Ref, JSX} from 'preact'
 import classes from './Combobox.module.scss'
+import {formatShortcut} from '../../navigation/keyboardShortcuts.ts'
 
 interface ComboboxProps<T> {
   items: T[];
@@ -16,6 +17,10 @@ interface ComboboxProps<T> {
   className?: string;
   emptyMessage?: string;
   onOpenChange?: (isOpen: boolean) => void;
+  /** Optional label to display above the combobox */
+  label?: string;
+  /** Optional keyboard shortcut hint (e.g., 'Opt+R') - displayed next to label */
+  shortcut?: string;
 }
 
 export interface ComboboxHandle {
@@ -45,6 +50,8 @@ function ComboboxInner<T>(
     className,
     emptyMessage = 'No items found',
     onOpenChange,
+    label,
+    shortcut,
   }: ComboboxProps<T>,
   ref: Ref<ComboboxHandle>
 ) {
@@ -118,6 +125,14 @@ function ComboboxInner<T>(
 
   return (
     <div className={`${classes.Combobox} ${className || ''}`}>
+      {label && (
+        <span className={classes.labelText}>
+          {label}
+          {shortcut && (
+            <span className={classes.shortcutHint}>{formatShortcut(shortcut)}</span>
+          )}
+        </span>
+      )}
       <div className={classes.comboboxInputWrapper}>
         <input
           {...getInputProps({

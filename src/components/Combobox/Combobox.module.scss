@@ -2,6 +2,32 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  padding-top: 0.25rem;
+
+  .labelText {
+    position: absolute;
+    z-index: 10;
+    top: -0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 0.25rem;
+    padding: 0 0.25rem;
+    color: var(--fgColor-muted);
+    background-color: var(--bgColor-muted);
+    font-size: 0.65rem;
+    line-height: 1;
+    text-transform: uppercase;
+
+    .shortcutHint {
+      font-size: 0.7rem;
+      letter-spacing: 0.1rem;
+      color: var(--fgColor-muted);
+      border: var(--border-default);
+      padding: 2px;
+      margin-top: -2px;
+    }
+  }
 
 
   .comboboxInputWrapper {
@@ -12,7 +38,7 @@
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-    padding: 0.1rem 0.25rem;
+    padding: 0.5rem 0.25rem 0.1rem 0.25rem;
     background: transparent;
     border: 1px solid var(--borderColor-default);
     border-radius: 4px;
