@@ -48,9 +48,9 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
             },
             ColumnConfig {
                 name: "STATUS".to_string(),
-                json_paths: vec!["$.status.phase".to_string()],
+                json_paths: vec![],  // Not used for PodStatus type
                 format: None,
-                column_type: None,
+                column_type: Some(crate::ColumnType::PodStatus),
             },
             ColumnConfig {
                 name: "RESTARTS".to_string(),

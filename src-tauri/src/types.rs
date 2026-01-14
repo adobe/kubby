@@ -22,6 +22,8 @@ pub enum ColumnType {
     Bool,
     Datetime,
     Duration,
+    #[serde(rename = "podstatus")]
+    PodStatus,
 }
 
 impl Default for ColumnType {

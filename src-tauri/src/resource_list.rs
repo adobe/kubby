@@ -110,7 +110,92 @@ fn format_value_by_type(value: &Value, column_type: &ColumnType) -> String {
                 value.to_string().trim_matches('"').to_string()
             }
         }
+        ColumnType::PodStatus => {
+            // This should not be called for PodStatus - handled separately
+            "<error>".to_string()
+        }
     }
+}
+
+// Smart pod status evaluation with prioritized condition checking
+fn evaluate_pod_status(item: &Value) -> String {
+    let phase = item
+        .pointer("/status/phase")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Unknown");
+    
+    // 1. Check for scheduling issues (highest priority for Pending)
+    if let Some(conditions) = item.pointer("/status/conditions").and_then(|v| v.as_array()) {
+        for condition in conditions {
+            if condition.get("type").and_then(|v| v.as_str()) == Some("PodScheduled")
+                && condition.get("status").and_then(|v| v.as_str()) == Some("False") {
+                if let Some(reason) = condition.get("reason").and_then(|v| v.as_str()) {
+                    return reason.to_string();
+                }
+            }
+        }
+    }
+    
+    // 2. Check init containers (second priority)
+    if let Some(init_containers) = item.pointer("/status/initContainerStatuses").and_then(|v| v.as_array()) {
+        if let Some(first_waiting) = init_containers.iter().find(|c| {
+            c.pointer("/state/waiting").is_some()
+        }) {
+            if let Some(reason) = first_waiting.pointer("/state/waiting/reason").and_then(|v| v.as_str()) {
+                return format!("Init:{}", reason);
+            }
+        }
+    }
+    
+    // 3. Check main containers
+    if let Some(containers) = item.pointer("/status/containerStatuses").and_then(|v| v.as_array()) {
+        // Collect unique waiting reasons
+        let mut waiting_reasons: Vec<&str> = containers
+            .iter()
+            .filter_map(|c| c.pointer("/state/waiting/reason").and_then(|v| v.as_str()))
+            .collect();
+        waiting_reasons.sort();
+        waiting_reasons.dedup();  // Remove duplicates!
+        
+        if !waiting_reasons.is_empty() {
+            return waiting_reasons.join(", ");
+        }
+        
+        // Check for terminated containers
+        let mut terminated_reasons: Vec<&str> = containers
+            .iter()
+            .filter_map(|c| c.pointer("/state/terminated/reason").and_then(|v| v.as_str()))
+            .collect();
+        terminated_reasons.sort();
+        terminated_reasons.dedup();
+        
+        if !terminated_reasons.is_empty() {
+            return terminated_reasons.join(", ");
+        }
+    }
+    
+    // 4. Check for other condition issues (only for Running/non-Pending phases)
+    if phase != "Pending" {
+        if let Some(conditions) = item.pointer("/status/conditions").and_then(|v| v.as_array()) {
+            let mut false_conditions: Vec<&str> = conditions
+                .iter()
+                .filter(|c| {
+                    c.get("status").and_then(|v| v.as_str()) == Some("False")
+                    && c.get("type").and_then(|v| v.as_str()) != Some("PodScheduled")  // Skip already checked
+                })
+                .filter_map(|c| c.get("reason").and_then(|v| v.as_str()))
+                .collect();
+            false_conditions.sort();
+            false_conditions.dedup();
+            
+            if !false_conditions.is_empty() {
+                return false_conditions.join(", ");
+            }
+        }
+    }
+    
+    // Default: just show phase
+    phase.to_string()
 }
 
 // Evaluate a single JSONPath expression and return formatted string
@@ -165,6 +250,11 @@ fn evaluate_jsonpath(item: &Value, json_path: &str, column_type: &ColumnType) ->
 // Evaluate column config and format the result
 fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<String, String> {
     let column_type = config.column_type.as_ref().unwrap_or(&ColumnType::Text);
+    
+    // Handle custom pod status evaluation
+    if matches!(column_type, ColumnType::PodStatus) {
+        return Ok(evaluate_pod_status(item));
+    }
     
     // Evaluate each JSONPath
     let mut results: Vec<String> = Vec::new();

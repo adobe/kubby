@@ -1,6 +1,6 @@
 // Shared types for resource data
 
-export type ColumnType = 'text' | 'number' | 'bool' | 'datetime' | 'duration';
+export type ColumnType = 'text' | 'number' | 'bool' | 'datetime' | 'duration' | 'podstatus';
 
 export interface ColumnConfig {
   name: string;
