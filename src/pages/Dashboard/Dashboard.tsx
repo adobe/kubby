@@ -778,6 +778,7 @@ export function Dashboard({
           filterInputTabIndex={0}
           onFilterSubmit={handleFilterSubmit}
         />
+        <div class={classes.kubbyTitle}>Kubby</div>
       </div>
 
       <div class={classes.body}>

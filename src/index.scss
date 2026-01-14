@@ -37,6 +37,13 @@
   url('./assets/fonts/fira-code_5.2.7/webfonts/fira-code-latin-700-normal.woff') format('woff');
 }
 
+@font-face {
+  font-family: 'Mole';
+  font-style: italic;
+  font-display: swap;
+  src: url('./assets/fonts/Molle/Molle-Italic.ttf');
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
