@@ -275,17 +275,20 @@ export function RollingRestartModal({
               </dl>
             </section>
 
-            {hpaInfo && (
-              <section class={classes.section}>
-                <h3 class={classes.sectionTitle}>HorizontalPodAutoscaler</h3>
+
+            <section class={classes.section}>
+              <h3 class={classes.sectionTitle}>HorizontalPodAutoscaler</h3>
+              {hpaInfo ? (
                 <dl class={classes.grid}>
                   <dt>Min Replicas</dt>
                   <dd>{hpaInfo.minReplicas}</dd>
                   <dt>Max Replicas</dt>
                   <dd>{hpaInfo.maxReplicas}</dd>
                 </dl>
-              </section>
-            )}
+              )
+              : <p class={classes.notFound}>No HPA found</p>}
+            </section>
+
           </div>
         )}
 
