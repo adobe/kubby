@@ -103,7 +103,12 @@ function getNamespacePrefixForGroup(namespaces: NamespaceItem[]): string {
   return findCommonPrefix(namespaces.map((ns) => ns.name));
 }
 
-function handleCellKeyDown(e: KeyboardEvent, tableRef: HTMLTableElement | null) {
+function handleCellKeyDown(
+  e: KeyboardEvent, 
+  tableRef: HTMLTableElement | null,
+  groupIndex: number,
+  groupPositionsRef: { current: Map<number, { row: number; col: number }> }
+) {
   if (!tableRef) return;
   
   const target = e.target as HTMLElement;
@@ -191,6 +196,12 @@ function handleCellKeyDown(e: KeyboardEvent, tableRef: HTMLTableElement | null) 
   
   if (targetButton) {
     targetButton.focus();
+    targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    
+    // Update the stored position for this group
+    const row = parseInt(targetButton.dataset.row || "0", 10);
+    const col = parseInt(targetButton.dataset.col || "0", 10);
+    groupPositionsRef.current.set(groupIndex, { row, col });
   }
 }
 
@@ -307,6 +318,8 @@ export function Dashboard({
   onCellClick 
 }: DashboardProps) {
   const filterInputRef = useRef<HTMLInputElement>(null);
+  // Track last focused position (row, col) per group
+  const groupPositionsRef = useRef<Map<number, { row: number; col: number }>>(new Map());
 
   // Focus button when dashboard is shown (restore last selection or focus first)
   useEffect(() => {
@@ -325,6 +338,7 @@ export function Dashboard({
       
       if (targetButton) {
         targetButton.focus();
+        targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
       }
     });
   }, [lastSelectedCell]);
@@ -378,18 +392,9 @@ export function Dashboard({
       if (e.key !== "Tab") return;
 
       const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
-      const groupFirstButtons = sections
-        .map(section => section.querySelector(`.${classes.cellButton}`) as HTMLElement | null)
-        .filter((btn): btn is HTMLElement => btn !== null);
-
       const filterInput = filterInputRef.current;
 
-      const tabStops: HTMLElement[] = [...groupFirstButtons];
-      if (filterInput) {
-        tabStops.push(filterInput);
-      }
-
-      if (tabStops.length === 0) return;
+      if (sections.length === 0) return;
 
       const activeElement = document.activeElement as HTMLElement;
       
@@ -400,31 +405,106 @@ export function Dashboard({
 
       e.preventDefault();
 
-      let currentIndex = -1;
+      let currentSectionIndex = -1;
+      let isCurrentlyOnFilter = false;
+      
       if (isOnFilterInput) {
-        currentIndex = tabStops.indexOf(filterInput!);
+        isCurrentlyOnFilter = true;
       } else if (isOnCellButton) {
         const currentSection = activeElement.closest(`.${classes.dashboardSection}`);
         if (currentSection) {
-          const sectionIndex = sections.indexOf(currentSection);
-          if (sectionIndex !== -1 && sectionIndex < groupFirstButtons.length) {
-            currentIndex = sectionIndex;
+          currentSectionIndex = sections.indexOf(currentSection);
+          
+          // Store current position for this group
+          if (currentSectionIndex !== -1) {
+            const row = parseInt(activeElement.dataset.row || "0", 10);
+            const col = parseInt(activeElement.dataset.col || "0", 10);
+            groupPositionsRef.current.set(currentSectionIndex, { row, col });
           }
         }
       }
 
-      if (currentIndex === -1) return;
-
-      let nextIndex: number;
+      // Calculate next section/filter
+      let targetSectionIndex = -1;
+      let targetIsFilter = false;
+      
+      const totalSections = sections.length;
+      const hasFilter = filterInput !== null;
+      
       if (e.shiftKey) {
-        nextIndex = currentIndex - 1;
-        if (nextIndex < 0) nextIndex = tabStops.length - 1;
+        // Going backwards
+        if (isCurrentlyOnFilter) {
+          targetSectionIndex = totalSections - 1;
+        } else if (currentSectionIndex === 0) {
+          if (hasFilter) {
+            targetIsFilter = true;
+          } else {
+            targetSectionIndex = totalSections - 1;
+          }
+        } else {
+          targetSectionIndex = currentSectionIndex - 1;
+        }
       } else {
-        nextIndex = currentIndex + 1;
-        if (nextIndex >= tabStops.length) nextIndex = 0;
+        // Going forwards
+        if (isCurrentlyOnFilter) {
+          targetSectionIndex = 0;
+        } else if (currentSectionIndex === totalSections - 1) {
+          if (hasFilter) {
+            targetIsFilter = true;
+          } else {
+            targetSectionIndex = 0;
+          }
+        } else {
+          targetSectionIndex = currentSectionIndex + 1;
+        }
       }
 
-      tabStops[nextIndex].focus();
+      // Focus the target
+      if (targetIsFilter && filterInput) {
+        filterInput.focus();
+        filterInput.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      } else if (targetSectionIndex !== -1) {
+        const targetSection = sections[targetSectionIndex] as HTMLElement;
+        const allButtons = Array.from(targetSection.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
+        
+        if (allButtons.length === 0) return;
+        
+        // Try to use stored position for this group
+        const storedPos = groupPositionsRef.current.get(targetSectionIndex);
+        let targetButton: HTMLElement | null = null;
+        
+        if (storedPos) {
+          // Try to find button at stored position
+          targetButton = targetSection.querySelector(
+            `.${classes.cellButton}[data-row="${storedPos.row}"][data-col="${storedPos.col}"]`
+          ) as HTMLElement | null;
+          
+          // If exact position not found, try to find closest button
+          if (!targetButton) {
+            // Find button with closest row and col
+            let minDistance = Infinity;
+            for (const btn of allButtons) {
+              const row = parseInt(btn.dataset.row || "0", 10);
+              const col = parseInt(btn.dataset.col || "0", 10);
+              const distance = Math.abs(row - storedPos.row) + Math.abs(col - storedPos.col);
+              if (distance < minDistance) {
+                minDistance = distance;
+                targetButton = btn;
+              }
+            }
+          }
+        }
+        
+        // Fallback to first button if no stored position or button not found
+        if (!targetButton) {
+          targetButton = allButtons[0];
+        }
+        
+        if (targetButton) {
+          targetButton.focus();
+          targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        }
+      }
     }
 
     document.addEventListener("keydown", handleTabNavigation, true);
@@ -456,11 +536,13 @@ export function Dashboard({
 
       <div class={classes.body}>
         <div class={classes.content}>
-          {config.groups.map((group) => (
+          {config.groups.map((group, groupIndex) => (
             <DashboardTable 
               key={group.name} 
               group={group} 
+              groupIndex={groupIndex}
               filterWords={filterWords}
+              groupPositionsRef={groupPositionsRef}
               onCellClick={onCellClick}
             />
           ))}
@@ -474,11 +556,13 @@ export function Dashboard({
 
 interface DashboardTableProps {
   group: DashboardGroup;
+  groupIndex: number;
   filterWords: string[];
+  groupPositionsRef: { current: Map<number, { row: number; col: number }> };
   onCellClick: (context: string, namespace: string) => void;
 }
 
-function DashboardTable({ group, filterWords, onCellClick }: DashboardTableProps) {
+function DashboardTable({ group, groupIndex, filterWords, groupPositionsRef, onCellClick }: DashboardTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const hasNamespaceGroups = group.namespace_groups.some((ng) => ng.name !== null);
 
@@ -571,6 +655,8 @@ function DashboardTable({ group, filterWords, onCellClick }: DashboardTableProps
                   showGroupHeader={hasNamespaceGroups}
                   namespacePrefix={namespacePrefix}
                   startRowIndex={startRowIndex}
+                  groupIndex={groupIndex}
+                  groupPositionsRef={groupPositionsRef}
                   tableRef={tableRef}
                   onCellClick={onCellClick}
                 />
@@ -589,6 +675,8 @@ interface NamespaceGroupRowsProps {
   showGroupHeader: boolean;
   namespacePrefix: string;
   startRowIndex: number;
+  groupIndex: number;
+  groupPositionsRef: { current: Map<number, { row: number; col: number }> };
   tableRef: { current: HTMLTableElement | null };
   onCellClick: (context: string, namespace: string) => void;
 }
@@ -599,6 +687,8 @@ function NamespaceGroupRows({
   showGroupHeader,
   namespacePrefix,
   startRowIndex,
+  groupIndex,
+  groupPositionsRef,
   tableRef,
   onCellClick,
 }: NamespaceGroupRowsProps) {
@@ -661,7 +751,7 @@ function NamespaceGroupRows({
                       data-context={ctx}
                       data-namespace={ns.name}
                       onClick={() => onCellClick(ctx, ns.name)}
-                      onKeyDown={(e) => handleCellKeyDown(e as unknown as KeyboardEvent, tableRef.current)}
+                      onKeyDown={(e) => handleCellKeyDown(e as unknown as KeyboardEvent, tableRef.current, groupIndex, groupPositionsRef)}
                     >
                       <span class={classes.bullet}>●</span>
                     </button>

@@ -184,7 +184,10 @@
   td {
     position: sticky;
     top: calc(var(--header-row-height) * 2);
-    background: var(--bgColor-emphasis);
+    background: var(--bgColor-muted);
+    &:last-child {
+      border-right: var(--border-muted);
+    }
   }
   
   .stickyCol {
