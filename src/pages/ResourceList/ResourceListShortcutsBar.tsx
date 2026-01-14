@@ -25,7 +25,6 @@ const DEPLOYMENT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
   { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
   { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this deployment', isModifying: false },
-  { label: 'Replica Sets', shortcut: 'Z', code: 'replica_sets', tooltip: 'Show replica sets for this deployment', isModifying: false },
   { label: 'Rolling Restart...', shortcut: 'R', code: 'rolling_restart', tooltip: 'Perform a rolling restart of the deployment', isModifying: true },
   { label: 'Scale', shortcut: 'S', code: 'scale', tooltip: 'Scale the number of replicas', isModifying: true },
   { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
@@ -36,16 +35,14 @@ const POD_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
   { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
   { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this pod', isModifying: false },
-  { label: 'Port-Forward', shortcut: 'Shift+F', code: 'port_forward', tooltip: 'Configure port-forwards for this pod', isModifying: true },
-  { label: 'Show Forwards', shortcut: 'F', code: 'show_port_forward', tooltip: 'Show existing port forwards', isModifying: false },
+  { label: 'Port-Forward...', shortcut: 'F', code: 'port_forward', tooltip: 'Configure port-forwards for this pod', isModifying: true },
   { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this pod', isModifying: true },
   { label: 'Delete', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 
 const CONTAINER_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this container', isModifying: false },
-  { label: 'Port-Forward', shortcut: 'Shift+F', code: 'port_forward', tooltip: 'Configure port-forwards for this container', isModifying: true },
-  { label: 'Show Forwards', shortcut: 'F', code: 'show_port_forward', tooltip: 'Show existing port forwards', isModifying: false },
+  { label: 'Port-Forward...', shortcut: 'F', code: 'port_forward', tooltip: 'Configure port-forwards for this container', isModifying: true },
   { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this container', isModifying: true },
 ]
 
