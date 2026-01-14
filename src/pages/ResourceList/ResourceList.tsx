@@ -28,7 +28,7 @@ import {evaluateColumnColor} from '../../kubectl/columnColorEvaluator.ts'
  */
 function filterResourceTypes(items: string[], inputValue: string): string[] {
   const lowerInput = inputValue.toLowerCase()
-  
+
   return items
     .filter(item => item.toLowerCase().includes(lowerInput))
     .sort((a, b) => {
@@ -87,12 +87,12 @@ function getAllContexts(config: DashboardConfig): string[] {
  */
 function getNamespacesForContext(config: DashboardConfig, context: string): string[] {
   const namespaces: string[] = []
-  
+
   for (const group of config.groups) {
     // Check if context exists in this group
     const contextInGroup = group.contextGroups.some(cg => cg.contexts.includes(context))
     if (!contextInGroup) continue
-    
+
     for (const ng of group.namespaceGroups) {
       for (const ns of ng.namespaces) {
         // Namespace is available if contexts is null or includes this context
@@ -104,7 +104,7 @@ function getNamespacesForContext(config: DashboardConfig, context: string): stri
       }
     }
   }
-  
+
   return namespaces
 }
 
@@ -199,7 +199,7 @@ export function ResourceList({
   const allContexts = useMemo(() => getAllContexts(dashboardConfig), [dashboardConfig])
   const availableNamespaces = useMemo(
     () => getNamespacesForContext(dashboardConfig, context),
-    [dashboardConfig, context]
+    [dashboardConfig, context],
   )
 
   // Auto-refresh configuration from dashboard config (backend provides defaults)
@@ -213,7 +213,7 @@ export function ResourceList({
     const intervalId = setInterval(() => {
       // Skip if a manual refresh is already in progress
       if (isRefreshing) return
-      
+
       // Perform silent refresh (doesn't set isRefreshing flag)
       fetchResources()
     }, refreshRateSeconds * 1000)
@@ -232,7 +232,7 @@ export function ResourceList({
   // Run modal state
   const [isRunModalOpen, setIsRunModalOpen] = useState(false)
   const allRunCommands = dashboardConfig.runCommands ?? []
-  
+
   // Filter run commands to only those applicable to the current resource type
   const runCommands = useMemo(() => {
     const normalizedType = resourceType.toLowerCase()
@@ -339,7 +339,7 @@ export function ResourceList({
 
       case 'delete':
         // Open delete confirmation modal
-        setDeleteConfirmation({ resourceName: resource.name })
+        setDeleteConfirmation({resourceName: resource.name})
         setDeleteError(null)
         break
 
@@ -359,16 +359,16 @@ export function ResourceList({
   }, [
     selectedIndex, resources, resourceType, context, namespace,
     parentResourceName, isContainersView, editingResourceName,
-    hasRunCommands, readOnly, onResourceClick, onDescribe, onLogs, refresh
+    hasRunCommands, readOnly, onResourceClick, onDescribe, onLogs, refresh,
   ])
 
   // Handle confirmed delete
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteConfirmation) return
-    
+
     setIsDeleting(true)
     setDeleteError(null)
-    
+
     try {
       const result = await executeDelete({
         context,
@@ -376,7 +376,7 @@ export function ResourceList({
         resourceType,
         resourceName: deleteConfirmation.resourceName,
       })
-      
+
       if (result.success) {
         setDeleteConfirmation(null)
         refresh()
@@ -424,7 +424,7 @@ export function ResourceList({
   useEffect(() => {
     if (selectedIndex >= 0 && tableBodyRef.current) {
       const row = tableBodyRef.current.querySelector(`tr[data-index="${selectedIndex}"]`)
-      row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      row?.scrollIntoView({block: 'nearest', behavior: 'smooth'})
     }
   }, [selectedIndex])
 
@@ -596,8 +596,30 @@ export function ResourceList({
         if (e.key === 'ArrowUp') {
           e.preventDefault()
           setSelectedIndex(prev => {
-            if (prev < 0) return 0 // First arrow up also selects first item
-            return Math.max(prev - 1, 0)
+            if (prev <= 0) return 0 // Stay at first item
+            return prev - 1
+          })
+          return
+        }
+
+        // PageDown - move selection down by a page
+        if (e.key === 'PageDown') {
+          e.preventDefault()
+          const pageSize = 10
+          setSelectedIndex(prev => {
+            if (prev < 0) return Math.min(pageSize - 1, resources.length - 1)
+            return Math.min(prev + pageSize, resources.length - 1)
+          })
+          return
+        }
+
+        // PageUp - move selection up by a page
+        if (e.key === 'PageUp') {
+          e.preventDefault()
+          const pageSize = 10
+          setSelectedIndex(prev => {
+            if (prev <= 0) return 0 // Stay at first item
+            return Math.max(prev - pageSize, 0)
           })
           return
         }
@@ -690,7 +712,7 @@ export function ResourceList({
   return (
     <div class={classes.ResourceList}>
       <header class={classes.header}>
-        <div class={classes.headerInfo}>
+        <div className={classes.headerInfo}>
           <Combobox
             ref={resourceComboboxRef}
             items={resourceTypes}
@@ -731,54 +753,58 @@ export function ResourceList({
             label="Namespace"
             shortcut="Opt+N"
           />
+
+          <div className={classes.headerButtons}>
+            <Button
+              label="Refresh"
+              shortcut={'Ctrl+R'}
+              onClick={refresh}
+              disabled={isRefreshing}
+              tabIndex={4}
+              className={classes.refreshButton}
+            />
+            <Button
+              label="Back"
+              shortcut="Esc"
+              onClick={onBack}
+              tabIndex={5}
+              className={classes.backButton}
+            />
+          </div>
         </div>
-        <div class={classes.headerButtons}>
-          <Button
-            label="Refresh"
-            shortcut={'Ctrl+R'}
-            onClick={refresh}
-            disabled={isRefreshing}
-            tabIndex={4}
-            className={classes.refreshButton}
-          />
-          <Button
-            label="Back"
-            shortcut="Esc"
-            onClick={onBack}
-            tabIndex={5}
-            className={classes.backButton}
+
+        <div class={classes.navigationBar}>
+          <NavigationBar
+            navigationStack={navigationStack}
+            onNavigateToNode={onNavigateToNode}
+            filters={filters}
+            onClearFilters={onClearFilters}
+            filterText={filterText}
+            onFilterTextChange={setFilterText}
+            onFilterClear={() => setFilterText('')}
+            filterInputRef={filterInputRef}
+            filterInputTabIndex={0}
+            onFilterSubmit={() => {
+              // Select first filtered result when Enter is pressed
+              if (resources.length > 0) {
+                setSelectedIndex(0)
+              }
+            }}
           />
         </div>
+
       </header>
 
       <div class={classes.body}>
-        <NavigationBar
-          navigationStack={navigationStack}
-          onNavigateToNode={onNavigateToNode}
-          filters={filters}
-          onClearFilters={onClearFilters}
-          filterText={filterText}
-          onFilterTextChange={setFilterText}
-          onFilterClear={() => setFilterText('')}
-          filterInputRef={filterInputRef}
-          filterInputTabIndex={0}
-          onFilterSubmit={() => {
-            // Select first filtered result when Enter is pressed
-            if (resources.length > 0) {
-              setSelectedIndex(0)
-            }
-          }}
-        />
-
-        <Alert type="error" label="Edit Failed" message={editError} />
-        <Alert type="error" label="Loading Error" message={error} />
-        <Alert type="error" label="Column Evaluation Error" message={evaluationError} />
+        <Alert type="error" label="Edit Failed" message={editError}/>
+        <Alert type="error" label="Loading Error" message={error}/>
+        <Alert type="error" label="Column Evaluation Error" message={evaluationError}/>
 
         {!error && (
           <div class={classes.tableWrapper}>
             <table class={classes.table}>
               <thead>
-              <tr>
+              <tr tabIndex={-1}>
                 <th class={classes.nameColumn}>NAME</th>
                 {columns.map((col) => (
                   <th key={col.name}>
@@ -813,19 +839,19 @@ export function ResourceList({
                     </td>
                     {columns.map((col) => {
                       // Evaluate color for this column
-                      const rawValues = resource.rawValues?.[col.name] || [];
+                      const rawValues = resource.rawValues?.[col.name] || []
                       const placeholderValues = rawValues.map(v => {
-                        const num = parseFloat(v as string);
-                        return isNaN(num) ? v : num;
-                      });
-                      const colorState = evaluateColumnColor(col.colorRules, placeholderValues);
-                      const cellClass = colorState ? `${classes.dataCell} ${classes[`color-${colorState}`]}` : classes.dataCell;
-                      
+                        const num = parseFloat(v as string)
+                        return isNaN(num) ? v : num
+                      })
+                      const colorState = evaluateColumnColor(col.colorRules, placeholderValues)
+                      const cellClass = colorState ? `${classes.dataCell} ${classes[`color-${colorState}`]}` : classes.dataCell
+
                       return (
                         <td key={col.name} class={cellClass}>
                           {resource[col.name] ?? '<none>'}
                         </td>
-                      );
+                      )
                     })}
                   </tr>
                 ))

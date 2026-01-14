@@ -3,25 +3,34 @@
   flex-direction: column;
   height: 100%;
 
-
   .header {
     flex-shrink: 0;
     width: 100%;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: start;
     justify-content: space-between;
     gap: 0.25rem;
-    padding: 0.5rem;
     background-color: var(--bgColor-muted);
-    border-bottom: 1px solid var(--borderColor-muted);
 
-    .headerButtons {
-      display: flex;
-      column-gap: 0.5rem;
-      .backButton {
+    .headerInfo {
+      padding: 0 0.5rem;
+
+      .headerButtons {
+        padding-top: 0.9rem;
+        display: flex;
+        column-gap: 0.5rem;
+        .backButton {
+        }
+        .refreshButton {
+        }
       }
-      .refreshButton {
-      }
+    }
+
+    .navigationBar {
+      width: 100%;
+      border-top: var(--border-muted);
+      border-bottom: 1px solid var(--borderColor-muted);
     }
   }
 
@@ -32,7 +41,6 @@
     flex-direction: column;
     position: relative;
   }
-
 
   .headerInfo {
     display: flex;
@@ -59,7 +67,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.75rem;
-    border-top: 1px solid var(--borderColor-muted);
+    background-color: var(--bgColor-default);
     border-bottom: 1px solid var(--borderColor-muted);
 
     th, td {
@@ -73,11 +81,24 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--fgColor-default);
-      background: var(--bgColor-muted);
+      background-color: var(--bgColor-muted);
       border-bottom: 1px solid var(--borderColor-muted);
       position: sticky;
       top: 0;
       z-index: 1;
+      // Prevent browser focus styling on header cells
+      outline: none;
+      &:focus, &:focus-visible {
+        outline: none;
+      }
+    }
+
+    thead tr {
+      // Prevent browser focus styling on header row
+      outline: none;
+      &:focus, &:focus-visible {
+        outline: none;
+      }
     }
 
     td {
@@ -112,7 +133,6 @@
     }
 
   }
-
 
   @keyframes pulse {
     0%, 100% {
@@ -211,7 +231,7 @@
   }
 
   .footer {
-    padding: 0.25rem 0.5rem;
+    padding: 0.25rem 1rem;
     font-size: 0.75rem;
     color: var(--fgColor-muted);
     text-align: right;

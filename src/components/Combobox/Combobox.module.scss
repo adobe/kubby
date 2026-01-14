@@ -2,12 +2,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  padding-top: 0.25rem;
+  padding-top: 0.75rem;
 
   .labelText {
     position: absolute;
     z-index: 10;
-    top: -0.25rem;
+    top: 0.25rem;
     display: flex;
     align-items: center;
     gap: 0.35rem;
