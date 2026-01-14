@@ -147,6 +147,7 @@ export function useResourceDetailLoader({ context, namespace, resourceType, reso
     ...state,
     detail: isStale ? null : state.detail, // Return null if stale to avoid showing wrong data
     refresh,
+    fetchDetail, // Expose for silent auto-refresh
     isStale,
   }
 }

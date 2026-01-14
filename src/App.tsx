@@ -286,6 +286,7 @@ function App() {
             namespace={currentNode.namespace}
             resourceType={currentNode.resourceType}
             resourceName={currentNode.resourceName}
+            dashboardConfig={config}
             navigationStack={navigationStack}
             onNavigateToNode={handleNavigateToNode}
             onBack={handleBackNavigation}

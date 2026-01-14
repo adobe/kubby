@@ -5,6 +5,7 @@ import classes from './ResourceDetail.module.scss'
 import {getCacheAge} from '../../kubectl/resourceCache.ts'
 import {useResourceDetailLoader} from '../../kubectl/useResourceDetailLoader.ts'
 import type {NavigationNode} from '../../navigation/navigationTypes.ts'
+import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
 import {Button} from '../../components/Button/Button.tsx'
 import {Alert} from '../../components/Alert/Alert.tsx'
 import {CodeView} from '../../components/CodeView/CodeView.tsx'
@@ -19,6 +20,7 @@ interface ResourceDetailProps {
   namespace: string;
   resourceType: string;
   resourceName: string;
+  dashboardConfig: DashboardConfig;
   navigationStack: NavigationNode[];
   onNavigateToNode: (index: number) => void;
   onBack: () => void;
@@ -73,6 +75,7 @@ export function ResourceDetail({
                                  namespace,
                                  resourceType,
                                  resourceName,
+                                 dashboardConfig,
                                  onBack,
                                }: ResourceDetailProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('tree')
@@ -87,7 +90,27 @@ export function ResourceDetail({
     isRefreshing,
     error,
     refresh,
+    fetchDetail,
   } = useResourceDetailLoader({context, namespace, resourceType, resourceName})
+
+  // Auto-refresh configuration from dashboard config (backend provides defaults)
+  const liveViewAutoRefresh = dashboardConfig.liveViewAutoRefresh
+  const refreshRateSeconds = dashboardConfig.refreshRateSeconds
+
+  // Auto-refresh effect - silent background refresh
+  useEffect(() => {
+    if (!liveViewAutoRefresh) return
+
+    const intervalId = setInterval(() => {
+      // Skip if a manual refresh is already in progress
+      if (isRefreshing) return
+      
+      // Perform silent refresh (doesn't set isRefreshing flag)
+      fetchDetail()
+    }, refreshRateSeconds * 1000)
+
+    return () => clearInterval(intervalId)
+  }, [liveViewAutoRefresh, refreshRateSeconds, isRefreshing, fetchDetail])
 
   // Focus the body for keyboard scrolling when detail loads
   useEffect(() => {
