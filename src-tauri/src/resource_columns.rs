@@ -67,6 +67,64 @@ struct CRDResponse {
 
 pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColumnConfig> {
     let columns: Vec<ColumnConfig> = match resource_type.to_lowercase().as_str() {
+        "containers" => vec![
+            col!(
+                "IMAGE".to_string(),
+                vec![".image".to_string()]
+            ),
+            col!(
+                "READY".to_string(),
+                vec![".ready".to_string()],
+                None,
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === 'True'".to_string(),
+                        color: ColorState::Success,
+                    },
+                    ColorRule {
+                        expression: "{0} === 'False'".to_string(),
+                        color: ColorState::Danger,
+                    },
+                ]
+            ),
+            col!(
+                "STATE".to_string(),
+                vec![".state".to_string()],
+                None,
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === 'Running'".to_string(),
+                        color: ColorState::Success,
+                    },
+                    ColorRule {
+                        expression: "['Waiting', 'ContainerCreating', 'PodInitializing'].includes({0})"
+                            .to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "['Error', 'CrashLoopBackOff', 'Terminated', 'OOMKilled'].includes({0})"
+                            .to_string(),
+                        color: ColorState::Danger,
+                    },
+                ]
+            ),
+            col!(
+                "RESTARTS".to_string(),
+                vec![".restartCount".to_string()],
+                None,
+                Some(crate::ColumnType::Number),
+                vec![ColorRule {
+                    expression: "0 < {0}".to_string(),
+                    color: ColorState::Danger,
+                }]
+            ),
+            col!(
+                "PORTS".to_string(),
+                vec![".ports".to_string()]
+            ),
+        ],
         "pods" => vec![
             col!(
                 "READY".to_string(),

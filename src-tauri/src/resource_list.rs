@@ -533,43 +533,9 @@ pub async fn get_pod_containers(
         .collect();
     
     // Define columns for containers
-    let columns = vec![
-        crate::ColumnConfig {
-            name: "IMAGE".to_string(),
-            json_paths: vec![".image".to_string()],
-            format: None,
-            column_type: None,
-            color_rules: None,
-        },
-        crate::ColumnConfig {
-            name: "READY".to_string(),
-            json_paths: vec![".ready".to_string()],
-            format: None,
-            column_type: None,
-            color_rules: None,
-        },
-        crate::ColumnConfig {
-            name: "STATE".to_string(),
-            json_paths: vec![".state".to_string()],
-            format: None,
-            column_type: None,
-            color_rules: None,
-        },
-        crate::ColumnConfig {
-            name: "RESTARTS".to_string(),
-            json_paths: vec![".restartCount".to_string()],
-            format: None,
-            column_type: None,
-            color_rules: None,
-        },
-        crate::ColumnConfig {
-            name: "PORTS".to_string(),
-            json_paths: vec![".ports".to_string()],
-            format: None,
-            column_type: None,
-            color_rules: None,
-        },
-    ];
+    let columns = crate::resource_columns::get_builtin_resource_columns("containers")
+        .map(|config| config.columns)
+        .unwrap_or_default();
     
     // Build container items
     let mut items = Vec::new();
