@@ -26,8 +26,8 @@ export interface NamespaceGroup {
 
 export interface DashboardGroup {
   name: string;
-  context_groups: ContextGroup[];
-  namespace_groups: NamespaceGroup[];
+  contextGroups: ContextGroup[];
+  namespaceGroups: NamespaceGroup[];
 }
 
 export interface RunCommand {
@@ -39,8 +39,10 @@ export interface RunCommand {
 
 export interface DashboardConfig {
   groups: DashboardGroup[];
-  run_commands: RunCommand[];
-  read_only: boolean;
+  runCommands: RunCommand[];
+  readOnly: boolean;
+  liveViewAutoRefresh: boolean;
+  refreshRateSeconds: number;
 }
 
 interface ParsedContext {
@@ -812,10 +814,10 @@ interface DashboardTableProps {
 
 function DashboardTable({ group, groupIndex, filterWords, groupPositionsRef, onCellClick }: DashboardTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
-  const hasNamespaceGroups = group.namespace_groups.some((ng) => ng.name !== null);
+  const hasNamespaceGroups = group.namespaceGroups.some((ng) => ng.name !== null);
 
-  const { filtered: filteredContextGroups } = filterContextGroups(group.context_groups, filterWords);
-  const { filtered: filteredNamespaceGroups } = filterNamespaces(group.namespace_groups, filterWords);
+  const { filtered: filteredContextGroups } = filterContextGroups(group.contextGroups, filterWords);
+  const { filtered: filteredNamespaceGroups } = filterNamespaces(group.namespaceGroups, filterWords);
 
   const totalContexts = filteredContextGroups.reduce((sum, cg) => sum + cg.contexts.length, 0);
   const totalNamespaces = filteredNamespaceGroups.reduce((sum, ng) => sum + ng.namespaces.length, 0);

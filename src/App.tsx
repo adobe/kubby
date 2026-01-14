@@ -27,10 +27,10 @@ function getNamespacesForContext(config: DashboardConfig, context: string): stri
   
   for (const group of config.groups) {
     // Check if context exists in this group
-    const contextInGroup = group.context_groups.some(cg => cg.contexts.includes(context));
+    const contextInGroup = group.contextGroups.some(cg => cg.contexts.includes(context));
     if (!contextInGroup) continue;
     
-    for (const ng of group.namespace_groups) {
+    for (const ng of group.namespaceGroups) {
       for (const ns of ng.namespaces) {
         // Namespace is available if contexts is null or includes this context
         if (ns.contexts === null || ns.contexts.includes(context)) {
@@ -320,7 +320,7 @@ function App() {
           filters={currentNode.filters}
           navigationStack={navigationStack}
           dashboardConfig={config}
-          readOnly={config.read_only}
+          readOnly={config.readOnly}
           onNavigateToNode={handleNavigateToNode}
           onBack={handleBackNavigation}
           onResourceTypeChange={(newResourceType) => {

@@ -221,9 +221,9 @@ export function RollingRestartModal({
 
         {deploymentInfo && !isLoading && (
           <div class={classes.details}>
-            <section class={classes.section}>
-              <h3 class={classes.sectionTitle}>Deployment</h3>
-              <dl class={classes.grid}>
+            <section className={classes.section}>
+              <h3 className={classes.sectionTitle}>Deployment</h3>
+              <dl className={classes.grid}>
                 <dt>Replicas</dt>
                 <dd>{deploymentInfo.replicas}</dd>
                 <dt>Strategy</dt>
@@ -243,11 +243,37 @@ export function RollingRestartModal({
               </dl>
             </section>
 
-            <section class={classes.section}>
-              <h3 class={classes.sectionTitle}>PodDisruptionBudget</h3>
+            <section className={classes.section}>
+              <h3 className={classes.sectionTitle}>Status</h3>
+              <dl className={classes.grid}>
+                <dt>Ready</dt>
+                <dd>{deploymentInfo.readyReplicas} / {deploymentInfo.replicas}</dd>
+                <dt>Available</dt>
+                <dd>{deploymentInfo.availableReplicas}</dd>
+                <dt>Unavailable</dt>
+                <dd>{deploymentInfo.unavailableReplicas}</dd>
+              </dl>
+            </section>
+
+
+            <section className={classes.section}>
+              <h3 className={classes.sectionTitle}>HorizontalPodAutoscaler</h3>
+              {hpaInfo ? (
+                  <dl className={classes.grid}>
+                    <dt>Min Replicas</dt>
+                    <dd>{hpaInfo.minReplicas}</dd>
+                    <dt>Max Replicas</dt>
+                    <dd>{hpaInfo.maxReplicas}</dd>
+                  </dl>
+                )
+                : <p className={classes.notFound}>No HPA found</p>}
+            </section>
+
+            <section className={classes.section}>
+              <h3 className={classes.sectionTitle}>PodDisruptionBudget</h3>
               {pdbInfo
                 ? (
-                  <dl class={classes.grid}>
+                  <dl className={classes.grid}>
                     {pdbInfo.minAvailable !== null && (
                       <>
                         <dt>Min Available</dt>
@@ -261,34 +287,8 @@ export function RollingRestartModal({
                       </>
                     )}
                   </dl>)
-                : <p class={classes.notFound}>No PDB found</p>
+                : <p className={classes.notFound}>No PDB found</p>
               }
-            </section>
-
-            <section class={classes.section}>
-              <h3 class={classes.sectionTitle}>Status</h3>
-              <dl class={classes.grid}>
-                <dt>Ready</dt>
-                <dd>{deploymentInfo.readyReplicas} / {deploymentInfo.replicas}</dd>
-                <dt>Available</dt>
-                <dd>{deploymentInfo.availableReplicas}</dd>
-                <dt>Unavailable</dt>
-                <dd>{deploymentInfo.unavailableReplicas}</dd>
-              </dl>
-            </section>
-
-
-            <section class={classes.section}>
-              <h3 class={classes.sectionTitle}>HorizontalPodAutoscaler</h3>
-              {hpaInfo ? (
-                <dl class={classes.grid}>
-                  <dt>Min Replicas</dt>
-                  <dd>{hpaInfo.minReplicas}</dd>
-                  <dt>Max Replicas</dt>
-                  <dd>{hpaInfo.maxReplicas}</dd>
-                </dl>
-              )
-              : <p class={classes.notFound}>No HPA found</p>}
             </section>
 
           </div>

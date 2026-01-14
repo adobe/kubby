@@ -26,12 +26,17 @@ pub struct ResourcesConfig {
 
 // Dashboard config types
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DashboardConfig {
     pub contexts: Dashboard,
     #[serde(default)]
     pub resources: Option<ResourcesConfig>,
     #[serde(default)]
     pub read_only: bool,
+    #[serde(default)]
+    pub live_view_auto_refresh: Option<bool>,
+    #[serde(default)]
+    pub refresh_rate_seconds: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,13 +86,17 @@ pub struct NamespaceGroup {
 
 // Normalized types for frontend consumption
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NormalizedDashboardConfig {
     pub groups: Vec<NormalizedDashboardGroup>,
     pub run_commands: Vec<RunCommand>,
     pub read_only: bool,
+    pub live_view_auto_refresh: bool,
+    pub refresh_rate_seconds: u32,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NormalizedDashboardGroup {
     pub name: String,
     pub context_groups: Vec<NormalizedContextGroup>,
@@ -166,6 +175,8 @@ impl DashboardConfig {
                 .map(|r| r.run.clone())
                 .unwrap_or_default(),
             read_only: self.read_only,
+            live_view_auto_refresh: self.live_view_auto_refresh.unwrap_or(true),
+            refresh_rate_seconds: self.refresh_rate_seconds.unwrap_or(2),
         }
     }
 }
@@ -355,8 +366,11 @@ pub fn create_kubby_config(
     let mut yaml = String::new();
     
     yaml.push_str("# Kubby Dashboard Configuration\n");
-    yaml.push_str("# This file defines which Kubernetes contexts and namespaces appear on the dashboard.\n");
     yaml.push_str("\n");
+    yaml.push_str("\n");
+    yaml.push_str("# readOnly: true # default is false\n");
+    yaml.push_str("# liveViewAutoRefresh: false # default is true\n");
+    yaml.push_str("# refreshRateSeconds: 5 # default is 2\n");
     yaml.push_str("contexts:\n");
     yaml.push_str("  # Groups organize contexts and namespaces into logical sections on the dashboard.\n");
     yaml.push_str("  # You can have multiple groups (e.g., \"Production\", \"Staging\", \"Development\").\n");
@@ -409,7 +423,7 @@ pub fn create_kubby_config(
     yaml.push_str("# These commands can be run from the resource list using the Run... [U] shortcut.\n");
     yaml.push_str("# Placeholders: $context, $namespace, $labels (formatted as key=value,key=value)\n");
     yaml.push_str("resources:\n");
-    yaml.push_str("  run:\n");
+    yaml.push_str("  runCommands:\n");
     yaml.push_str("    - name: \"Test Network Multitool\"\n");
     yaml.push_str("      command: \"kubectl run test-network-multitool --context $context --namespace $namespace --image=praqma/network-multitool --labels=$labels --restart=Never --command -- sleep infinity\"\n");
     yaml.push_str("      resources: [\"pod\"]  # Only show this command when viewing pods\n");

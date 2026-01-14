@@ -194,6 +194,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
     ...state,
     resources: filteredResources,
     refresh,
+    fetchResources, // Expose for silent auto-refresh
     isStale, // True when resources don't match the current cache key (during transitions)
   }
 }

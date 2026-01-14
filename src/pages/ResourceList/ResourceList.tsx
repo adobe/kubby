@@ -70,7 +70,7 @@ function filterResourceTypes(items: string[], inputValue: string): string[] {
 function getAllContexts(config: DashboardConfig): string[] {
   const contexts: string[] = []
   for (const group of config.groups) {
-    for (const cg of group.context_groups) {
+    for (const cg of group.contextGroups) {
       for (const ctx of cg.contexts) {
         if (!contexts.includes(ctx)) {
           contexts.push(ctx)
@@ -90,10 +90,10 @@ function getNamespacesForContext(config: DashboardConfig, context: string): stri
   
   for (const group of config.groups) {
     // Check if context exists in this group
-    const contextInGroup = group.context_groups.some(cg => cg.contexts.includes(context))
+    const contextInGroup = group.contextGroups.some(cg => cg.contexts.includes(context))
     if (!contextInGroup) continue
     
-    for (const ng of group.namespace_groups) {
+    for (const ng of group.namespaceGroups) {
       for (const ns of ng.namespaces) {
         // Namespace is available if contexts is null or includes this context
         if (ns.contexts === null || ns.contexts.includes(context)) {
@@ -180,6 +180,7 @@ export function ResourceList({
     error,
     evaluationError,
     refresh,
+    fetchResources,
     isStale,
   } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName})
 
@@ -201,6 +202,25 @@ export function ResourceList({
     [dashboardConfig, context]
   )
 
+  // Auto-refresh configuration from dashboard config (backend provides defaults)
+  const liveViewAutoRefresh = dashboardConfig.liveViewAutoRefresh
+  const refreshRateSeconds = dashboardConfig.refreshRateSeconds
+
+  // Auto-refresh effect - silent background refresh
+  useEffect(() => {
+    if (!liveViewAutoRefresh) return
+
+    const intervalId = setInterval(() => {
+      // Skip if a manual refresh is already in progress
+      if (isRefreshing) return
+      
+      // Perform silent refresh (doesn't set isRefreshing flag)
+      fetchResources()
+    }, refreshRateSeconds * 1000)
+
+    return () => clearInterval(intervalId)
+  }, [liveViewAutoRefresh, refreshRateSeconds, isRefreshing, fetchResources])
+
   // Selected row index (-1 means no selection)
   // Initialize from prop if provided, otherwise -1
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex ?? -1)
@@ -211,7 +231,7 @@ export function ResourceList({
 
   // Run modal state
   const [isRunModalOpen, setIsRunModalOpen] = useState(false)
-  const allRunCommands = dashboardConfig.run_commands ?? []
+  const allRunCommands = dashboardConfig.runCommands ?? []
   
   // Filter run commands to only those applicable to the current resource type
   const runCommands = useMemo(() => {
