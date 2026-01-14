@@ -21,6 +21,7 @@ import {ConfirmModal} from '../../components/ConfirmModal/ConfirmModal.tsx'
 import {RollingRestartModal} from '../../components/RollingRestartModal/RollingRestartModal.tsx'
 import type {ActionCode} from './resourceActions.ts'
 import {executeShell, executeEdit, executeDelete} from './resourceActions.ts'
+import {evaluateColumnColor} from '../../kubectl/columnColorEvaluator.ts'
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -811,11 +812,22 @@ export function ResourceList({
                         )}
                       </div>
                     </td>
-                    {columns.map((col) => (
-                      <td key={col.name} class={classes.dataCell}>
-                        {resource[col.name] ?? '<none>'}
-                      </td>
-                    ))}
+                    {columns.map((col) => {
+                      // Evaluate color for this column
+                      const rawValues = resource.rawValues?.[col.name] || [];
+                      const placeholderValues = rawValues.map(v => {
+                        const num = parseFloat(v as string);
+                        return isNaN(num) ? v : num;
+                      });
+                      const colorState = evaluateColumnColor(col.colorRules, placeholderValues);
+                      const cellClass = colorState ? `${classes.dataCell} ${classes[`color-${colorState}`]}` : classes.dataCell;
+                      
+                      return (
+                        <td key={col.name} class={cellClass}>
+                          {resource[col.name] ?? '<none>'}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))
               )}

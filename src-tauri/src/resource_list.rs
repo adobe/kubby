@@ -248,12 +248,14 @@ fn evaluate_jsonpath(item: &Value, json_path: &str, column_type: &ColumnType) ->
 }
 
 // Evaluate column config and format the result
-fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<String, String> {
+// Returns (formatted_value, raw_values)
+fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<(String, Vec<String>), String> {
     let column_type = config.column_type.as_ref().unwrap_or(&ColumnType::Text);
     
     // Handle custom pod status evaluation
     if matches!(column_type, ColumnType::PodStatus) {
-        return Ok(evaluate_pod_status(item));
+        let status = evaluate_pod_status(item);
+        return Ok((status.clone(), vec![status]));
     }
     
     // Evaluate each JSONPath
@@ -263,8 +265,11 @@ fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<String, String
         results.push(result);
     }
     
+    // Store raw values for color evaluation
+    let raw_values = results.clone();
+    
     // Apply format if present
-    if let Some(format_str) = &config.format {
+    let formatted = if let Some(format_str) = &config.format {
         // Simple placeholder substitution: {0}, {1}, etc.
         let mut formatted = format_str.clone();
         for (i, result) in results.iter().enumerate() {
@@ -276,11 +281,13 @@ fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<String, String
             return Err(format!("Format string references missing index"));
         }
         
-        Ok(formatted)
+        formatted
     } else {
         // No format: join with space
-        Ok(results.join(" "))
-    }
+        results.join(" ")
+    };
+    
+    Ok((formatted, raw_values))
 }
 
 fn parse_kubectl_json(
@@ -366,29 +373,31 @@ fn parse_kubectl_json(
             .unwrap_or_default();
         
         let mut columns = std::collections::HashMap::new();
+        let mut raw_values = std::collections::HashMap::new();
         
         for col in &config.columns {
-            let value = if validation_error.is_some() {
+            let (value, raw_vals) = if validation_error.is_some() {
                 // If there's a validation error, show <error> in cells
-                "<error>".to_string()
+                ("<error>".to_string(), vec!["<error>".to_string()])
             } else {
                 // Evaluate the column using JSONPath
                 match evaluate_column(item, col) {
-                    Ok(v) => v,
+                    Ok((v, r)) => (v, r),
                     Err(e) => {
                         // Set error on first occurrence
                         if validation_error.is_none() {
                             validation_error = Some(format!("Column '{}': {}", col.name, e));
                         }
-                        "<error>".to_string()
+                        ("<error>".to_string(), vec!["<error>".to_string()])
                     }
                 }
             };
             
             columns.insert(col.name.clone(), value);
+            raw_values.insert(col.name.clone(), raw_vals);
         }
         
-        result.push(ResourceItem { name, columns, labels });
+        result.push(ResourceItem { name, columns, labels, raw_values });
     }
     
     Ok((result, validation_error))
@@ -530,30 +539,35 @@ pub async fn get_pod_containers(
             json_paths: vec![".image".to_string()],
             format: None,
             column_type: None,
+            color_rules: None,
         },
         crate::ColumnConfig {
             name: "READY".to_string(),
             json_paths: vec![".ready".to_string()],
             format: None,
             column_type: None,
+            color_rules: None,
         },
         crate::ColumnConfig {
             name: "STATE".to_string(),
             json_paths: vec![".state".to_string()],
             format: None,
             column_type: None,
+            color_rules: None,
         },
         crate::ColumnConfig {
             name: "RESTARTS".to_string(),
             json_paths: vec![".restartCount".to_string()],
             format: None,
             column_type: None,
+            color_rules: None,
         },
         crate::ColumnConfig {
             name: "PORTS".to_string(),
             json_paths: vec![".ports".to_string()],
             format: None,
             column_type: None,
+            color_rules: None,
         },
     ];
     
@@ -621,16 +635,25 @@ pub async fn get_pod_containers(
             .unwrap_or_else(|| "Unknown".to_string());
         
         let mut column_values = std::collections::HashMap::new();
-        column_values.insert("IMAGE".to_string(), image);
-        column_values.insert("READY".to_string(), ready);
-        column_values.insert("STATE".to_string(), state);
-        column_values.insert("RESTARTS".to_string(), restarts);
-        column_values.insert("PORTS".to_string(), ports);
+        column_values.insert("IMAGE".to_string(), image.clone());
+        column_values.insert("READY".to_string(), ready.clone());
+        column_values.insert("STATE".to_string(), state.clone());
+        column_values.insert("RESTARTS".to_string(), restarts.clone());
+        column_values.insert("PORTS".to_string(), ports.clone());
+        
+        // Store raw values for color evaluation
+        let mut raw_vals = std::collections::HashMap::new();
+        raw_vals.insert("IMAGE".to_string(), vec![image]);
+        raw_vals.insert("READY".to_string(), vec![ready]);
+        raw_vals.insert("STATE".to_string(), vec![state]);
+        raw_vals.insert("RESTARTS".to_string(), vec![restarts]);
+        raw_vals.insert("PORTS".to_string(), vec![ports]);
         
         items.push(ResourceItem {
             name,
             columns: column_values,
             labels: vec![], // Containers don't have labels
+            raw_values: raw_vals,
         });
     }
     

@@ -128,6 +128,53 @@
     font-variant-numeric: tabular-nums;
   }
 
+  // Color state classes for column highlighting
+  .color-attention {
+    color: var(--fgColor-attention);
+    font-weight: 500;
+  }
+
+  .color-danger {
+    color: var(--fgColor-danger);
+    font-weight: 500;
+  }
+
+  .color-default {
+    color: var(--fgColor-default);
+  }
+
+  .color-disabled {
+    color: var(--fgColor-disabled);
+  }
+
+  .color-done {
+    color: var(--fgColor-done);
+    font-weight: 500;
+  }
+
+  .color-muted {
+    color: var(--fgColor-muted);
+  }
+
+  .color-neutral {
+    color: var(--fgColor-neutral);
+  }
+
+  .color-severe {
+    color: var(--fgColor-severe);
+    font-weight: 500;
+  }
+
+  .color-sponsors {
+    color: var(--fgColor-sponsors);
+    font-weight: 500;
+  }
+
+  .color-success {
+    color: var(--fgColor-success);
+    font-weight: 500;
+  }
+
   .resourceRow {
     transition: background-color 0.1s ease;
     cursor: pointer;
@@ -144,7 +191,7 @@
       background: var(--bgColor-accent-emphasis);
 
       td {
-        color: var(--fgColor-onEmphasis);
+        //color: var(--fgColor-onEmphasis);
       }
 
       .nameCell {

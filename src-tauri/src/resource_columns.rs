@@ -3,7 +3,38 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::types::{ColumnConfig, ResourceColumnConfig};
+use crate::types::{ColumnConfig, ColorRule, ColorState, ResourceColumnConfig};
+
+// Macro to create a ColumnConfig with optional color rules
+macro_rules! col {
+    ($name:expr, $json_paths:expr) => {
+        ColumnConfig {
+            name: $name,
+            json_paths: $json_paths,
+            format: None,
+            column_type: None,
+            color_rules: None,
+        }
+    };
+    ($name:expr, $json_paths:expr, $format:expr, $column_type:expr) => {
+        ColumnConfig {
+            name: $name,
+            json_paths: $json_paths,
+            format: $format,
+            column_type: $column_type,
+            color_rules: None,
+        }
+    };
+    ($name:expr, $json_paths:expr, $format:expr, $column_type:expr, $color_rules:expr) => {
+        ColumnConfig {
+            name: $name,
+            json_paths: $json_paths,
+            format: $format,
+            column_type: $column_type,
+            color_rules: Some($color_rules),
+        }
+    };
+}
 
 // Column definition types for resource column discovery
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,551 +68,531 @@ struct CRDResponse {
 pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColumnConfig> {
     let columns: Vec<ColumnConfig> = match resource_type.to_lowercase().as_str() {
         "pods" => vec![
-            ColumnConfig {
-                name: "READY".to_string(),
-                json_paths: vec![
+            col!(
+                "READY".to_string(),
+                vec![
                     "$.status.containerStatuses[?(@.ready==true)]".to_string(),
                     "$.status.containerStatuses[*]".to_string(),
                 ],
-                format: Some("{0}/{1}".to_string()),
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "STATUS".to_string(),
-                json_paths: vec![],  // Not used for PodStatus type
-                format: None,
-                column_type: Some(crate::ColumnType::PodStatus),
-            },
-            ColumnConfig {
-                name: "RESTARTS".to_string(),
-                json_paths: vec!["$.status.containerStatuses[*].restartCount".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Number),
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+                Some("{0}/{1}".to_string()),
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && ({1} === 0 || {1} === '<none>')".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{0} === 0 && {1} > 0".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} > 0 && {0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} === {1} && {1} > 0".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "STATUS".to_string(),
+                vec![],
+                None,
+                Some(crate::ColumnType::PodStatus),
+                vec![
+                    ColorRule {
+                        expression: "['Running', 'Succeeded'].some(status => status.includes({0}))".to_string(),
+                        color: ColorState::Success,
+                    },
+                    ColorRule {
+                        expression: "['Unknown', 'Pending', 'PodScheduled', 'PodReadyToStartContainers', 'ContainersReady', 'ContainersNotReady', 'ContainerCreating', 'Initialized', 'Ready', 'DisruptionTarget', 'PodResizePending', 'PodResizeInProgress'].some(status => status.includes({0}))".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "['Error', 'Failed', 'CrashLoopBackOff'].some(status => status.includes({0}))".to_string(),
+                        color: ColorState::Danger,
+                    },
+                ]
+            ),
+            col!(
+                "RESTARTS".to_string(),
+                vec!["$.status.containerStatuses[*].restartCount".to_string()],
+                None,
+                Some(crate::ColumnType::Number),
+                vec![
+                    ColorRule {
+                        expression: "0 < {0}".to_string(),
+                        color: ColorState::Danger,
+                    },
+                ]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "deployments" => vec![
-            ColumnConfig {
-                name: "READY".to_string(),
-                json_paths: vec!["$.status.readyReplicas".to_string(), "$.spec.replicas".to_string()],
-                format: Some("{0}/{1}".to_string()),
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "UP-TO-DATE".to_string(),
-                json_paths: vec!["$.status.updatedReplicas".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AVAILABLE".to_string(),
-                json_paths: vec!["$.status.availableReplicas".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "READY".to_string(),
+                vec!["$.status.readyReplicas".to_string(), "$.spec.replicas".to_string()],
+                Some("{0}/{1}".to_string()),
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{0} === 0 && {1} > 0".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} === {1}".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "UP-TO-DATE".to_string(),
+                vec![
+                    "$.status.updatedReplicas".to_string(),
+                    "$.spec.replicas".to_string(), // only used in color conditions
+                ],
+                Some("{0}".to_string()),
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{1} !== 0 && {0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                ]
+            ),
+            col!(
+                "AVAILABLE".to_string(),
+                vec![
+                    "$.status.availableReplicas".to_string(),
+                    "$.spec.replicas".to_string(), // only used in color conditions
+                ],
+                Some("{0}".to_string()),
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{1} !== 0 && {0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                ]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "services" => vec![
-            ColumnConfig {
-                name: "TYPE".to_string(),
-                json_paths: vec!["$.spec.type".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "CLUSTER-IP".to_string(),
-                json_paths: vec!["$.spec.clusterIP".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "EXTERNAL-IP".to_string(),
-                json_paths: vec!["$.status.loadBalancer.ingress[*].ip".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "PORT(S)".to_string(),
-                json_paths: vec!["$.spec.ports[*].port".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "TYPE".to_string(),
+                vec!["$.spec.type".to_string()]
+            ),
+            col!(
+                "CLUSTER-IP".to_string(),
+                vec!["$.spec.clusterIP".to_string()]
+            ),
+            col!(
+                "EXTERNAL-IP".to_string(),
+                vec!["$.status.loadBalancer.ingress[*].ip".to_string()]
+            ),
+            col!(
+                "PORT(S)".to_string(),
+                vec!["$.spec.ports[*].port".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "configmaps" => vec![
-            ColumnConfig {
-                name: "DATA".to_string(),
-                json_paths: vec!["$.data".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "DATA".to_string(),
+                vec!["$.data".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "secrets" => vec![
-            ColumnConfig {
-                name: "TYPE".to_string(),
-                json_paths: vec!["$.type".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "DATA".to_string(),
-                json_paths: vec!["$.data".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "TYPE".to_string(),
+                vec!["$.type".to_string()]
+            ),
+            col!(
+                "DATA".to_string(),
+                vec!["$.data".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "nodes" => vec![
-            ColumnConfig {
-                name: "STATUS".to_string(),
-                json_paths: vec!["$.status.conditions[-1:].type".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "ROLES".to_string(),
-                json_paths: vec!["$.metadata.labels".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
-            ColumnConfig {
-                name: "VERSION".to_string(),
-                json_paths: vec!["$.status.nodeInfo.kubeletVersion".to_string()],
-                format: None,
-                column_type: None,
-            },
+            col!(
+                "STATUS".to_string(),
+                vec!["$.status.conditions[-1:].type".to_string()]
+            ),
+            col!(
+                "ROLES".to_string(),
+                vec!["$.metadata.labels".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
+            col!(
+                "VERSION".to_string(),
+                vec!["$.status.nodeInfo.kubeletVersion".to_string()]
+            ),
         ],
         "namespaces" => vec![
-            ColumnConfig {
-                name: "STATUS".to_string(),
-                json_paths: vec!["$.status.phase".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "STATUS".to_string(),
+                vec!["$.status.phase".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "persistentvolumeclaims" => vec![
-            ColumnConfig {
-                name: "STATUS".to_string(),
-                json_paths: vec!["$.status.phase".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "VOLUME".to_string(),
-                json_paths: vec!["$.spec.volumeName".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "CAPACITY".to_string(),
-                json_paths: vec!["$.status.capacity.storage".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "ACCESS MODES".to_string(),
-                json_paths: vec!["$.status.accessModes[*]".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "STORAGECLASS".to_string(),
-                json_paths: vec!["$.spec.storageClassName".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "STATUS".to_string(),
+                vec!["$.status.phase".to_string()]
+            ),
+            col!(
+                "VOLUME".to_string(),
+                vec!["$.spec.volumeName".to_string()]
+            ),
+            col!(
+                "CAPACITY".to_string(),
+                vec!["$.status.capacity.storage".to_string()]
+            ),
+            col!(
+                "ACCESS MODES".to_string(),
+                vec!["$.status.accessModes[*]".to_string()]
+            ),
+            col!(
+                "STORAGECLASS".to_string(),
+                vec!["$.spec.storageClassName".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "persistentvolumes" => vec![
-            ColumnConfig {
-                name: "CAPACITY".to_string(),
-                json_paths: vec!["$.spec.capacity.storage".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "ACCESS MODES".to_string(),
-                json_paths: vec!["$.spec.accessModes[*]".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "RECLAIM POLICY".to_string(),
-                json_paths: vec!["$.spec.persistentVolumeReclaimPolicy".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "STATUS".to_string(),
-                json_paths: vec!["$.status.phase".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "CLAIM".to_string(),
-                json_paths: vec!["$.spec.claimRef.name".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "STORAGECLASS".to_string(),
-                json_paths: vec!["$.spec.storageClassName".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "CAPACITY".to_string(),
+                vec!["$.spec.capacity.storage".to_string()]
+            ),
+            col!(
+                "ACCESS MODES".to_string(),
+                vec!["$.spec.accessModes[*]".to_string()]
+            ),
+            col!(
+                "RECLAIM POLICY".to_string(),
+                vec!["$.spec.persistentVolumeReclaimPolicy".to_string()]
+            ),
+            col!(
+                "STATUS".to_string(),
+                vec!["$.status.phase".to_string()]
+            ),
+            col!(
+                "CLAIM".to_string(),
+                vec!["$.spec.claimRef.name".to_string()]
+            ),
+            col!(
+                "STORAGECLASS".to_string(),
+                vec!["$.spec.storageClassName".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "ingresses" => vec![
-            ColumnConfig {
-                name: "CLASS".to_string(),
-                json_paths: vec!["$.spec.ingressClassName".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "HOSTS".to_string(),
-                json_paths: vec!["$.spec.rules[*].host".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "ADDRESS".to_string(),
-                json_paths: vec!["$.status.loadBalancer.ingress[*].ip".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "PORTS".to_string(),
-                json_paths: vec!["$.spec.rules[*].http.paths[*].backend.service.port.number".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "CLASS".to_string(),
+                vec!["$.spec.ingressClassName".to_string()]
+            ),
+            col!(
+                "HOSTS".to_string(),
+                vec!["$.spec.rules[*].host".to_string()]
+            ),
+            col!(
+                "ADDRESS".to_string(),
+                vec!["$.status.loadBalancer.ingress[*].ip".to_string()]
+            ),
+            col!(
+                "PORTS".to_string(),
+                vec!["$.spec.rules[*].http.paths[*].backend.service.port.number".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "statefulsets" => vec![
-            ColumnConfig {
-                name: "READY".to_string(),
-                json_paths: vec!["$.status.readyReplicas".to_string(), "$.spec.replicas".to_string()],
-                format: Some("{0}/{1}".to_string()),
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "READY".to_string(),
+                vec!["$.status.readyReplicas".to_string(), "$.spec.replicas".to_string()],
+                Some("{0}/{1}".to_string()),
+                None
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "daemonsets" => vec![
-            ColumnConfig {
-                name: "DESIRED".to_string(),
-                json_paths: vec!["$.status.desiredNumberScheduled".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "CURRENT".to_string(),
-                json_paths: vec!["$.status.currentNumberScheduled".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "READY".to_string(),
-                json_paths: vec!["$.status.numberReady".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "UP-TO-DATE".to_string(),
-                json_paths: vec!["$.status.updatedNumberScheduled".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AVAILABLE".to_string(),
-                json_paths: vec!["$.status.numberAvailable".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "NODE SELECTOR".to_string(),
-                json_paths: vec!["$.spec.template.spec.nodeSelector".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "DESIRED".to_string(),
+                vec!["$.status.desiredNumberScheduled".to_string()]
+            ),
+            col!(
+                "CURRENT".to_string(),
+                vec!["$.status.currentNumberScheduled".to_string()]
+            ),
+            col!(
+                "READY".to_string(),
+                vec!["$.status.numberReady".to_string()]
+            ),
+            col!(
+                "UP-TO-DATE".to_string(),
+                vec!["$.status.updatedNumberScheduled".to_string()]
+            ),
+            col!(
+                "AVAILABLE".to_string(),
+                vec!["$.status.numberAvailable".to_string()]
+            ),
+            col!(
+                "NODE SELECTOR".to_string(),
+                vec!["$.spec.template.spec.nodeSelector".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "replicasets" => vec![
-            ColumnConfig {
-                name: "DESIRED".to_string(),
-                json_paths: vec!["$.spec.replicas".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "CURRENT".to_string(),
-                json_paths: vec!["$.status.replicas".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "READY".to_string(),
-                json_paths: vec!["$.status.readyReplicas".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "DESIRED".to_string(),
+                vec!["$.spec.replicas".to_string()]
+            ),
+            col!(
+                "CURRENT".to_string(),
+                vec!["$.status.replicas".to_string()]
+            ),
+            col!(
+                "READY".to_string(),
+                vec!["$.status.readyReplicas".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "jobs" => vec![
-            ColumnConfig {
-                name: "COMPLETIONS".to_string(),
-                json_paths: vec!["$.status.succeeded".to_string(), "$.spec.completions".to_string()],
-                format: Some("{0}/{1}".to_string()),
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "DURATION".to_string(),
-                json_paths: vec!["$.status.completionTime".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "COMPLETIONS".to_string(),
+                vec!["$.status.succeeded".to_string(), "$.spec.completions".to_string()],
+                Some("{0}/{1}".to_string()),
+                None
+            ),
+            col!(
+                "DURATION".to_string(),
+                vec!["$.status.completionTime".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "cronjobs" => vec![
-            ColumnConfig {
-                name: "SCHEDULE".to_string(),
-                json_paths: vec!["$.spec.schedule".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "SUSPEND".to_string(),
-                json_paths: vec!["$.spec.suspend".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Bool),
-            },
-            ColumnConfig {
-                name: "ACTIVE".to_string(),
-                json_paths: vec!["$.status.active".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "LAST SCHEDULE".to_string(),
-                json_paths: vec!["$.status.lastScheduleTime".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "SCHEDULE".to_string(),
+                vec!["$.spec.schedule".to_string()]
+            ),
+            col!(
+                "SUSPEND".to_string(),
+                vec!["$.spec.suspend".to_string()],
+                None,
+                Some(crate::ColumnType::Bool)
+            ),
+            col!(
+                "ACTIVE".to_string(),
+                vec!["$.status.active".to_string()]
+            ),
+            col!(
+                "LAST SCHEDULE".to_string(),
+                vec!["$.status.lastScheduleTime".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "events" => vec![
-            ColumnConfig {
-                name: "TYPE".to_string(),
-                json_paths: vec!["$.type".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "REASON".to_string(),
-                json_paths: vec!["$.reason".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "OBJECT".to_string(),
-                json_paths: vec!["$.involvedObject.name".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "MESSAGE".to_string(),
-                json_paths: vec!["$.message".to_string()],
-                format: None,
-                column_type: None,
-            },
+            col!(
+                "TYPE".to_string(),
+                vec!["$.type".to_string()]
+            ),
+            col!(
+                "REASON".to_string(),
+                vec!["$.reason".to_string()]
+            ),
+            col!(
+                "OBJECT".to_string(),
+                vec!["$.involvedObject.name".to_string()]
+            ),
+            col!(
+                "MESSAGE".to_string(),
+                vec!["$.message".to_string()]
+            ),
         ],
         "serviceaccounts" => vec![
-            ColumnConfig {
-                name: "SECRETS".to_string(),
-                json_paths: vec!["$.secrets".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "SECRETS".to_string(),
+                vec!["$.secrets".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "roles" => vec![
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "rolebindings" => vec![
-            ColumnConfig {
-                name: "ROLE".to_string(),
-                json_paths: vec!["$.roleRef.name".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "ROLE".to_string(),
+                vec!["$.roleRef.name".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "clusterroles" => vec![
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "clusterrolebindings" => vec![
-            ColumnConfig {
-                name: "ROLE".to_string(),
-                json_paths: vec!["$.roleRef.name".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "ROLE".to_string(),
+                vec!["$.roleRef.name".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "horizontalpodautoscalers" => vec![
-            ColumnConfig {
-                name: "REFERENCE".to_string(),
-                json_paths: vec!["$.spec.scaleTargetRef.name".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "TARGETS".to_string(),
-                json_paths: vec!["$.status.currentMetrics".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "MINPODS".to_string(),
-                json_paths: vec!["$.spec.minReplicas".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "MAXPODS".to_string(),
-                json_paths: vec!["$.spec.maxReplicas".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "REPLICAS".to_string(),
-                json_paths: vec!["$.status.currentReplicas".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "REFERENCE".to_string(),
+                vec!["$.spec.scaleTargetRef.name".to_string()]
+            ),
+            col!(
+                "TARGETS".to_string(),
+                vec!["$.status.currentMetrics".to_string()]
+            ),
+            col!(
+                "MINPODS".to_string(),
+                vec!["$.spec.minReplicas".to_string()]
+            ),
+            col!(
+                "MAXPODS".to_string(),
+                vec!["$.spec.maxReplicas".to_string()]
+            ),
+            col!(
+                "REPLICAS".to_string(),
+                vec!["$.status.currentReplicas".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         "networkpolicies" => vec![
-            ColumnConfig {
-                name: "POD-SELECTOR".to_string(),
-                json_paths: vec!["$.spec.podSelector.matchLabels".to_string()],
-                format: None,
-                column_type: None,
-            },
-            ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            },
+            col!(
+                "POD-SELECTOR".to_string(),
+                vec!["$.spec.podSelector.matchLabels".to_string()]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
         ],
         _ => return None,
     };
@@ -624,12 +635,12 @@ fn get_crd_columns(resource_type: &str, context: &str) -> Result<ResourceColumnC
     if !output.status.success() {
         // Return default config if we can't query CRDs
         return Ok(ResourceColumnConfig {
-            columns: vec![ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            }],
+            columns: vec![col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            )],
         });
     }
 
@@ -662,12 +673,12 @@ fn get_crd_columns(resource_type: &str, context: &str) -> Result<ResourceColumnC
 
     // Return default config if no CRD found
     Ok(ResourceColumnConfig {
-        columns: vec![ColumnConfig {
-            name: "AGE".to_string(),
-            json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-            format: None,
-            column_type: Some(crate::ColumnType::Duration),
-        }],
+        columns: vec![col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            )],
     })
 }
 
@@ -689,12 +700,12 @@ fn get_crd_definition(crd_name: &str, context: &str) -> Result<ResourceColumnCon
 
     if !output.status.success() {
         return Ok(ResourceColumnConfig {
-            columns: vec![ColumnConfig {
-                name: "AGE".to_string(),
-                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-                format: None,
-                column_type: Some(crate::ColumnType::Duration),
-            }],
+            columns: vec![col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            )],
         });
     }
 
@@ -711,12 +722,10 @@ fn get_crd_definition(crd_name: &str, context: &str) -> Result<ResourceColumnCon
                     if !columns.is_empty() {
                         let config_columns: Vec<ColumnConfig> = columns
                             .iter()
-                            .map(|col| ColumnConfig {
-                                name: col.name.clone(),
-                                json_paths: vec![col.json_path.clone()],
-                                format: None,
-                                column_type: None,
-                            })
+                            .map(|col| col!(
+                col.name.clone(),
+                vec![col.json_path.clone()]
+            ))
                             .collect();
                         
                         return Ok(ResourceColumnConfig {
@@ -730,12 +739,12 @@ fn get_crd_definition(crd_name: &str, context: &str) -> Result<ResourceColumnCon
 
     // Return default config
     Ok(ResourceColumnConfig {
-        columns: vec![ColumnConfig {
-            name: "AGE".to_string(),
-            json_paths: vec!["$.metadata.creationTimestamp".to_string()],
-            format: None,
-            column_type: Some(crate::ColumnType::Duration),
-        }],
+        columns: vec![col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            )],
     })
 }
 

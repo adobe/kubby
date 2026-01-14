@@ -75,11 +75,12 @@ html {
 
 a {
   font-weight: 500;
-  color: var(--fgColor-accent);
-  text-decoration: inherit;
+  color: var(--fgColor-link);
+  text-decoration: none;
 
   &:hover {
-    color: var(--fgColor-accent);
+    color: var(--fgColor-link);
+    text-decoration: underline;
   }
 }
 

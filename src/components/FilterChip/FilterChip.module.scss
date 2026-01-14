@@ -18,7 +18,7 @@
 
   .key {
     font-weight: 400;
-    color: var(--fgColor-default);
+    color: var(--fgColor-neutral);
   }
 
   .operator {
@@ -28,7 +28,7 @@
 
   .value {
     font-weight: 500;
-    color: var(--fgColor-accent);
+    color: var(--fgColor-default);
   }
 
   .removeButton {

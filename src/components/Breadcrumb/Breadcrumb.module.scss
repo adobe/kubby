@@ -23,14 +23,13 @@
     margin: -0.15rem 0;
     font: inherit;
     font-size: 0.75rem;
-    color: var(--fgColor-accent);
+    color: var(--fgColor-link);
     cursor: pointer;
     border-radius: 3px;
     transition: all 0.15s ease;
 
     &:hover {
-      background: var(--bgColor-muted);
-      color: var(--fgColor-accent);
+      text-decoration: underline;
     }
 
     &:focus {
