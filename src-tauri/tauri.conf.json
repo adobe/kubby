@@ -14,7 +14,8 @@
       {
         "title": "kubby",
         "width": 1024,
-        "height": 800
+        "height": 800,
+        "backgroundColor": "#1E1F22"
       }
     ],
     "security": {

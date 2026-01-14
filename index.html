@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tauri + Preact + Typescript</title>
+    <style>
+      /* Prevent flash of white background before CSS loads */
+      html, body, #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: #f6f6f6;
+      }
+      @media (prefers-color-scheme: dark) {
+        html, body, #root {
+          background-color: #1E1F22;
+        }
+      }
+    </style>
   </head>
 
   <body>
