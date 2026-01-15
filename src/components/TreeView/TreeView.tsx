@@ -60,6 +60,29 @@ function LinearizedPartView({ part }: { part: LinearizedPart }) {
       return <span class={classes.valueText}>{part.value}</span>
     case 'separator':
       return <span class={classes.valueSeparator}>|</span>
+    case 'table':
+      return (
+        <table class={classes.linearizedTable}>
+          <thead>
+            <tr>
+              {part.headers.map((h, i) => (
+                <th key={i}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {part.rows.map((row, rowIdx) => (
+              <tr key={rowIdx}>
+                {row.map((cell, cellIdx) => (
+                  <td key={cellIdx}>
+                    <LinearizedPartView part={cell} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
     default:
       return null
   }

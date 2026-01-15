@@ -15,6 +15,7 @@ export type LinearizedPart =
   | { type: 'boolean'; value: boolean } // Formatted like boolean values (purple)
   | { type: 'text'; value: string }     // Plain/dimmed text for labels
   | { type: 'separator' }               // Visual separator (|)
+  | { type: 'table'; headers: string[]; rows: LinearizedPart[][] } // Table with headers and rows
 
 export type LinearizedResult = LinearizedPart[]
 
@@ -32,6 +33,8 @@ export const num = (value: number): LinearizedPart => ({ type: 'number', value }
 export const bool = (value: boolean): LinearizedPart => ({ type: 'boolean', value })
 export const text = (value: string): LinearizedPart => ({ type: 'text', value })
 export const sep = (): LinearizedPart => ({ type: 'separator' })
+export const table = (headers: string[], rows: LinearizedPart[][]): LinearizedPart => 
+  ({ type: 'table', headers, rows })
 
 /**
  * Match a path against a pattern
@@ -421,6 +424,166 @@ export const linearizeStrategy: LinearizerFn = (data) => {
 }
 
 // ============================================================================
+// Pod Status Linearizers
+// ============================================================================
+
+/**
+ * Format a timestamp as duration since now (e.g., "2h", "5d", "3m")
+ */
+function formatDuration(timestamp: string | undefined): string {
+  if (!timestamp) return '-'
+  
+  const date = new Date(timestamp)
+  if (isNaN(date.getTime())) return '-'
+  
+  const now = Date.now()
+  const diffMs = now - date.getTime()
+  
+  if (diffMs < 0) return '-'
+  
+  const seconds = Math.floor(diffMs / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  
+  if (days > 0) return `${days}d`
+  if (hours > 0) return `${hours}h`
+  if (minutes > 0) return `${minutes}m`
+  return `${seconds}s`
+}
+
+/**
+ * Get container state info from a container status object
+ */
+function getContainerState(state: Record<string, unknown> | undefined): { 
+  state: string
+  reason?: string
+  exitCode?: number
+  startedAt?: string 
+} {
+  if (!state) return { state: 'Unknown' }
+  
+  if ('running' in state && typeof state.running === 'object' && state.running !== null) {
+    const running = state.running as Record<string, unknown>
+    return { state: 'Running', startedAt: running.startedAt as string }
+  }
+  if ('waiting' in state && typeof state.waiting === 'object' && state.waiting !== null) {
+    const waiting = state.waiting as Record<string, unknown>
+    return { state: 'Waiting', reason: waiting.reason as string }
+  }
+  if ('terminated' in state && typeof state.terminated === 'object' && state.terminated !== null) {
+    const terminated = state.terminated as Record<string, unknown>
+    return { 
+      state: 'Terminated', 
+      reason: terminated.reason as string,
+      exitCode: terminated.exitCode as number
+    }
+  }
+  return { state: 'Unknown' }
+}
+
+/**
+ * Truncate image name to show only the tag or last part
+ */
+function truncateImage(image: string): string {
+  if (!image) return '?'
+  // If it has a tag, show repo:tag
+  const lastSlash = image.lastIndexOf('/')
+  const shortImage = lastSlash >= 0 ? image.slice(lastSlash + 1) : image
+  // Truncate if still too long
+  return shortImage.length > 30 ? shortImage.slice(0, 27) + '...' : shortImage
+}
+
+/**
+ * Linearize container statuses array as a single table
+ * | Name | State | Started | Ready | Restarts | Age | Image |
+ */
+export const linearizeContainerStatuses: LinearizerFn = (data) => {
+  if (!Array.isArray(data) || data.length === 0) return null
+  
+  // Check if first item looks like a container status
+  const first = data[0] as Record<string, unknown>
+  if (!('name' in first) || !('state' in first)) return null
+  
+  const rows: LinearizedPart[][] = data.map(item => {
+    const container = item as Record<string, unknown>
+    const name = container.name as string || '?'
+    const stateObj = container.state as Record<string, unknown>
+    const stateInfo = getContainerState(stateObj)
+    const started = container.started as boolean
+    const ready = container.ready as boolean
+    const restartCount = container.restartCount as number ?? 0
+    const image = truncateImage(container.image as string)
+    
+    // Build state cell with reason if present
+    let stateCell: LinearizedPart
+    if (stateInfo.reason) {
+      stateCell = text(`${stateInfo.state} (${stateInfo.reason})`)
+    } else if (stateInfo.state === 'Running') {
+      stateCell = str(stateInfo.state)
+    } else {
+      stateCell = text(stateInfo.state)
+    }
+    
+    // Age from startedAt (for running containers)
+    const age = formatDuration(stateInfo.startedAt)
+    
+    return [
+      str(name),
+      stateCell,
+      started ? bool(true) : bool(false),
+      ready ? bool(true) : bool(false),
+      restartCount > 0 ? num(restartCount) : text('0'),
+      age !== '-' ? str(age) : text(age),
+      str(image)
+    ]
+  })
+  
+  return [table(['Name', 'State', 'Started', 'Ready', 'Restarts', 'Age', 'Image'], rows)]
+}
+
+/**
+ * Linearize conditions array as a single table
+ * | Type | Status | Reason | Age |
+ */
+export const linearizeConditions: LinearizerFn = (data) => {
+  if (!Array.isArray(data) || data.length === 0) return null
+  
+  // Check if first item looks like a condition
+  const first = data[0] as Record<string, unknown>
+  if (!('type' in first) || !('status' in first)) return null
+  
+  const rows: LinearizedPart[][] = data.map(item => {
+    const condition = item as Record<string, unknown>
+    const type = condition.type as string || '?'
+    const condStatus = condition.status as string || '?'
+    const reason = condition.reason as string
+    const lastTransitionTime = condition.lastTransitionTime as string
+    
+    // Color code the status
+    let statusCell: LinearizedPart
+    if (condStatus === 'True') {
+      statusCell = str(condStatus)
+    } else if (condStatus === 'False') {
+      statusCell = bool(false)
+    } else {
+      statusCell = text(condStatus)
+    }
+    
+    const age = formatDuration(lastTransitionTime)
+    
+    return [
+      str(type),
+      statusCell,
+      reason ? str(reason) : text('-'),
+      age !== '-' ? str(age) : text(age)
+    ]
+  })
+  
+  return [table(['Type', 'Status', 'Reason', 'Age'], rows)]
+}
+
+// ============================================================================
 // Default Linearizers Configuration
 // ============================================================================
 
@@ -434,6 +597,10 @@ export const defaultLinearizers: LinearizerConfig[] = [
   { pattern: '**/*Probe', linearize: linearizeProbe },
   { pattern: '**/resources', linearize: linearizeResources },
   { pattern: '**/strategy', linearize: linearizeStrategy },
+  // Pod status linearizers - match entire arrays, not individual items
+  { pattern: '**/containerStatuses', linearize: linearizeContainerStatuses },
+  { pattern: '**/initContainerStatuses', linearize: linearizeContainerStatuses },
+  { pattern: '**/conditions', linearize: linearizeConditions },
 ]
 
 /**
