@@ -46,6 +46,13 @@ const CONTAINER_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this container', isModifying: true },
 ]
 
+const SERVICE_SHORTCUTS: ShortcutConfig[] = [
+  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
+  { label: 'Port-Forward...', shortcut: 'F', code: 'port_forward', tooltip: 'Configure port-forwards for this service', isModifying: true },
+  { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
+]
+
 const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
   { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
@@ -65,6 +72,8 @@ function getShortcutsForResourceType(resourceType: string, hasSelection: boolean
     shortcuts = POD_SHORTCUTS
   } else if (normalizedType === 'containers' || normalizedType === 'container') {
     shortcuts = CONTAINER_SHORTCUTS
+  } else if (normalizedType === 'services' || normalizedType === 'service') {
+    shortcuts = SERVICE_SHORTCUTS
   } else {
     shortcuts = DEFAULT_SHORTCUTS
   }

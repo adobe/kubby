@@ -1,0 +1,228 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 450px;
+  max-width: 700px;
+}
+
+.loading {
+  padding: 1rem;
+  text-align: center;
+  color: var(--fgColor-muted);
+  font-size: 0.85rem;
+}
+
+.emptyState {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--fgColor-muted);
+  font-size: 0.85rem;
+  background: var(--bgColor-muted);
+  border-radius: 6px;
+  border: 1px solid var(--borderColor-muted);
+}
+
+.section {
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fgColor-muted);
+}
+
+.containerList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.container {
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.containerHeader {
+  padding: 0.5rem 0.75rem;
+  background: var(--bgColor-muted);
+  border-bottom: 1px solid var(--borderColor-muted);
+}
+
+.containerName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--fgColor-default);
+}
+
+.portList {
+  display: flex;
+  flex-direction: column;
+}
+
+.portRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--borderColor-muted);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--bgColor-muted);
+  }
+}
+
+.portCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--bgColor-accent-emphasis);
+    border-radius: 2px;
+
+    &:focus {
+      outline: 2px solid var(--bgColor-accent-emphasis);
+      outline-offset: 3px;
+    }
+  }
+}
+
+.portInfo {
+  font-size: 0.85rem;
+  color: var(--fgColor-default);
+  font-family: var(--fontStack-monospace);
+}
+
+.localPortInput {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.localPortLabel {
+  font-size: 0.75rem;
+  color: var(--fgColor-muted);
+}
+
+.localPortField {
+  width: 80px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: var(--fontStack-monospace);
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 4px;
+  color: var(--fgColor-default);
+
+  &:focus {
+    outline: none;
+    border-color: var(--bgColor-accent-emphasis);
+    box-shadow: 0 0 0 2px var(--bgColor-accent-muted);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  // Hide spin buttons
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  -moz-appearance: textfield;
+}
+
+.forwardsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+
+  th {
+    text-align: left;
+    padding: 0.5rem;
+    color: var(--fgColor-muted);
+    font-weight: 500;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--borderColor-muted);
+  }
+
+  td {
+    padding: 0.5rem;
+    color: var(--fgColor-default);
+    border-bottom: 1px solid var(--borderColor-muted);
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tr:hover td {
+    background: var(--bgColor-default);
+  }
+}
+
+.stopCell {
+  text-align: right;
+}
+
+.stopButton {
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.75rem !important;
+  background: transparent !important;
+  border: 1px solid var(--borderColor-danger-muted) !important;
+  color: var(--fgColor-danger) !important;
+
+  &:hover:not(:disabled) {
+    background: var(--bgColor-danger-muted) !important;
+    border-color: var(--fgColor-danger) !important;
+  }
+
+  // Hide empty shortcut span
+  :global(.shortcutKey:empty) {
+    display: none;
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.addButton {
+  background: var(--bgColor-accent-emphasis) !important;
+  border-color: var(--bgColor-accent-emphasis) !important;
+
+  &:hover:not(:disabled) {
+    background: var(--control-checked-bgColor-hover) !important;
+    border-color: var(--control-checked-bgColor-hover) !important;
+  }
+}

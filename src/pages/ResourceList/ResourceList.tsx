@@ -18,9 +18,22 @@ import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
 import {RunModal} from '../../components/RunModal/RunModal.tsx'
 import {ConfirmModal} from '../../components/ConfirmModal/ConfirmModal.tsx'
 import {RollingRestartModal} from '../../components/RollingRestartModal/RollingRestartModal.tsx'
+import {PortForwardModal} from '../../components/PortForwardModal/PortForwardModal.tsx'
 import type {ActionCode} from './resourceActions.ts'
 import {executeShell, executeEdit, executeDelete} from './resourceActions.ts'
 import {evaluateColumnColor} from '../../kubectl/columnColorEvaluator.ts'
+
+/** Active port forward information */
+interface ActivePortForward {
+  id: string
+  context: string
+  namespace: string
+  resourceType: string
+  resourceName: string
+  containerName: string | null
+  localPort: number
+  targetPort: number
+}
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -255,6 +268,55 @@ export function ResourceList({
   // Rolling restart modal state
   const [rollingRestartTarget, setRollingRestartTarget] = useState<string | null>(null)
 
+  // Port forward modal state
+  const [portForwardTarget, setPortForwardTarget] = useState<string | null>(null)
+
+  // Active port forwards state (for displaying in PORTS column)
+  const [activePortForwards, setActivePortForwards] = useState<ActivePortForward[]>([])
+
+  // Build a lookup map from resource name to its forwarded local ports
+  const portForwardsByResource = useMemo(() => {
+    const map = new Map<string, number[]>()
+    for (const pf of activePortForwards) {
+      const ports = map.get(pf.resourceName) || []
+      ports.push(pf.localPort)
+      map.set(pf.resourceName, ports)
+    }
+    return map
+  }, [activePortForwards])
+
+  // Fetch active port forwards for the current context/namespace
+  const fetchActivePortForwards = useCallback(async () => {
+    try {
+      const forwards = await invoke<ActivePortForward[]>('list_active_port_forwards', {
+        context,
+        namespace,
+        resourceType: resourceType.toLowerCase(),
+      })
+      setActivePortForwards(forwards)
+    } catch (e) {
+      console.error('Failed to fetch active port forwards:', e)
+      setActivePortForwards([])
+    }
+  }, [context, namespace, resourceType])
+
+  // Fetch active port forwards on mount and when context/namespace/resourceType changes
+  useEffect(() => {
+    fetchActivePortForwards()
+  }, [fetchActivePortForwards])
+
+  // Refresh active port forwards periodically (every 5 seconds)
+  useEffect(() => {
+    const intervalId = setInterval(fetchActivePortForwards, 5000)
+    return () => clearInterval(intervalId)
+  }, [fetchActivePortForwards])
+
+  // Also refresh port forwards when the port forward modal closes
+  const handlePortForwardModalClose = useCallback(() => {
+    setPortForwardTarget(null)
+    fetchActivePortForwards()
+  }, [fetchActivePortForwards])
+
   // Handle action from shortcuts bar or keyboard
   const handleAction = useCallback(async (code: ActionCode) => {
     // Check if action is a modification action and we're in read-only mode
@@ -348,9 +410,13 @@ export function ResourceList({
         setRollingRestartTarget(resource.name)
         break
 
+      case 'port_forward':
+        // Open port forward modal
+        setPortForwardTarget(resource.name)
+        break
+
       case 'replica_sets':
       case 'scale':
-      case 'port_forward':
       case 'show_port_forward':
         // TODO: Implement these actions
         console.log(`Action ${code} not yet implemented`)
@@ -693,6 +759,18 @@ export function ResourceList({
           return
         }
 
+        // F - Port forward (pods, containers, services)
+        if (e.code === 'KeyF' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
+          const normalizedType = resourceType.toLowerCase()
+          if (normalizedType === 'pods' || normalizedType === 'pod' || 
+              normalizedType === 'containers' || normalizedType === 'container' ||
+              normalizedType === 'services' || normalizedType === 'service') {
+            e.preventDefault()
+            handleAction('port_forward')
+          }
+          return
+        }
+
         // Delete - Delete selected resource (not available for containers)
         if (e.key === 'Delete' && selectedIndex >= 0) {
           const normalizedType = resourceType.toLowerCase()
@@ -847,9 +925,19 @@ export function ResourceList({
                       const colorState = evaluateColumnColor(col.colorRules, placeholderValues)
                       const cellClass = colorState ? `${classes.dataCell} ${classes[`color-${colorState}`]}` : classes.dataCell
 
+                      // Check if this is a PORTS column and if there are active port forwards
+                      const isPortsColumn = col.name.toUpperCase() === 'PORTS' || col.name.toUpperCase() === 'PORT(S)'
+                      const forwardedPorts = portForwardsByResource.get(resource.name)
+                      const hasPortForwards = isPortsColumn && forwardedPorts && forwardedPorts.length > 0
+
                       return (
                         <td key={col.name} class={cellClass}>
                           {resource[col.name] ?? '<none>'}
+                          {hasPortForwards && (
+                            <span class={classes.portForwardIndicator}>
+                              {' → '}{forwardedPorts.join(', ')}
+                            </span>
+                          )}
                         </td>
                       )
                     })}
@@ -921,6 +1009,17 @@ export function ResourceList({
         deploymentName={rollingRestartTarget ?? ''}
         context={context}
         namespace={namespace}
+        readOnly={readOnly}
+      />
+
+      <PortForwardModal
+        isOpen={portForwardTarget !== null}
+        onClose={handlePortForwardModalClose}
+        context={context}
+        namespace={namespace}
+        resourceType={resourceType}
+        resourceName={portForwardTarget ?? ''}
+        parentResourceName={parentResourceName}
         readOnly={readOnly}
       />
     </div>

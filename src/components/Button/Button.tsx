@@ -5,7 +5,7 @@ interface ButtonProps {
   /** The label text displayed next to the shortcut key */
   label: string
   /** The shortcut string (e.g., "Ctrl+R", "Enter", "Shift+F") */
-  shortcut: string
+  shortcut?: string
   /** Click handler */
   onClick?: () => void
   /** Whether the button is disabled */
@@ -36,7 +36,7 @@ export function Button({
       title={tooltip}
     >
       <span class={classes.shortcutLabel}>{label}</span>
-      <span class={classes.shortcutKey}>{formatShortcut(shortcut)}</span>
+      {shortcut && (<span class={classes.shortcutKey}>{formatShortcut(shortcut)}</span>)}
     </button>
   )
 }

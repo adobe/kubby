@@ -148,6 +148,11 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .portForwardIndicator {
+    color: var(--fgColor-success);
+    font-weight: 600;
+  }
+
   // Color state classes for column highlighting
   .color-attention {
     color: var(--fgColor-attention);

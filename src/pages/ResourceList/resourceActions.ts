@@ -139,7 +139,9 @@ export function isActionAvailable(action: ActionCode, resourceType: string): boo
       return normalizedType === 'pods' || normalizedType === 'pod'
     case 'port_forward':
     case 'show_port_forward':
-      return normalizedType === 'pods' || normalizedType === 'pod' || normalizedType === 'containers'
+      return normalizedType === 'pods' || normalizedType === 'pod' || 
+             normalizedType === 'containers' || normalizedType === 'container' ||
+             normalizedType === 'services' || normalizedType === 'service'
     case 'logs':
       return normalizedType === 'pods' || normalizedType === 'pod' || 
              normalizedType === 'containers' ||

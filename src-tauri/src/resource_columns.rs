@@ -186,6 +186,10 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 ]
             ),
             col!(
+                "PORTS".to_string(),
+                vec!["$.spec.containers[*].ports[*].containerPort".to_string()]
+            ),
+            col!(
                 "AGE".to_string(),
                 vec!["$.metadata.creationTimestamp".to_string()],
                 None,
@@ -273,10 +277,18 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
             ),
             col!(
                 "EXTERNAL-IP".to_string(),
-                vec!["$.status.loadBalancer.ingress[*].ip".to_string()]
+                vec!["$.status.loadBalancer.ingress[*].ip".to_string()],
+                None,
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>'".to_string(),
+                        color: ColorState::Muted,
+                    },
+                ]
             ),
             col!(
-                "PORT(S)".to_string(),
+                "PORTS".to_string(),
                 vec!["$.spec.ports[*].port".to_string()]
             ),
             col!(

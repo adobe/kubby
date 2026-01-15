@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import classes from "./Onboarding.module.scss";
 import { Alert } from "../../components/Alert/Alert.tsx";
+import {KubbyTitle} from '../../components/KubbyTitle/KubbyTitle.tsx'
 
 interface KubeContext {
   name: string;
@@ -177,6 +178,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   return (
     <div class={classes.onboarding}>
       <div class={classes.header}>
+        <div class={classes.logo}>
+          <KubbyTitle/>
+        </div>
         <h1 class={classes.title}>Welcome to Kubby</h1>
         <p class={classes.subtitle}>
           Kubby needs a configuration file to know which contexts and namespaces to display on the dashboard.

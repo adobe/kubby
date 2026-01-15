@@ -3,6 +3,7 @@ mod config;
 mod editor;
 mod kubectl;
 mod log_stream;
+mod port_forward;
 mod resource_columns;
 mod resource_list;
 mod resources;
@@ -42,6 +43,10 @@ pub fn run() {
             log_stream::start_log_stream,
             log_stream::stop_log_stream,
             terminal::open_terminal_with_command,
+            port_forward::get_port_forward_targets,
+            port_forward::start_port_forward,
+            port_forward::stop_port_forward,
+            port_forward::list_active_port_forwards,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
