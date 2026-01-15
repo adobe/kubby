@@ -6,9 +6,54 @@ use serde_json_path::JsonPath;
 
 use crate::types::{
     ColumnConfig, ColumnType, LabelSelector, ResourceColumnConfig, ResourceItem,
-    ResourceListResponse, KUBECTL_TIMEOUT_SECS,
+    ResourceListResponse, SpecFilter, KUBECTL_TIMEOUT_SECS,
 };
 use crate::resource_columns;
+
+/// Check if a spec filter path can be used as a kubectl field selector for a resource type.
+/// Currently only events support field selectors for involvedObject.* fields.
+fn is_field_selector_supported(resource_type: &str, path: &str) -> bool {
+    let rt = resource_type.to_lowercase();
+    if rt == "events" || rt == "event" {
+        // Events support involvedObject.* field selectors
+        path.starts_with("involvedObject.")
+    } else {
+        // Other resource types don't support custom field selectors
+        false
+    }
+}
+
+/// Convert a spec filter path to a kubectl field selector path.
+/// For example, "involvedObject.name" stays as "involvedObject.name".
+fn to_field_selector_path(path: &str) -> String {
+    path.to_string()
+}
+
+/// Check if a JSON value matches a spec filter by evaluating the path.
+fn matches_spec_filter(item: &Value, filter: &SpecFilter) -> bool {
+    // Convert dot-notation path to JSON pointer format
+    let pointer = format!("/{}", filter.path.replace('.', "/"));
+    
+    // Get the value at the path
+    if let Some(value) = item.pointer(&pointer) {
+        // Compare the value (handle different types)
+        if let Some(s) = value.as_str() {
+            s == filter.value
+        } else if let Some(n) = value.as_i64() {
+            n.to_string() == filter.value
+        } else if let Some(n) = value.as_u64() {
+            n.to_string() == filter.value
+        } else if let Some(n) = value.as_f64() {
+            n.to_string() == filter.value
+        } else if let Some(b) = value.as_bool() {
+            b.to_string() == filter.value
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
 
 fn format_age(timestamp: &str) -> String {
     if timestamp.is_empty() || timestamp == "<none>" || timestamp == "<unknown>" {
@@ -409,6 +454,7 @@ pub async fn get_resources(
     context: String,
     namespace: String,
     label_selectors: Vec<LabelSelector>,
+    spec_filters: Option<Vec<SpecFilter>>,
 ) -> Result<ResourceListResponse, String> {
     // Get column configuration
     let column_config = resource_columns::get_resource_columns(
@@ -416,6 +462,12 @@ pub async fn get_resources(
         context.clone(),
         namespace.clone(),
     )?;
+    
+    // Separate spec filters into those we can use as field selectors vs post-fetch filters
+    let spec_filters = spec_filters.unwrap_or_default();
+    let (field_selector_filters, post_fetch_filters): (Vec<_>, Vec<_>) = spec_filters
+        .into_iter()
+        .partition(|f| is_field_selector_supported(&resource_type, &f.path));
     
     // Build kubectl command args
     let mut args = vec![
@@ -435,6 +487,17 @@ pub async fn get_resources(
             .collect::<Vec<String>>()
             .join(",");
         args.push("-l".to_string());
+        args.push(selector_string);
+    }
+    
+    // Add field selector if we have any filters that can use it
+    if !field_selector_filters.is_empty() {
+        let selector_string = field_selector_filters
+            .iter()
+            .map(|f| format!("{}={}", to_field_selector_path(&f.path), f.value))
+            .collect::<Vec<String>>()
+            .join(",");
+        args.push("--field-selector".to_string());
         args.push(selector_string);
     }
     
@@ -460,7 +523,36 @@ pub async fn get_resources(
     let stdout = String::from_utf8_lossy(&output.stdout);
     
     // Parse and process resources
-    let (items, evaluation_error) = parse_kubectl_json(&stdout, &column_config, &resource_type)?;
+    let (mut items, evaluation_error) = parse_kubectl_json(&stdout, &column_config, &resource_type)?;
+    
+    // Apply post-fetch filtering for spec filters that couldn't use field selectors
+    if !post_fetch_filters.is_empty() {
+        // We need to filter based on the raw JSON, so re-parse it
+        let data: Value = serde_json::from_str(&stdout)
+            .map_err(|e| format!("Failed to parse kubectl JSON output: {}", e))?;
+        
+        let raw_items: Vec<&Value> = match data.get("items") {
+            Some(Value::Array(arr)) => arr.iter().collect(),
+            _ => vec![&data],
+        };
+        
+        // Filter items based on spec filters
+        // We need to match by name since ResourceItem doesn't contain raw JSON
+        let matching_names: std::collections::HashSet<String> = raw_items
+            .iter()
+            .filter(|item| {
+                post_fetch_filters.iter().all(|f| matches_spec_filter(item, f))
+            })
+            .filter_map(|item| {
+                item.get("metadata")
+                    .and_then(|m| m.get("name"))
+                    .and_then(|n| n.as_str())
+                    .map(|s| s.to_string())
+            })
+            .collect();
+        
+        items.retain(|item| matching_names.contains(&item.name));
+    }
     
     Ok(ResourceListResponse {
         columns: column_config.columns,

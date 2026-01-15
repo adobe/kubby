@@ -8,6 +8,7 @@ import { LogViewer } from "./pages/LogViewer/LogViewer.tsx";
 import { Onboarding } from "./pages/Onboarding/Onboarding.tsx";
 import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
+import type { ResourceFilter } from "./kubectl/filterTypes";
 import { 
   createNavigationNode, 
   createNavigationNodeWithLabels, 
@@ -193,6 +194,22 @@ function App() {
     }
   };
 
+  const handleJump = (targetResourceType: string, filters: ResourceFilter[]) => {
+    if (navigationStack.length === 0) return;
+
+    const currentNode = navigationStack[navigationStack.length - 1];
+
+    // Create a new navigation node for the target resource type with filters
+    const newNode = createNavigationNode(
+      currentNode.context,
+      currentNode.namespace,
+      targetResourceType,
+      currentNode.resourceType, // Display name shows where we came from
+      filters
+    );
+    setNavigationStack([...navigationStack, newNode]);
+  };
+
   const handleClearFilters = () => {
     if (navigationStack.length === 0) return;
     const currentNode = navigationStack[navigationStack.length - 1];
@@ -342,6 +359,7 @@ function App() {
           onClearFilters={handleClearFilters}
           onDescribe={handleDescribe}
           onLogs={handleLogs}
+          onJump={handleJump}
           initialSelectedIndex={currentNode.selectedIndex}
           onSelectionChange={(index) => {
             // Update current node's selection without triggering re-render cascade

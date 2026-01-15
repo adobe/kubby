@@ -25,9 +25,8 @@ export function evaluateColorRule(
     let expression = rule.expression;
     
     for (let i = 0; i < placeholderValues.length; i++) {
-      const placeholder = `{${i}}`;
       const value = prepareValue(placeholderValues[i]);
-      // Use regex with global flag to replace all occurrences
+      // Use regex with global flag to replace all occurrences of {i} placeholder
       expression = expression.replace(new RegExp(`\\{${i}\\}`, 'g'), value);
     }
     

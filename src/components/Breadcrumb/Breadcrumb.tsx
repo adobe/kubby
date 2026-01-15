@@ -1,7 +1,7 @@
 import type { Ref } from 'preact'
 import type { NavigationNode } from '../../navigation/navigationTypes.ts'
 import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
-import { getLabelFilters, getResourceNameFilter } from '../../kubectl/filterTypes.ts'
+import { getLabelFilters, getResourceNameFilter, getSpecFilters } from '../../kubectl/filterTypes.ts'
 import { FilterChip } from '../FilterChip/FilterChip.tsx'
 import { FilterInput } from '../FilterInput/FilterInput.tsx'
 import classes from './Breadcrumb.module.scss'
@@ -40,7 +40,10 @@ export function Breadcrumb({
   onFilterSubmit,
 }: BreadcrumbProps) {
   const labelFilters = getLabelFilters(filters)
+  const specFilters = getSpecFilters(filters)
   const hasLabelFilters = labelFilters.length > 0
+  const hasSpecFilters = specFilters.length > 0
+  const hasAnyFilters = hasLabelFilters || hasSpecFilters
   
   const lastNode = navigationStack[navigationStack.length - 1]
   const isContainersView = lastNode?.resourceType === 'containers'
@@ -63,16 +66,16 @@ export function Breadcrumb({
         const isSecondToLast = index === navigationStack.length - 2
         const label = node.resourceType
         
-        // Check if this node should show inline label filters (for filtered pods)
-        const showLabelFiltersHere = isLast && hasLabelFilters
+        // Check if this node should show inline filters (label or spec filters)
+        const showFiltersHere = isLast && hasAnyFilters
         
         // Node is clickable if:
         // - It's not the last node (normal breadcrumb navigation)
-        // - It's the last node with label filters (navigate to unfiltered view)
-        const isClickable = !isLast || showLabelFiltersHere
+        // - It's the last node with filters (navigate to unfiltered view)
+        const isClickable = !isLast || showFiltersHere
         
         const handleClick = () => {
-          if (showLabelFiltersHere && onClearFilters) {
+          if (showFiltersHere && onClearFilters) {
             onClearFilters()
           } else {
             onNavigateToNode(index)
@@ -98,12 +101,21 @@ export function Breadcrumb({
               <span class={classes.current}>{label}</span>
             )}
             
-            {/* Inline label filter chips (for filtered pods) */}
-            {showLabelFiltersHere && (
+            {/* Inline filter chips (label filters and spec filters) */}
+            {showFiltersHere && (
               <span class={classes.inlineFilters}>
+                {/* Label filter chips */}
                 {labelFilters.map((filter, filterIndex) => (
                   <FilterChip 
-                    key={`${filter.key}-${filter.value}-${filterIndex}`}
+                    key={`label-${filter.key}-${filter.value}-${filterIndex}`}
+                    filter={filter} 
+                    onRemove={onClearFilters}
+                  />
+                ))}
+                {/* Spec filter chips - only show first one with displayLabel to avoid clutter */}
+                {specFilters.filter(f => f.displayLabel).slice(0, 1).map((filter, filterIndex) => (
+                  <FilterChip 
+                    key={`spec-${filter.path}-${filter.value}-${filterIndex}`}
                     filter={filter} 
                     onRemove={onClearFilters}
                   />

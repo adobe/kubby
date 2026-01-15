@@ -7,13 +7,13 @@ import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 import type {NavigationNode} from '../../navigation/navigationTypes.ts'
 import {ResourceListShortcutsBar} from './ResourceListShortcutsBar.tsx'
 import {Alert} from '../../components/Alert/Alert.tsx'
-import {Button} from '../../components/Button/Button.tsx'
+import {Button, type ButtonHandle} from '../../components/Button/Button.tsx'
 import {Combobox} from '../../components/Combobox/Combobox.tsx'
 import type {ComboboxHandle} from '../../components/Combobox/Combobox.tsx'
 import {isAltModifierPressed, isControlModifierPressed} from '../../navigation/keyboardShortcuts.ts'
 import type {LabelSelector} from '../../kubectl/resourceTypes.ts'
 import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
-import {getResourceNameFilter, toLabelSelectors} from '../../kubectl/filterTypes.ts'
+import {getResourceNameFilter, toLabelSelectors, getSpecFilters} from '../../kubectl/filterTypes.ts'
 import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
 import {RunModal} from '../../components/RunModal/RunModal.tsx'
 import {ConfirmModal} from '../../components/ConfirmModal/ConfirmModal.tsx'
@@ -22,6 +22,7 @@ import {PortForwardModal} from '../../components/PortForwardModal/PortForwardMod
 import type {ActionCode} from './resourceActions.ts'
 import {executeShell, executeEdit, executeDelete} from './resourceActions.ts'
 import {evaluateColumnColor} from '../../kubectl/columnColorEvaluator.ts'
+import {getRelatedResources, buildFiltersForRelation} from './relatedResources.ts'
 
 /** Active port forward information */
 interface ActivePortForward {
@@ -142,6 +143,8 @@ interface ResourceListProps {
   onDescribe?: (resourceType: string, resourceName: string) => void;
   /** Called when user wants to view logs for a resource */
   onLogs?: (resourceType: string, resourceName: string, containerName?: string) => void;
+  /** Called when user wants to jump to a related resource */
+  onJump?: (targetResourceType: string, filters: ResourceFilter[]) => void;
   initialSelectedIndex?: number;
   onSelectionChange?: (index: number) => void;
 }
@@ -163,6 +166,7 @@ export function ResourceList({
                                onClearFilters,
                                onDescribe,
                                onLogs,
+                               onJump,
                                initialSelectedIndex,
                                onSelectionChange,
                              }: ResourceListProps) {
@@ -172,6 +176,7 @@ export function ResourceList({
   const namespaceComboboxRef = useRef<ComboboxHandle>(null)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
   const filterInputRef = useRef<HTMLInputElement>(null)
+  const jumpButtonRef = useRef<ButtonHandle>(null)
 
   // Text filter state for filtering resources by name
   const [filterText, setFilterText] = useState('')
@@ -184,6 +189,12 @@ export function ResourceList({
   const podFilter = getResourceNameFilter(filters, 'pod')
   const parentResourceName = podFilter?.name
 
+  // Extract spec filters for backend filtering
+  const specFilters = useMemo(() => {
+    const specs = getSpecFilters(filters)
+    return specs.map(f => ({ path: f.path, value: f.value }))
+  }, [filters])
+
   // Use the resource loader hook - handles caching and background refresh
   const {
     resources: allResources,
@@ -195,7 +206,7 @@ export function ResourceList({
     refresh,
     fetchResources,
     isStale,
-  } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName})
+  } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName, specFilters})
 
   // Filter resources by text filter (case-insensitive substring match on name)
   const resources = useMemo(() => {
@@ -427,6 +438,30 @@ export function ResourceList({
     parentResourceName, isContainersView, editingResourceName,
     hasRunCommands, readOnly, onResourceClick, onDescribe, onLogs, refresh,
   ])
+
+  // Handle jump to related resource
+  const handleJump = useCallback((relationCode: string) => {
+    if (selectedIndex < 0 || !resources[selectedIndex] || !onJump) return
+    
+    const resource = resources[selectedIndex]
+    const relatedResources = getRelatedResources(resourceType)
+    const relation = relatedResources.find(r => r.code === relationCode)
+    
+    if (!relation) {
+      console.warn(`Unknown relation code: ${relationCode}`)
+      return
+    }
+    
+    // Build filters for the target resource
+    const jumpFilters = buildFiltersForRelation(
+      relation,
+      resourceType,
+      resource.name,
+      resource.labels
+    )
+    
+    onJump(relation.targetResourceType, jumpFilters)
+  }, [selectedIndex, resources, resourceType, onJump])
 
   // Handle confirmed delete
   const handleConfirmDelete = useCallback(async () => {
@@ -771,6 +806,16 @@ export function ResourceList({
           return
         }
 
+        // J - Open Jump dropdown (if available)
+        if (e.code === 'KeyJ' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
+          const relatedResources = getRelatedResources(resourceType)
+          if (relatedResources.length > 0) {
+            e.preventDefault()
+            jumpButtonRef.current?.toggle()
+          }
+          return
+        }
+
         // Delete - Delete selected resource (not available for containers)
         if (e.key === 'Delete' && selectedIndex >= 0) {
           const normalizedType = resourceType.toLowerCase()
@@ -971,7 +1016,10 @@ export function ResourceList({
         disabled={error !== null}
         hasRunCommands={hasRunCommands}
         readOnly={readOnly}
+        availableResourceTypes={resourceTypes}
         onAction={handleAction}
+        onJump={handleJump}
+        jumpButtonRef={jumpButtonRef}
       />
 
       <RunModal

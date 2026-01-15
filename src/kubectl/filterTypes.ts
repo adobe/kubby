@@ -28,9 +28,23 @@ export interface TextFilter {
 }
 
 /**
+ * Filter by spec path (e.g., involvedObject.name for events, spec.scaleTargetRef.name for HPA).
+ * The backend decides whether to use field selectors (when supported) or post-fetch filtering.
+ */
+export interface SpecFilter {
+  type: 'spec';
+  /** The JSON path to filter by (e.g., "involvedObject.name", "spec.scaleTargetRef.name") */
+  path: string;
+  /** The value to match */
+  value: string;
+  /** Optional display label for the filter chip (e.g., "for Deployment") */
+  displayLabel?: string;
+}
+
+/**
  * Union of all filter types
  */
-export type ResourceFilter = LabelFilter | ResourceNameFilter | TextFilter;
+export type ResourceFilter = LabelFilter | ResourceNameFilter | TextFilter | SpecFilter;
 
 /**
  * Type guard for label filters
@@ -54,6 +68,13 @@ export function isTextFilter(filter: ResourceFilter): filter is TextFilter {
 }
 
 /**
+ * Type guard for spec filters
+ */
+export function isSpecFilter(filter: ResourceFilter): filter is SpecFilter {
+  return filter.type === 'spec';
+}
+
+/**
  * Create a label filter
  */
 export function createLabelFilter(key: string, value: string): LabelFilter {
@@ -72,6 +93,13 @@ export function createResourceNameFilter(resourceType: string, name: string): Re
  */
 export function createTextFilter(value: string): TextFilter {
   return { type: 'text', value };
+}
+
+/**
+ * Create a spec filter
+ */
+export function createSpecFilter(path: string, value: string, displayLabel?: string): SpecFilter {
+  return { type: 'spec', path, value, displayLabel };
 }
 
 /**
@@ -102,6 +130,13 @@ export function getResourceNameFilter(filters: ResourceFilter[], resourceType: s
  */
 export function getTextFilter(filters: ResourceFilter[]): TextFilter | undefined {
   return filters.find(isTextFilter);
+}
+
+/**
+ * Get spec filters from a mixed filter array
+ */
+export function getSpecFilters(filters: ResourceFilter[]): SpecFilter[] {
+  return filters.filter(isSpecFilter);
 }
 
 /**

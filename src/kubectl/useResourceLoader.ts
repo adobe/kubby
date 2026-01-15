@@ -17,12 +17,19 @@ export interface ResourceState {
   resourcesCacheKey: string; // Track which cache key these resources belong to
 }
 
+/** Spec filter for backend filtering by JSON path */
+export interface SpecFilterParam {
+  path: string;
+  value: string;
+}
+
 interface UseResourceLoaderOptions {
   context: string;
   namespace: string;
   resourceType: string;
   labelSelectors?: LabelSelector[];
   parentResourceName?: string; // For containers view: the pod name
+  specFilters?: SpecFilterParam[]; // Spec-based filters for related resources
 }
 
 /**
@@ -46,11 +53,16 @@ function filterByLabels(items: ResourceItem[], labelSelectors?: LabelSelector[])
  * 3. Update state when fresh data arrives
  * 4. Apply label filtering client-side
  */
-export function useResourceLoader({ context, namespace, resourceType, labelSelectors, parentResourceName }: UseResourceLoaderOptions) {
+export function useResourceLoader({ context, namespace, resourceType, labelSelectors, parentResourceName, specFilters }: UseResourceLoaderOptions) {
+  // Build cache key that includes spec filters for uniqueness
+  const specFilterKey = specFilters?.length
+    ? `:spec:${specFilters.map(f => `${f.path}=${f.value}`).join(',')}`
+    : ''
+  
   // For containers, include pod name in cache key; otherwise use standard key
   const cacheKey = resourceType === 'containers' && parentResourceName
     ? getCacheKey(context, namespace, `containers:${parentResourceName}`)
-    : getCacheKey(context, namespace, resourceType)
+    : getCacheKey(context, namespace, resourceType + specFilterKey)
   const isMountedRef = useRef(true)
   const prevCacheKeyRef = useRef(cacheKey)
   const currentCacheKeyRef = useRef(cacheKey) // Track which cacheKey we expect results for
@@ -118,12 +130,13 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
           podName: parentResourceName,
         })
       } else {
-        // Standard case: fetch all resources (no label selectors)
+        // Standard case: fetch all resources with optional spec filters
         result = await invoke<ResourceListResponse>('get_resources', {
           resourceType,
           context,
           namespace,
           labelSelectors: [],
+          specFilters: specFilters?.length ? specFilters : null,
         })
       }
 
@@ -154,7 +167,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
         error: String(e),
       }))
     }
-  }, [cacheKey, context, namespace, resourceType, parentResourceName])
+  }, [cacheKey, context, namespace, resourceType, parentResourceName, specFilters])
 
   // Start background fetch after mount
   useEffect(() => {

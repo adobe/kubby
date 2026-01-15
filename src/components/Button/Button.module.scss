@@ -3,7 +3,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.2rem 0.4rem;
+  padding: 0;
+  //padding: 0.2rem 0.4rem;
   background: var(--bgColor-muted);
   border: 1px solid var(--borderColor-muted);
   border-radius: 4px;
@@ -34,8 +35,17 @@
     cursor: not-allowed;
   }
 
+  &.hasDropdown {
+    padding-right: 0.2rem;
+  }
 
-  .shortcutLabel {
+  &.isOpen {
+    background: var(--control-bgColor-active);
+    border-color: var(--borderColor-default);
+  }
+
+  .label {
+    padding: 0.2rem 0.4rem;
     color: var(--fgColor-default);
     white-space: nowrap;
   }
@@ -57,4 +67,80 @@
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
   }
 
+  .dropdownArrow {
+    display: inline-block;
+    align-items: center;
+    justify-content: center;
+    //margin-left: 0.15rem;
+    margin: 0;
+    padding: 0 0.15rem 0 0.35rem;
+    border-left: 1px solid var(--borderColor-muted);
+    font-size: 1rem;
+    color: var(--fgColor-muted);
+    transition: transform 0.15s ease;
+
+    &.arrowUp {
+      transform: rotate(180deg);
+    }
+  }
+}
+
+.ButtonDropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.dropdown {
+  position: absolute;
+  left: 0;
+  min-width: 100%;
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  overflow: hidden;
+
+  &.dropDown {
+    top: 100%;
+    margin-top: 2px;
+  }
+
+  &.dropUp {
+    bottom: 100%;
+    margin-bottom: 2px;
+  }
+}
+
+.dropdownItem {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--fgColor-default);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.1s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--control-bgColor-hover);
+  }
+
+  &:focus-visible {
+    background: var(--control-bgColor-hover);
+    outline: none;
+  }
+
+  &.focused:not(:disabled) {
+    background: var(--control-bgColor-hover);
+  }
+
+  &.unavailable {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }

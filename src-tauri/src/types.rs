@@ -13,6 +13,16 @@ pub struct LabelSelector {
     pub value: String,
 }
 
+/// Spec filter for filtering by JSON path (e.g., involvedObject.name for events)
+/// The backend decides whether to use field selectors or post-fetch filtering
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SpecFilter {
+    /// JSON path to filter by (e.g., "involvedObject.name", "spec.scaleTargetRef.name")
+    pub path: String,
+    /// Value to match
+    pub value: String,
+}
+
 /// Column type for formatting
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]

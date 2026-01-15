@@ -1,6 +1,9 @@
+import { useMemo } from 'preact/hooks'
+import type { Ref } from 'preact'
 import { ShortcutsBar } from '../../components/ShortcutsBar/ShortcutsBar.tsx'
-import { Button } from '../../components/Button/Button.tsx'
+import { Button, type SubItem, type ButtonHandle } from '../../components/Button/Button.tsx'
 import type { ActionCode } from './resourceActions.ts'
+import { getRelatedResources } from './relatedResources.ts'
 
 interface ShortcutConfig {
   label: string
@@ -16,7 +19,13 @@ interface ResourceListShortcutsBarProps {
   disabled: boolean
   hasRunCommands: boolean
   readOnly: boolean
+  /** Available resource types in the cluster (for filtering Jump options) */
+  availableResourceTypes?: string[]
   onAction: (code: ActionCode) => void
+  /** Called when user selects a related resource to jump to */
+  onJump?: (relationCode: string) => void
+  /** Ref for the Jump button (for keyboard shortcut handling) */
+  jumpButtonRef?: Ref<ButtonHandle>
 }
 
 // Shortcut configurations by resource type
@@ -93,9 +102,38 @@ export function ResourceListShortcutsBar({
   disabled,
   hasRunCommands,
   readOnly,
+  availableResourceTypes = [],
   onAction,
+  onJump,
+  jumpButtonRef,
 }: ResourceListShortcutsBarProps) {
   const shortcuts = getShortcutsForResourceType(resourceType, hasSelection, hasRunCommands)
+  
+  // Get related resources for the current resource type
+  const relatedResources = useMemo(() => getRelatedResources(resourceType), [resourceType])
+  
+  // Build sub-items for the Jump dropdown, marking unavailable ones
+  const jumpSubItems: SubItem[] = useMemo(() => {
+    if (!hasSelection || relatedResources.length === 0) return []
+    
+    return relatedResources.map(relation => {
+      // Check if the target resource type is available in the cluster
+      const available = availableResourceTypes.length === 0 || 
+        availableResourceTypes.some(rt => 
+          rt.toLowerCase() === relation.targetResourceType.toLowerCase() ||
+          rt.toLowerCase() === relation.targetResourceType.toLowerCase() + 's' ||
+          rt.toLowerCase() + 's' === relation.targetResourceType.toLowerCase()
+        )
+      
+      return {
+        code: relation.code,
+        label: relation.label,
+        available,
+      }
+    })
+  }, [hasSelection, relatedResources, availableResourceTypes])
+  
+  const hasJumpOptions = jumpSubItems.length > 0 && jumpSubItems.some(item => item.available)
   
   return (
     <ShortcutsBar disabled={disabled}>
@@ -117,6 +155,21 @@ export function ResourceListShortcutsBar({
           />
         )
       })}
+      
+      {/* Jump dropdown button - only show if there are related resources */}
+      {hasJumpOptions && (
+        <Button
+          ref={jumpButtonRef}
+          label="Jump..."
+          shortcut="J"
+          subItems={jumpSubItems}
+          onSubItemClick={onJump}
+          dropDirection="up"
+          tabIndex={0}
+          disabled={disabled || !hasSelection}
+          tooltip="Jump to related resources"
+        />
+      )}
     </ShortcutsBar>
   )
 }
