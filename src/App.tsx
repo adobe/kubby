@@ -163,8 +163,10 @@ function App() {
 
     const currentNode = navigationStack[navigationStack.length - 1];
 
-    if (resourceType === 'deployments') {
-      const appLabel = labels.find(l => l.key === 'app.kubernetes.io/name');
+    if (resourceType === 'deployments' || resourceType === 'services') {
+      // Try app.kubernetes.io/name first, then fallback to app label
+      const appLabel = labels.find(l => l.key === 'app.kubernetes.io/name') 
+        ?? labels.find(l => l.key === 'app');
       if (appLabel) {
         const newNode = createNavigationNodeWithLabels(
           currentNode.context,
@@ -175,7 +177,7 @@ function App() {
         );
         setNavigationStack([...navigationStack, newNode]);
       } else {
-        console.warn(`No app.kubernetes.io/name label found on deployment ${resourceName}`);
+        console.warn(`No app.kubernetes.io/name or app label found on ${resourceType} ${resourceName}`);
       }
     } else if (resourceType === 'pods') {
       // Navigate to containers view for the selected pod

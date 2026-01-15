@@ -47,6 +47,7 @@ const CONTAINER_SHORTCUTS: ShortcutConfig[] = [
 ]
 
 const SERVICE_SHORTCUTS: ShortcutConfig[] = [
+  { label: 'Pods', shortcut: 'Enter', code: 'pods', tooltip: 'Show the pods for this service', isModifying: false },
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
   { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
   { label: 'Port-Forward...', shortcut: 'F', code: 'port_forward', tooltip: 'Configure port-forwards for this service', isModifying: true },
