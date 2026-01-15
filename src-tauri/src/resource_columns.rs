@@ -495,11 +495,53 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
             ),
             col!(
                 "CURRENT".to_string(),
-                vec!["$.status.replicas".to_string()]
+                vec![
+                    "$.status.replicas".to_string(),
+                    "$.spec.replicas".to_string(),
+                ],
+                Some("{0}".to_string()),
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{0} === 0 && {1} > 0".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                ]
             ),
             col!(
                 "READY".to_string(),
-                vec!["$.status.readyReplicas".to_string()]
+                vec![
+                    "$.status.readyReplicas".to_string(),
+                    "$.spec.replicas".to_string(),
+                ],
+                Some("{0}".to_string()),
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "({0} === '<none>' || {0} === 0) && {1} > 0".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} > 0 && {0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} === {1} && {1} > 0".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
             ),
             col!(
                 "AGE".to_string(),
@@ -643,7 +685,122 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
             ),
             col!(
                 "REPLICAS".to_string(),
-                vec!["$.status.currentReplicas".to_string()]
+                vec![
+                    "$.status.currentReplicas".to_string(),
+                    "$.spec.minReplicas".to_string(),
+                    "$.spec.maxReplicas".to_string(),
+                    "$.status.desiredReplicas".to_string(),
+                ],
+                Some("{0}".to_string()),
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' || {0} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{0} < {1}".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} === {2}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} !== {3}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} === {3} && {0} >= {1} && {0} < {2}".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "AGE".to_string(),
+                vec!["$.metadata.creationTimestamp".to_string()],
+                None,
+                Some(crate::ColumnType::Duration)
+            ),
+        ],
+        "poddisruptionbudgets" => vec![
+            col!(
+                "MIN AVAILABLE".to_string(),
+                vec!["$.spec.minAvailable".to_string()],
+                None,
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>'".to_string(),
+                        color: ColorState::Muted,
+                    },
+                ]
+            ),
+            col!(
+                "MAX UNAVAILABLE".to_string(),
+                vec!["$.spec.maxUnavailable".to_string()],
+                None,
+                None,
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>'".to_string(),
+                        color: ColorState::Muted,
+                    },
+                ]
+            ),
+            col!(
+                "ALLOWED DISRUPTIONS".to_string(),
+                vec![
+                    "$.status.disruptionsAllowed".to_string(),
+                    "$.status.expectedPods".to_string(),
+                ],
+                Some("{0}".to_string()),
+                Some(crate::ColumnType::Number),
+                vec![
+                    ColorRule {
+                        expression: "{0} === 0 && {1} > 0".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} > 0".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "CURRENT".to_string(),
+                vec![
+                    "$.status.currentHealthy".to_string(),
+                    "$.status.desiredHealthy".to_string(),
+                ],
+                Some("{0}".to_string()),
+                Some(crate::ColumnType::Number),
+                vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === '<none>'".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{0} < {1}".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= {1} && {1} > 0".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "DESIRED".to_string(),
+                vec!["$.status.desiredHealthy".to_string()],
+                None,
+                Some(crate::ColumnType::Number)
+            ),
+            col!(
+                "EXPECTED".to_string(),
+                vec!["$.status.expectedPods".to_string()],
+                None,
+                Some(crate::ColumnType::Number)
             ),
             col!(
                 "AGE".to_string(),
