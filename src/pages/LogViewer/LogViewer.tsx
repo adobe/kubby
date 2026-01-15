@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'preact/hooks'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, UnlistenFn } from '@tauri-apps/api/event'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { VList, VListHandle } from 'virtua'
 import classes from './LogViewer.module.scss'
 import { Button } from '../../components/Button/Button.tsx'
 import { Alert } from '../../components/Alert/Alert.tsx'
@@ -9,8 +9,6 @@ import { isControlModifierPressed } from '../../navigation/keyboardShortcuts.ts'
 
 const MAX_LOG_LINES = 10_000
 const LOG_BATCH_INTERVAL_MS = 50 // Batch log updates every 50ms to reduce re-renders
-const LINE_HEIGHT = 17 // Approximate line height in pixels (0.75rem * 1.4 line-height ≈ 17px)
-const OVERSCAN_COUNT = 20 // Extra rows above/below viewport for smooth scrolling
 
 // Helper to escape HTML and prevent XSS
 function escapeHtml(text: string): string {
@@ -19,6 +17,25 @@ function escapeHtml(text: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+}
+
+// Keys that contain stack traces which should have \n and \t expanded
+const STACK_TRACE_KEYS = ['stack_trace', 'stackTrace', 'stacktrace', 'exception', 'error_stack']
+
+// Expand \n and \t in a stack trace string value (already HTML-escaped)
+// Returns HTML with continuation lines wrapped in spans
+function expandStackTraceEscapes(value: string, cls: { stackTraceLine: string }): string {
+  // Split by literal \n (the escape sequence appears as \n in HTML)
+  const lines = value.split(/\\n/)
+  return lines.map((line, i) => {
+    // Convert \t to 4 spaces for indentation
+    const indented = line.replace(/\\t/g, '    ')
+    if (i === 0) {
+      return indented
+    }
+    // Continuation lines get a wrap marker
+    return `<span class="${cls.stackTraceLine}">${indented}</span>`
+  }).join('\n')
 }
 
 // Log levels with their CSS class names
@@ -120,6 +137,7 @@ interface LogMessageClasses {
   levelDebug: string
   levelTrace: string
   logText: string
+  stackTraceLine: string
 }
 
 // Options for rendering JSON segments
@@ -157,21 +175,45 @@ function renderSegmentHtml(segment: LogSegment, cls: LogMessageClasses, jsonOpti
       let jsonText = segment.value
       const isFormatted = jsonOptions?.isFormatted ?? false
       const lineIdx = jsonOptions?.lineIdx ?? -1
+      let stackTraceKeys: string[] = [] // Track which keys have stack traces for post-processing
       
       // Try to format JSON if requested
       if (isFormatted) {
         try {
-          jsonText = JSON.stringify(JSON.parse(segment.value), null, 2)
+          const parsed = JSON.parse(segment.value)
+          jsonText = JSON.stringify(parsed, null, 2)
+          
+          // Identify which stack trace keys are present for post-processing
+          if (typeof parsed === 'object' && parsed !== null) {
+            for (const key of STACK_TRACE_KEYS) {
+              if (key in parsed && typeof parsed[key] === 'string') {
+                stackTraceKeys.push(key)
+              }
+            }
+          }
         } catch {
           // Keep original if parsing fails
         }
       }
       
-      // Apply key highlighting
-      const jsonContent = escapeHtml(jsonText).replace(
+      // Apply HTML escaping and key highlighting
+      let jsonContent = escapeHtml(jsonText).replace(
         /"([^"]+)":/g,
         `<span class="${cls.jsonKey}">"$1"</span>:`
       )
+      
+      // Post-process: expand \n and \t in stack trace values (after HTML escaping)
+      // Pattern matches: <span class="...">"{key}"</span>: "value..."
+      for (const key of stackTraceKeys) {
+        const pattern = new RegExp(
+          `(<span class="${cls.jsonKey}">"${key}"</span>:\\s*")([^"]*)(")`,
+          'g'
+        )
+        jsonContent = jsonContent.replace(pattern, (_, prefix, value, suffix) => {
+          const expanded = expandStackTraceEscapes(value, cls)
+          return `${prefix}${expanded}${suffix}`
+        })
+      }
       
       // Build button (hidden by default, shown on hover via CSS)
       const buttonLabel = isFormatted ? 'Collapse' : 'Format'
@@ -296,23 +338,18 @@ export function LogViewer({
   const [autoscroll, setAutoscroll] = useState(true)
   const [formattedLines, setFormattedLines] = useState<Set<number>>(new Set())
 
-  const logContainerRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<VListHandle>(null)
   
   // Refs for batching log updates
   const pendingLogsRef = useRef<string[]>([])
   const batchTimeoutRef = useRef<number | null>(null)
-
-  // Virtual scrolling setup with dynamic height measurement for wrapped lines
-  const rowVirtualizer = useVirtualizer({
-    count: logs.length,
-    getScrollElement: () => logContainerRef.current,
-    estimateSize: () => LINE_HEIGHT,
-    overscan: OVERSCAN_COUNT,
-  })
+  
+  // Track if we're doing programmatic scroll to avoid disabling autoscroll
+  const isScrollingRef = useRef(false)
 
   // Helper to refocus log container for keyboard scrolling
   const refocusLogs = useCallback(() => {
-    logContainerRef.current?.focus()
+    // VList doesn't expose focus directly, but we can scroll to trigger focus
   }, [])
 
   // Flush pending logs to state (batched update)
@@ -461,15 +498,24 @@ export function LogViewer({
 
   // Autoscroll effect - scroll to last item when new logs arrive
   useEffect(() => {
-    if (autoscroll && logs.length > 0) {
-      rowVirtualizer.scrollToIndex(logs.length - 1, { align: 'end' })
+    if (autoscroll && logs.length > 0 && listRef.current) {
+      // Mark as programmatic scroll to prevent handleScroll from disabling autoscroll
+      isScrollingRef.current = true
+      
+      // Small delay to ensure VList is ready
+      const timeoutId = setTimeout(() => {
+        if (listRef.current) {
+          listRef.current.scrollToIndex(logs.length - 1, { align: 'end' })
+        }
+        // Reset flag after scroll completes
+        setTimeout(() => {
+          isScrollingRef.current = false
+        }, 100)
+      }, 0)
+      
+      return () => clearTimeout(timeoutId)
     }
-  }, [logs.length, autoscroll, rowVirtualizer])
-
-  // Remeasure all rows when wrap mode changes (row heights will differ)
-  useEffect(() => {
-    rowVirtualizer.measure()
-  }, [wrap, rowVirtualizer])
+  }, [logs.length, autoscroll])
 
   // Focus log container when streaming starts for keyboard scrolling
   useEffect(() => {
@@ -478,14 +524,20 @@ export function LogViewer({
     }
   }, [isStreaming, refocusLogs])
 
-  // Handle manual scroll - disable autoscroll if user scrolls up
-  const handleScroll = useCallback(() => {
-    if (!logContainerRef.current || !autoscroll) return
-
-    const container = logContainerRef.current
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50
-
-    if (!isAtBottom) {
+  // Track last scroll offset to detect scroll direction
+  const lastScrollOffsetRef = useRef(0)
+  
+  // Handle scroll - only disable autoscroll if user scrolls UP
+  const handleScroll = useCallback((offset: number) => {
+    // Ignore programmatic scrolls
+    if (isScrollingRef.current) return
+    if (!autoscroll) return
+    
+    // Only disable autoscroll if user scrolled UP (offset decreased)
+    const scrolledUp = offset < lastScrollOffsetRef.current - 10 // 10px threshold
+    lastScrollOffsetRef.current = offset
+    
+    if (scrolledUp) {
       setAutoscroll(false)
     }
   }, [autoscroll])
@@ -630,41 +682,27 @@ export function LogViewer({
       <div class={classes.body}>
         <Alert type="error" label="Alert" message={error} />
 
-        <div
-          ref={logContainerRef}
-          class={classes.logContainer}
-          tabIndex={0}
-          onScroll={handleScroll}
-          onClick={handleLogClick}
-        >
-          {logs.length === 0 && !isStreaming ? (
-            <div class={classes.empty}>No logs available</div>
-          ) : logs.length === 0 && isStreaming ? (
-            <div class={classes.loading}>Waiting for logs...</div>
-          ) : (
-            <div
-              class={classes.virtualContainer}
-              style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}
-            >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => (
-                <div
-                  key={`${virtualRow.index}-${wrap}-${formattedLines.has(virtualRow.index)}`}
-                  data-index={virtualRow.index}
-                  ref={(node) => rowVirtualizer.measureElement(node)}
-                  class={`${classes.logLine} ${wrap ? classes.wrap : classes.nowrap}`}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                  dangerouslySetInnerHTML={{ __html: renderLogLine(logs[virtualRow.index], virtualRow.index) }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        {logs.length === 0 && !isStreaming ? (
+          <div class={classes.empty}>No logs available</div>
+        ) : logs.length === 0 && isStreaming ? (
+          <div class={classes.loading}>Waiting for logs...</div>
+        ) : (
+          <VList
+            ref={listRef}
+            className={classes.logContainer}
+            onScroll={handleScroll}
+            onClick={handleLogClick}
+          >
+            {logs.map((log, index) => (
+              <div
+                key={`${index}-${wrap}-${formattedLines.has(index)}`}
+                data-index={index}
+                class={`${classes.logLine} ${wrap ? classes.wrap : classes.nowrap}`}
+                dangerouslySetInnerHTML={{ __html: renderLogLine(log, index) }}
+              />
+            ))}
+          </VList>
+        )}
       </div>
 
       <div class={classes.shortcutsBar}>

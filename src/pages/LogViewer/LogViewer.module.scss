@@ -170,6 +170,22 @@
     font-weight: 500;
   }
 
+  // Stack trace continuation lines with wrap marker
+  .stackTraceLine {
+    display: block;
+    position: relative;
+    padding-left: 1.25rem;
+    color: #9ca3af; // Slightly muted for continuation lines
+    
+    &::before {
+      content: '↪';
+      position: absolute;
+      left: 0;
+      color: var(--fgColor-muted);
+      opacity: 0.6;
+    }
+  }
+
   .formatJsonBtn {
     display: inline-block;
     margin-left: 0.5rem;
