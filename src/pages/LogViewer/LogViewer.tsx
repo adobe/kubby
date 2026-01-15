@@ -129,6 +129,7 @@ interface LogMessageClasses {
   jsonMessage: string
   jsonKey: string
   formatJsonBtn: string
+  copyLineBtn: string
   levelFatal: string
   levelError: string
   levelWarn: string
@@ -215,14 +216,17 @@ function renderSegmentHtml(segment: LogSegment, cls: LogMessageClasses, jsonOpti
         })
       }
       
-      // Build button (hidden by default, shown on hover via CSS)
+      // Build buttons (hidden by default, shown on hover via CSS)
       const buttonLabel = isFormatted ? 'Collapse' : 'Format'
-      const button = lineIdx >= 0
+      const formatButton = lineIdx >= 0
         ? `<button class="${cls.formatJsonBtn}" data-line-idx="${lineIdx}">${buttonLabel}</button>`
+        : ''
+      const copyButton = lineIdx >= 0
+        ? `<button class="${cls.copyLineBtn}" data-line-idx="${lineIdx}">Copy</button>`
         : ''
       
       // Wrap in container for hover behavior
-      return `<span class="${cls.jsonContainer}"><span class="${cls.jsonMessage}">${jsonContent}</span>${button}</span>`
+      return `<span class="${cls.jsonContainer}"><span class="${cls.jsonMessage}">${jsonContent}</span>${formatButton}${copyButton}</span>`
     }
 
     case 'text':
@@ -542,9 +546,11 @@ export function LogViewer({
     }
   }, [autoscroll])
 
-  // Handle click on format JSON button (event delegation)
+  // Handle click on format/copy buttons (event delegation)
   const handleLogClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
+    
+    // Handle Format button
     if (target.classList.contains(classes.formatJsonBtn)) {
       const lineIdx = parseInt(target.dataset.lineIdx || '', 10)
       if (!isNaN(lineIdx)) {
@@ -559,7 +565,15 @@ export function LogViewer({
         })
       }
     }
-  }, [])
+    
+    // Handle Copy button
+    if (target.classList.contains(classes.copyLineBtn)) {
+      const lineIdx = parseInt(target.dataset.lineIdx || '', 10)
+      if (!isNaN(lineIdx) && lineIdx < logs.length) {
+        navigator.clipboard.writeText(logs[lineIdx]).catch(console.error)
+      }
+    }
+  }, [logs])
 
   // Copy logs to clipboard
   const handleCopy = useCallback(async () => {
