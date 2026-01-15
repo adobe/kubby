@@ -1,5 +1,6 @@
 import { ShortcutsBar } from '../../components/ShortcutsBar/ShortcutsBar.tsx';
 import { Button } from '../../components/Button/Button.tsx';
+import {BarLabel} from '../../components/ShortcutsBar/BarLabel.tsx'
 
 interface DashboardShortcutsBarProps {
   onNextGroup: () => void;
@@ -14,18 +15,20 @@ export function DashboardShortcutsBar({
 }: DashboardShortcutsBarProps) {
   return (
     <ShortcutsBar>
+      <BarLabel>Groups:</BarLabel>
       <Button
-        label="Previous Group"
+        label="Previous"
         shortcut="Shift+Tab"
         onClick={onPreviousGroup}
         tooltip="Navigate to previous group"
       />
       <Button
-        label="Next Group"
+        label="Next"
         shortcut="Tab"
         onClick={onNextGroup}
         tooltip="Navigate to next group"
       />
+      <BarLabel>Clusters:</BarLabel>
       <Button
         label="Prev"
         shortcut="←"
