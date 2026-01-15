@@ -94,7 +94,7 @@
   .logLine {
     font-family: var(--font-mono, 'Fira Code', monospace);
     font-size: 0.75rem;
-    line-height: 17px; // Fixed height for virtualization (matches LINE_HEIGHT constant)
+    line-height: 1.4;
     color: var(--fgColor-default);
     padding: 0 0.25rem;
     box-sizing: border-box;
@@ -175,7 +175,7 @@
     display: block;
     position: relative;
     padding-left: 1.25rem;
-    color: #9ca3af; // Slightly muted for continuation lines
+    color: #b4a27a; // Slightly muted for continuation lines
     
     &::before {
       content: '↪';

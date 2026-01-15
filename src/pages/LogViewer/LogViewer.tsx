@@ -33,9 +33,9 @@ function expandStackTraceEscapes(value: string, cls: { stackTraceLine: string })
     if (i === 0) {
       return indented
     }
-    // Continuation lines get a wrap marker
+    // Continuation lines get a wrap marker (display: block handles line breaks)
     return `<span class="${cls.stackTraceLine}">${indented}</span>`
-  }).join('\n')
+  }).join('') // No \n needed - display: block in CSS handles line breaks
 }
 
 // Log levels with their CSS class names
