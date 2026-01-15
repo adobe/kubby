@@ -29,12 +29,14 @@ interface ResourceDetailProps {
 /**
  * Shortcuts bar for resource detail view
  */
-function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing}: {
+function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCopy}: {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onEdit: () => void;
   isEditing: boolean;
+  onCopy: () => void;
 }) {
+  const canCopy = viewMode === 'yaml' || viewMode === 'json'
   return (
     <ShortcutsBar>
       <Button
@@ -43,6 +45,13 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing}: {
         onClick={onEdit}
         tabIndex={0}
         disabled={isEditing}
+      />
+      <Button
+        label="Copy"
+        shortcut="C"
+        onClick={onCopy}
+        tabIndex={0}
+        disabled={!canCopy}
       />
       <span class={classes.label}>View: </span>
       <Button
@@ -134,6 +143,10 @@ export function ResourceDetail({
     refocusBody()
   }, [refresh, refocusBody])
 
+  // Memoize the code strings to avoid re-highlighting on every render
+  const yamlCode = useMemo(() => detail ? stringify(detail) : '', [detail])
+  const jsonCode = useMemo(() => detail ? JSON.stringify(detail, null, 2) : '', [detail])
+
   // Handle edit resource
   const handleEdit = useCallback(async () => {
     if (isEditing) return
@@ -157,6 +170,19 @@ export function ResourceDetail({
       refocusBody()
     }
   }, [resourceType, resourceName, context, namespace, refresh, isEditing, refocusBody])
+
+  // Handle copy to clipboard (yaml or json only)
+  const handleCopy = useCallback(async () => {
+    if (viewMode !== 'yaml' && viewMode !== 'json') return
+    
+    const content = viewMode === 'yaml' ? yamlCode : jsonCode
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch (e) {
+      console.error('Failed to copy:', e)
+    }
+    refocusBody()
+  }, [viewMode, yamlCode, jsonCode, refocusBody])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -209,15 +235,18 @@ export function ResourceDetail({
         handleEdit()
         return
       }
+
+      // C - Copy (yaml/json only)
+      if (e.code === 'KeyC' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        handleCopy()
+        return
+      }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, handleRefresh, handleEdit, handleViewModeChange])
-
-  // Memoize the code strings to avoid re-highlighting on every render
-  const yamlCode = useMemo(() => detail ? stringify(detail) : '', [detail])
-  const jsonCode = useMemo(() => detail ? JSON.stringify(detail, null, 2) : '', [detail])
+  }, [onBack, handleRefresh, handleEdit, handleViewModeChange, handleCopy])
 
   const renderContent = useCallback(() => {
     if (!detail) {
@@ -285,7 +314,7 @@ export function ResourceDetail({
         )}
       </div>
 
-      <DetailShortcutsBar viewMode={viewMode} onViewModeChange={handleViewModeChange} onEdit={handleEdit} isEditing={isEditing}/>
+      <DetailShortcutsBar viewMode={viewMode} onViewModeChange={handleViewModeChange} onEdit={handleEdit} isEditing={isEditing} onCopy={handleCopy}/>
     </div>
   )
 }
