@@ -16,6 +16,16 @@
   border-bottom: 1px solid var(--borderColor-muted);
 }
 
+.version {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--fgColor-muted);
+  padding: 0.15rem 0.5rem;
+  background: var(--bgColor-default);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 .body {
   flex: 1;
   overflow: auto;

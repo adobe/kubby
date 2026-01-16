@@ -326,3 +326,162 @@ pub async fn get_pdb_for_deployment(
     
     Ok(None)
 }
+
+#[tauri::command]
+pub async fn scale_deployment(
+    deployment_name: String,
+    replicas: u32,
+    context: String,
+    namespace: String,
+) -> Result<String, String> {
+    // Build kubectl scale command
+    let args = vec![
+        "scale".to_string(),
+        "deployment".to_string(),
+        deployment_name.clone(),
+        format!("--replicas={}", replicas),
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+    ];
+    
+    // Execute kubectl scale command asynchronously with timeout
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl scale timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl scale: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to scale deployment: {}", stderr));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.trim().to_string())
+}
+
+#[tauri::command]
+pub async fn patch_hpa(
+    hpa_name: String,
+    min_replicas: u32,
+    max_replicas: u32,
+    context: String,
+    namespace: String,
+) -> Result<String, String> {
+    // Build patch JSON
+    let patch = format!(
+        r#"{{"spec":{{"minReplicas":{},"maxReplicas":{}}}}}"#,
+        min_replicas, max_replicas
+    );
+    
+    // Build kubectl patch command
+    let args = vec![
+        "patch".to_string(),
+        "hpa".to_string(),
+        hpa_name.clone(),
+        "-p".to_string(),
+        patch,
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+    ];
+    
+    // Execute kubectl patch command asynchronously with timeout
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl patch hpa timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl patch hpa: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to patch HPA: {}", stderr));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.trim().to_string())
+}
+
+#[tauri::command]
+pub async fn patch_pdb(
+    pdb_name: String,
+    min_available: Option<String>,
+    max_unavailable: Option<String>,
+    context: String,
+    namespace: String,
+) -> Result<String, String> {
+    // Build patch JSON based on which field is provided
+    // PDB only allows one of minAvailable or maxUnavailable
+    let patch = match (min_available, max_unavailable) {
+        (Some(min), None) => {
+            // Parse to check if it's a number or string (percentage)
+            if let Ok(num) = min.parse::<u32>() {
+                format!(r#"{{"spec":{{"minAvailable":{},"maxUnavailable":null}}}}"#, num)
+            } else {
+                format!(r#"{{"spec":{{"minAvailable":"{}","maxUnavailable":null}}}}"#, min)
+            }
+        }
+        (None, Some(max)) => {
+            // Parse to check if it's a number or string (percentage)
+            if let Ok(num) = max.parse::<u32>() {
+                format!(r#"{{"spec":{{"minAvailable":null,"maxUnavailable":{}}}}}"#, num)
+            } else {
+                format!(r#"{{"spec":{{"minAvailable":null,"maxUnavailable":"{}"}}}}"#, max)
+            }
+        }
+        (Some(min), Some(_)) => {
+            // If both provided, use minAvailable (PDB only allows one)
+            if let Ok(num) = min.parse::<u32>() {
+                format!(r#"{{"spec":{{"minAvailable":{},"maxUnavailable":null}}}}"#, num)
+            } else {
+                format!(r#"{{"spec":{{"minAvailable":"{}","maxUnavailable":null}}}}"#, min)
+            }
+        }
+        (None, None) => {
+            return Err("Either minAvailable or maxUnavailable must be provided".to_string());
+        }
+    };
+    
+    // Build kubectl patch command
+    let args = vec![
+        "patch".to_string(),
+        "pdb".to_string(),
+        pdb_name.clone(),
+        "-p".to_string(),
+        patch,
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+    ];
+    
+    // Execute kubectl patch command asynchronously with timeout
+    let output = timeout(
+        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
+        Command::new("kubectl")
+            .args(&args)
+            .output()
+    )
+    .await
+    .map_err(|_| format!("kubectl patch pdb timed out after {}s", KUBECTL_TIMEOUT_SECS))?
+    .map_err(|e| format!("Failed to execute kubectl patch pdb: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to patch PDB: {}", stderr));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.trim().to_string())
+}

@@ -3,7 +3,7 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::types::{ColumnConfig, ColorRule, ColorState, ResourceColumnConfig};
+use crate::types::{ColorRule, ColorState, ColumnConfig, ResourceColumnConfig};
 
 // Macro to create a ColumnConfig with optional color rules
 macro_rules! col {
@@ -70,29 +70,29 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
         "containers" => vec![
             col!(
                 "IMAGE".to_string(),
-                vec![".image".to_string()]
+                vec!["$.image".to_string()]
             ),
             col!(
                 "READY".to_string(),
-                vec![".ready".to_string()],
+                vec!["$.status.ready".to_string()],
                 None,
                 None,
                 vec![
                     ColorRule {
-                        expression: "{0} === 'True'".to_string(),
+                        expression: "{0} === true || {0} === 'true'".to_string(),
                         color: ColorState::Success,
                     },
                     ColorRule {
-                        expression: "{0} === 'False'".to_string(),
+                        expression: "{0} === false || {0} === 'false' || {0} === '<none>'".to_string(),
                         color: ColorState::Danger,
                     },
                 ]
             ),
             col!(
                 "STATE".to_string(),
-                vec![".state".to_string()],
+                vec![],
                 None,
-                None,
+                Some(crate::ColumnType::ContainerState),
                 vec![
                     ColorRule {
                         expression: "{0} === 'Running'".to_string(),
@@ -112,7 +112,7 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
             ),
             col!(
                 "RESTARTS".to_string(),
-                vec![".restartCount".to_string()],
+                vec!["$.status.restartCount".to_string()],
                 None,
                 Some(crate::ColumnType::Number),
                 vec![ColorRule {
@@ -121,8 +121,100 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 }]
             ),
             col!(
+                "CPU / req".to_string(),
+                vec![
+                    "$metrics.cpu_percent_requests".to_string(),
+                    "$.resources.requests.cpu".to_string(),
+                ],
+                Some("{0}% / {1}".to_string()),
+                Some(crate::ColumnType::CpuValue),
+                vec![
+                    ColorRule {
+                        expression: "{0} >= 90".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= 70".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} < 70".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "CPU / lim".to_string(),
+                vec![
+                    "$metrics.cpu_percent_limits".to_string(),
+                    "$.resources.limits.cpu".to_string(),
+                ],
+                Some("{0}% / {1}".to_string()),
+                Some(crate::ColumnType::CpuValue),
+                vec![
+                    ColorRule {
+                        expression: "{0} >= 90".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= 70".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} < 70".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "MEM / req".to_string(),
+                vec![
+                    "$metrics.memory_percent_requests".to_string(),
+                    "$.resources.requests.memory".to_string(),
+                ],
+                Some("{0}% / {1}".to_string()),
+                Some(crate::ColumnType::MemoryValue),
+                vec![
+                    ColorRule {
+                        expression: "{0} >= 90".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= 70".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} < 70".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "MEM / lim".to_string(),
+                vec![
+                    "$metrics.memory_percent_limits".to_string(),
+                    "$.resources.limits.memory".to_string(),
+                ],
+                Some("{0}% / {1}".to_string()),
+                Some(crate::ColumnType::MemoryValue),
+                vec![
+                    ColorRule {
+                        expression: "{0} >= 90".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= 70".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} < 70".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
                 "PORTS".to_string(),
-                vec![".ports".to_string()]
+                vec!["$.ports[*].containerPort".to_string()]
             ),
         ],
         "pods" => vec![
@@ -872,8 +964,8 @@ fn get_crd_columns(resource_type: &str, context: &str) -> Result<ResourceColumnC
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let crd_list: Value = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Failed to parse CRD list: {}", e))?;
+    let crd_list: Value =
+        serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse CRD list: {}", e))?;
 
     // Find CRD that matches the resource type
     if let Some(items) = crd_list.get("items").and_then(|v| v.as_array()) {
@@ -886,9 +978,11 @@ fn get_crd_columns(resource_type: &str, context: &str) -> Result<ResourceColumnC
                         let resource_kind = resource_type.trim_end_matches('s');
                         if kind.eq_ignore_ascii_case(resource_kind) {
                             // Found matching CRD, get its definition
-                            if let Some(crd_name) = crd_item.get("metadata")
+                            if let Some(crd_name) = crd_item
+                                .get("metadata")
                                 .and_then(|m| m.get("name"))
-                                .and_then(|n| n.as_str()) {
+                                .and_then(|n| n.as_str())
+                            {
                                 return get_crd_definition(crd_name, context);
                             }
                         }
@@ -901,11 +995,11 @@ fn get_crd_columns(resource_type: &str, context: &str) -> Result<ResourceColumnC
     // Return default config if no CRD found
     Ok(ResourceColumnConfig {
         columns: vec![col!(
-                "AGE".to_string(),
-                vec!["$.metadata.creationTimestamp".to_string()],
-                None,
-                Some(crate::ColumnType::Duration)
-            )],
+            "AGE".to_string(),
+            vec!["$.metadata.creationTimestamp".to_string()],
+            None,
+            Some(crate::ColumnType::Duration)
+        )],
     })
 }
 
@@ -937,8 +1031,8 @@ fn get_crd_definition(crd_name: &str, context: &str) -> Result<ResourceColumnCon
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let crd: CRDResponse = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Failed to parse CRD: {}", e))?;
+    let crd: CRDResponse =
+        serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse CRD: {}", e))?;
 
     // Get the latest version's additionalPrinterColumns
     if let Some(spec) = crd.spec {
@@ -949,12 +1043,9 @@ fn get_crd_definition(crd_name: &str, context: &str) -> Result<ResourceColumnCon
                     if !columns.is_empty() {
                         let config_columns: Vec<ColumnConfig> = columns
                             .iter()
-                            .map(|col| col!(
-                col.name.clone(),
-                vec![col.json_path.clone()]
-            ))
+                            .map(|col| col!(col.name.clone(), vec![col.json_path.clone()]))
                             .collect();
-                        
+
                         return Ok(ResourceColumnConfig {
                             columns: config_columns,
                         });
@@ -967,11 +1058,10 @@ fn get_crd_definition(crd_name: &str, context: &str) -> Result<ResourceColumnCon
     // Return default config
     Ok(ResourceColumnConfig {
         columns: vec![col!(
-                "AGE".to_string(),
-                vec!["$.metadata.creationTimestamp".to_string()],
-                None,
-                Some(crate::ColumnType::Duration)
-            )],
+            "AGE".to_string(),
+            vec!["$.metadata.creationTimestamp".to_string()],
+            None,
+            Some(crate::ColumnType::Duration)
+        )],
     })
 }
-

@@ -33,6 +33,9 @@ pub enum ColumnType {
     Datetime,
     Duration,
     PodStatus,
+    ContainerState,
+    CpuValue,      // Normalizes CPU values to readable format (millicores/cores)
+    MemoryValue,   // Normalizes memory values to readable format (Ki/Mi/Gi)
 }
 
 impl Default for ColumnType {
@@ -68,7 +71,7 @@ pub struct ColorRule {
 }
 
 /// Frontend-facing column config
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ColumnConfig {
     pub name: String,
     #[serde(rename = "jsonPaths")]

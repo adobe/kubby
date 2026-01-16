@@ -37,6 +37,8 @@ pub struct DashboardConfig {
     pub live_view_auto_refresh: Option<bool>,
     #[serde(default)]
     pub refresh_rate_seconds: Option<u32>,
+    #[serde(default)]
+    pub metrics_refresh_rate_seconds: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -93,6 +95,7 @@ pub struct NormalizedDashboardConfig {
     pub read_only: bool,
     pub live_view_auto_refresh: bool,
     pub refresh_rate_seconds: u32,
+    pub metrics_refresh_rate_seconds: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -177,6 +180,7 @@ impl DashboardConfig {
             read_only: self.read_only,
             live_view_auto_refresh: self.live_view_auto_refresh.unwrap_or(true),
             refresh_rate_seconds: self.refresh_rate_seconds.unwrap_or(2),
+            metrics_refresh_rate_seconds: self.metrics_refresh_rate_seconds.unwrap_or(30),
         }
     }
 }

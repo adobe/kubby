@@ -9,6 +9,16 @@ use crate::types::{
     ResourceListResponse, SpecFilter, KUBECTL_TIMEOUT_SECS,
 };
 use crate::resource_columns;
+use crate::metrics;
+
+/// Context for evaluating columns that may reference metrics
+#[derive(Clone)]
+pub struct EvalContext<'a> {
+    pub context: &'a str,
+    pub namespace: &'a str,
+    pub pod_name: &'a str,
+    pub container_name: Option<&'a str>,
+}
 
 /// Check if a spec filter path can be used as a kubectl field selector for a resource type.
 /// Currently only events support field selectors for involvedObject.* fields.
@@ -100,6 +110,76 @@ fn format_age(timestamp: &str) -> String {
     }
 }
 
+/// Normalize CPU value to human-readable format (millicores or cores)
+fn format_cpu_value(value: &str) -> String {
+    if value == "<none>" || value == "-" || value.is_empty() {
+        return value.to_string();
+    }
+    
+    // Parse to nanocores
+    let nanocores = if let Some(stripped) = value.strip_suffix('n') {
+        stripped.parse::<u64>().unwrap_or(0)
+    } else if let Some(stripped) = value.strip_suffix('u') {
+        stripped.parse::<u64>().unwrap_or(0) * 1000
+    } else if let Some(stripped) = value.strip_suffix('m') {
+        stripped.parse::<u64>().unwrap_or(0) * 1_000_000
+    } else {
+        // Whole cores or decimal cores (e.g., "8" or "0.5")
+        (value.parse::<f64>().unwrap_or(0.0) * 1_000_000_000.0) as u64
+    };
+    
+    // Format to most appropriate unit
+    if nanocores >= 1_000_000_000 {
+        let cores = nanocores / 1_000_000_000;
+        format!("{}", cores)
+    } else {
+        let millicores = nanocores / 1_000_000;
+        if millicores > 0 {
+            format!("{}m", millicores)
+        } else {
+            "0m".to_string()
+        }
+    }
+}
+
+/// Normalize memory value to human-readable format (Ki, Mi, Gi)
+fn format_memory_value(value: &str) -> String {
+    if value == "<none>" || value == "-" || value.is_empty() {
+        return value.to_string();
+    }
+    
+    // Parse to bytes
+    let bytes = if let Some(stripped) = value.strip_suffix("Ki") {
+        stripped.parse::<u64>().unwrap_or(0) * 1024
+    } else if let Some(stripped) = value.strip_suffix("Mi") {
+        stripped.parse::<u64>().unwrap_or(0) * 1024 * 1024
+    } else if let Some(stripped) = value.strip_suffix("Gi") {
+        stripped.parse::<u64>().unwrap_or(0) * 1024 * 1024 * 1024
+    } else if let Some(stripped) = value.strip_suffix("Ti") {
+        stripped.parse::<u64>().unwrap_or(0) * 1024 * 1024 * 1024 * 1024
+    } else if let Some(stripped) = value.strip_suffix('K') {
+        stripped.parse::<u64>().unwrap_or(0) * 1000
+    } else if let Some(stripped) = value.strip_suffix('M') {
+        stripped.parse::<u64>().unwrap_or(0) * 1000 * 1000
+    } else if let Some(stripped) = value.strip_suffix('G') {
+        stripped.parse::<u64>().unwrap_or(0) * 1000 * 1000 * 1000
+    } else {
+        // Plain bytes
+        value.parse::<u64>().unwrap_or(0)
+    };
+    
+    // Format to most appropriate binary unit
+    if bytes >= 1024 * 1024 * 1024 {
+        format!("{}Gi", bytes / (1024 * 1024 * 1024))
+    } else if bytes >= 1024 * 1024 {
+        format!("{}Mi", bytes / (1024 * 1024))
+    } else if bytes >= 1024 {
+        format!("{}Ki", bytes / 1024)
+    } else {
+        format!("{}B", bytes)
+    }
+}
+
 // Format a single value according to its type
 fn format_value_by_type(value: &Value, column_type: &ColumnType) -> String {
     match column_type {
@@ -158,6 +238,24 @@ fn format_value_by_type(value: &Value, column_type: &ColumnType) -> String {
         ColumnType::PodStatus => {
             // This should not be called for PodStatus - handled separately
             "<error>".to_string()
+        }
+        ColumnType::ContainerState => {
+            // This should not be called for ContainerState - handled separately
+            "<error>".to_string()
+        }
+        ColumnType::CpuValue => {
+            if let Some(s) = value.as_str() {
+                format_cpu_value(s)
+            } else {
+                "<none>".to_string()
+            }
+        }
+        ColumnType::MemoryValue => {
+            if let Some(s) = value.as_str() {
+                format_memory_value(s)
+            } else {
+                "<none>".to_string()
+            }
         }
     }
 }
@@ -243,8 +341,130 @@ fn evaluate_pod_status(item: &Value) -> String {
     phase.to_string()
 }
 
+/// Evaluate metrics percentage fields (e.g., cpu_percent_requests, memory_percent_limits)
+/// Returns percentage as integer string (e.g., "85" for 85%)
+fn evaluate_metrics_percentage(item: &Value, field: &str, ctx: Option<&EvalContext>) -> Result<String, String> {
+    let ctx = match ctx {
+        Some(c) => c,
+        None => return Ok("-".to_string()),
+    };
+    
+    // Parse field: {resource}_percent_{target} (e.g., cpu_percent_requests)
+    let parts: Vec<&str> = field.split("_percent_").collect();
+    if parts.len() != 2 {
+        return Ok("-".to_string());
+    }
+    
+    let resource = parts[0]; // "cpu" or "memory"
+    let target = parts[1];   // "requests" or "limits"
+    
+    // Get current metrics
+    let metrics = if let Some(container_name) = ctx.container_name {
+        metrics::get_container_metrics(ctx.context, ctx.namespace, ctx.pod_name, container_name)
+    } else {
+        metrics::get_pod_metrics(ctx.context, ctx.namespace, ctx.pod_name)
+    };
+    
+    let metrics = match metrics {
+        Some(m) => m,
+        None => return Ok("-".to_string()),
+    };
+    
+    // Get the spec value from the item (requests or limits)
+    let spec_path = format!("/resources/{}/{}", target, resource);
+    let spec_value = item.pointer(&spec_path)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    
+    if spec_value.is_empty() || spec_value == "<none>" {
+        return Ok("-".to_string());
+    }
+    
+    // Calculate percentage based on resource type
+    let percentage = match resource {
+        "cpu" => {
+            let current = metrics::parse_cpu_to_nanocores(&metrics.cpu);
+            let spec = metrics::parse_cpu_to_nanocores(spec_value);
+            if spec == 0 { 0 } else { (current * 100) / spec }
+        }
+        "memory" => {
+            let current = metrics::parse_memory_to_bytes(&metrics.memory);
+            let spec = metrics::parse_memory_to_bytes(spec_value);
+            if spec == 0 { 0 } else { (current * 100) / spec }
+        }
+        _ => return Ok("-".to_string()),
+    };
+    
+    Ok(percentage.to_string())
+}
+
 // Evaluate a single JSONPath expression and return formatted string
 fn evaluate_jsonpath(item: &Value, json_path: &str, column_type: &ColumnType) -> Result<String, String> {
+    evaluate_jsonpath_with_context(item, json_path, column_type, None)
+}
+
+// Evaluate a single JSONPath expression with optional metrics context
+fn evaluate_jsonpath_with_context(
+    item: &Value,
+    json_path: &str,
+    column_type: &ColumnType,
+    ctx: Option<&EvalContext>,
+) -> Result<String, String> {
+    // Handle $metrics.* paths - lookup from metrics cache
+    if json_path.starts_with("$metrics.") {
+        let field = &json_path["$metrics.".len()..];
+        
+        // Handle percentage fields (e.g., cpu_percent_requests, memory_percent_limits)
+        if field.contains("_percent_") {
+            return evaluate_metrics_percentage(item, field, ctx);
+        }
+        
+        if let Some(ctx) = ctx {
+            // For containers, use container-level metrics
+            if let Some(container_name) = ctx.container_name {
+                if let Some(m) = metrics::get_container_metrics(
+                    ctx.context,
+                    ctx.namespace,
+                    ctx.pod_name,
+                    container_name,
+                ) {
+                    let raw_value = match field {
+                        "cpu" => m.cpu,
+                        "memory" => m.memory,
+                        _ => "-".to_string(),
+                    };
+                    // Apply formatting based on column type
+                    return Ok(match column_type {
+                        ColumnType::CpuValue => format_cpu_value(&raw_value),
+                        ColumnType::MemoryValue => format_memory_value(&raw_value),
+                        _ => raw_value,
+                    });
+                }
+            } else {
+                // For pods, use aggregated pod-level metrics
+                if let Some(m) = metrics::get_pod_metrics(
+                    ctx.context,
+                    ctx.namespace,
+                    ctx.pod_name,
+                ) {
+                    let raw_value = match field {
+                        "cpu" => m.cpu,
+                        "memory" => m.memory,
+                        _ => "-".to_string(),
+                    };
+                    // Apply formatting based on column type
+                    return Ok(match column_type {
+                        ColumnType::CpuValue => format_cpu_value(&raw_value),
+                        ColumnType::MemoryValue => format_memory_value(&raw_value),
+                        _ => raw_value,
+                    });
+                }
+            }
+        }
+        // Graceful fallback: metrics not available
+        return Ok("-".to_string());
+    }
+    
     // Parse the JSONPath expression
     let path = JsonPath::parse(json_path)
         .map_err(|e| format!("Invalid JSONPath '{}': {}", json_path, e))?;
@@ -295,6 +515,16 @@ fn evaluate_jsonpath(item: &Value, json_path: &str, column_type: &ColumnType) ->
 // Evaluate column config and format the result
 // Returns (formatted_value, raw_values)
 fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<(String, Vec<String>), String> {
+    evaluate_column_with_context(item, config, None)
+}
+
+// Evaluate column config with optional metrics context
+// Returns (formatted_value, raw_values)
+fn evaluate_column_with_context(
+    item: &Value,
+    config: &ColumnConfig,
+    ctx: Option<&EvalContext>,
+) -> Result<(String, Vec<String>), String> {
     let column_type = config.column_type.as_ref().unwrap_or(&ColumnType::Text);
     
     // Handle custom pod status evaluation
@@ -303,10 +533,16 @@ fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<(String, Vec<S
         return Ok((status.clone(), vec![status]));
     }
     
+    // Handle custom container state evaluation
+    if matches!(column_type, ColumnType::ContainerState) {
+        let state = evaluate_container_state(item);
+        return Ok((state.clone(), vec![state]));
+    }
+    
     // Evaluate each JSONPath
     let mut results: Vec<String> = Vec::new();
     for json_path in &config.json_paths {
-        let result = evaluate_jsonpath(item, json_path, column_type)?;
+        let result = evaluate_jsonpath_with_context(item, json_path, column_type, ctx)?;
         results.push(result);
     }
     
@@ -333,6 +569,30 @@ fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<(String, Vec<S
     };
     
     Ok((formatted, raw_values))
+}
+
+// Evaluate container state from merged container object (spec + status)
+fn evaluate_container_state(item: &Value) -> String {
+    item.get("status")
+        .and_then(|s| s.get("state"))
+        .and_then(|state| {
+            if state.get("running").is_some() {
+                Some("Running".to_string())
+            } else if let Some(waiting) = state.get("waiting") {
+                let reason = waiting.get("reason")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or("Waiting");
+                Some(reason.to_string())
+            } else if let Some(terminated) = state.get("terminated") {
+                let reason = terminated.get("reason")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or("Terminated");
+                Some(reason.to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| "Unknown".to_string())
 }
 
 fn parse_kubectl_json(
@@ -573,9 +833,9 @@ pub async fn get_pod_containers(
         "pod".to_string(),
         pod_name.clone(),
         "--context".to_string(),
-        context,
+        context.clone(),
         "-n".to_string(),
-        namespace,
+        namespace.clone(),
         "-o".to_string(),
         "json".to_string(),
     ];
@@ -615,109 +875,75 @@ pub async fn get_pod_containers(
         .unwrap_or_default();
     
     // Build a map of container name -> status for easy lookup
-    let status_map: std::collections::HashMap<String, &Value> = container_statuses
+    let status_map: std::collections::HashMap<String, Value> = container_statuses
         .iter()
         .filter_map(|status| {
             status.get("name")
                 .and_then(|n| n.as_str())
-                .map(|name| (name.to_string(), status))
+                .map(|name| (name.to_string(), status.clone()))
         })
         .collect();
     
-    // Define columns for containers
-    let columns = crate::resource_columns::get_builtin_resource_columns("containers")
-        .map(|config| config.columns)
-        .unwrap_or_default();
+    // Get columns for containers
+    let column_config = crate::resource_columns::get_builtin_resource_columns("containers")
+        .unwrap_or_else(|| crate::ResourceColumnConfig { columns: vec![] });
+    let columns = column_config.columns.clone();
     
-    // Build container items
+    // Build container items using column evaluation
     let mut items = Vec::new();
+    let mut evaluation_error: Option<String> = None;
+    
     for container in &spec_containers {
         let name = container.get("name")
             .and_then(|n| n.as_str())
             .unwrap_or("<unknown>")
             .to_string();
         
-        let image = container.get("image")
-            .and_then(|i| i.as_str())
-            .unwrap_or("<none>")
-            .to_string();
+        // Merge container spec with its status into a single object
+        let mut merged = container.clone();
+        if let Some(status) = status_map.get(&name) {
+            if let Some(obj) = merged.as_object_mut() {
+                obj.insert("status".to_string(), status.clone());
+            }
+        }
         
-        // Get ports from spec
-        let ports = container.get("ports")
-            .and_then(|p| p.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|p| p.get("containerPort").and_then(|cp| cp.as_u64()))
-                    .map(|p| p.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            })
-            .unwrap_or_else(|| "<none>".to_string());
+        // Build evaluation context for metrics lookup
+        let ctx = EvalContext {
+            context: &context,
+            namespace: &namespace,
+            pod_name: &pod_name,
+            container_name: Some(&name),
+        };
         
-        // Get status info
-        let status = status_map.get(&name);
-        
-        let ready = status
-            .and_then(|s| s.get("ready"))
-            .and_then(|r| r.as_bool())
-            .map(|r| if r { "True" } else { "False" })
-            .unwrap_or("False")
-            .to_string();
-        
-        let restarts = status
-            .and_then(|s| s.get("restartCount"))
-            .and_then(|r| r.as_u64())
-            .unwrap_or(0)
-            .to_string();
-        
-        // Determine state from status.state object
-        let state = status
-            .and_then(|s| s.get("state"))
-            .and_then(|state| {
-                if state.get("running").is_some() {
-                    Some("Running".to_string())
-                } else if let Some(waiting) = state.get("waiting") {
-                    let reason = waiting.get("reason")
-                        .and_then(|r| r.as_str())
-                        .unwrap_or("Waiting");
-                    Some(reason.to_string())
-                } else if let Some(terminated) = state.get("terminated") {
-                    let reason = terminated.get("reason")
-                        .and_then(|r| r.as_str())
-                        .unwrap_or("Terminated");
-                    Some(reason.to_string())
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| "Unknown".to_string());
-        
+        // Evaluate each column using the merged object
         let mut column_values = std::collections::HashMap::new();
-        column_values.insert("IMAGE".to_string(), image.clone());
-        column_values.insert("READY".to_string(), ready.clone());
-        column_values.insert("STATE".to_string(), state.clone());
-        column_values.insert("RESTARTS".to_string(), restarts.clone());
-        column_values.insert("PORTS".to_string(), ports.clone());
+        let mut raw_values = std::collections::HashMap::new();
         
-        // Store raw values for color evaluation
-        let mut raw_vals = std::collections::HashMap::new();
-        raw_vals.insert("IMAGE".to_string(), vec![image]);
-        raw_vals.insert("READY".to_string(), vec![ready]);
-        raw_vals.insert("STATE".to_string(), vec![state]);
-        raw_vals.insert("RESTARTS".to_string(), vec![restarts]);
-        raw_vals.insert("PORTS".to_string(), vec![ports]);
+        for col in &column_config.columns {
+            let (value, raw) = match evaluate_column_with_context(&merged, col, Some(&ctx)) {
+                Ok((v, r)) => (v, r),
+                Err(e) => {
+                    if evaluation_error.is_none() {
+                        evaluation_error = Some(format!("Column '{}': {}", col.name, e));
+                    }
+                    ("<error>".to_string(), vec!["<error>".to_string()])
+                }
+            };
+            column_values.insert(col.name.clone(), value);
+            raw_values.insert(col.name.clone(), raw);
+        }
         
         items.push(ResourceItem {
             name,
             columns: column_values,
             labels: vec![], // Containers don't have labels
-            raw_values: raw_vals,
+            raw_values,
         });
     }
     
     Ok(ResourceListResponse {
         columns,
         items,
-        evaluation_error: None,
+        evaluation_error,
     })
 }

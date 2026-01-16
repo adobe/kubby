@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { getVersion } from "@tauri-apps/api/app";
 import classes from "./Dashboard.module.scss";
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 import {DashboardShortcutsBar} from './DashboardShortcutsBar.tsx'
@@ -43,6 +44,7 @@ export interface DashboardConfig {
   readOnly: boolean;
   liveViewAutoRefresh: boolean;
   refreshRateSeconds: number;
+  metricsRefreshRateSeconds: number;
 }
 
 interface ParsedContext {
@@ -314,6 +316,13 @@ export function Dashboard({
   const groupPositionsRef = useRef<Map<number, { row: number; col: number }>>(new Map());
   // Track the last focused group index and element
   const lastFocusedRef = useRef<{ groupIndex: number; element: HTMLElement } | null>(null);
+  // App version from tauri.conf.json
+  const [version, setVersion] = useState<string>("");
+
+  // Fetch app version on mount
+  useEffect(() => {
+    getVersion().then(setVersion);
+  }, []);
 
   // Update last focused position whenever a cell button is focused
   useEffect(() => {
@@ -768,6 +777,7 @@ export function Dashboard({
   return (
     <div class={classes.dashboard}>
       <div class={classes.header}>
+        {version && <span class={classes.version}>v{version}</span>}
         <NavigationBar
           navigationStack={[]}
           onNavigateToNode={() => {}}

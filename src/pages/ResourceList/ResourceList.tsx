@@ -23,6 +23,7 @@ import {
   useDeleteAction,
   useEditAction,
   useRollingRestartAction,
+  useScaleAction,
   usePortForwardAction,
   useRunAction,
 } from './actions'
@@ -220,6 +221,7 @@ export function ResourceList({
   // Auto-refresh configuration from dashboard config (backend provides defaults)
   const liveViewAutoRefresh = dashboardConfig.liveViewAutoRefresh
   const refreshRateSeconds = dashboardConfig.refreshRateSeconds
+  const metricsRefreshRateSeconds = dashboardConfig.metricsRefreshRateSeconds
 
   // Auto-refresh effect - silent background refresh
   useEffect(() => {
@@ -235,6 +237,32 @@ export function ResourceList({
 
     return () => clearInterval(intervalId)
   }, [liveViewAutoRefresh, refreshRateSeconds, isRefreshing, fetchResources])
+
+  // Metrics refresh effect - refreshes metrics cache independently
+  // Only runs for resource types that can have metrics (pods, containers)
+  useEffect(() => {
+    const resourceTypeNeedsMetrics = ['pods', 'containers'].includes(resourceType.toLowerCase())
+    if (!resourceTypeNeedsMetrics || !metricsRefreshRateSeconds) return
+
+    const refreshMetrics = async () => {
+      try {
+        await invoke('refresh_metrics_cache', { context, namespace })
+        // Trigger resource refresh to pick up new metrics
+        fetchResources()
+      } catch (e) {
+        // Silently ignore metrics errors - graceful degradation
+        console.debug('Metrics refresh failed:', e)
+      }
+    }
+
+    // Initial metrics fetch
+    refreshMetrics()
+
+    // Set up interval for subsequent fetches
+    const intervalId = setInterval(refreshMetrics, metricsRefreshRateSeconds * 1000)
+
+    return () => clearInterval(intervalId)
+  }, [context, namespace, resourceType, metricsRefreshRateSeconds, fetchResources])
 
   // Selected row index (-1 means no selection)
   // Initialize from prop if provided, otherwise -1
@@ -257,6 +285,12 @@ export function ResourceList({
   })
 
   const rollingRestartAction = useRollingRestartAction({
+    context,
+    namespace,
+    readOnly,
+  })
+
+  const scaleAction = useScaleAction({
     context,
     namespace,
     readOnly,
@@ -347,8 +381,11 @@ export function ResourceList({
         portForwardAction.openPortForward(resource.name)
         break
 
-      case 'replica_sets':
       case 'scale':
+        scaleAction.openScale(resource.name)
+        break
+
+      case 'replica_sets':
       case 'show_port_forward':
         // TODO: Implement these actions
         console.log(`Action ${code} not yet implemented`)
@@ -358,7 +395,7 @@ export function ResourceList({
     selectedIndex, resources, resourceType, context, namespace,
     parentResourceName, isContainersView, readOnly,
     onResourceClick, onDescribe, onLogs,
-    runAction, editAction, deleteAction, rollingRestartAction, portForwardAction,
+    runAction, editAction, deleteAction, rollingRestartAction, scaleAction, portForwardAction,
   ])
 
   // Handle jump to related resource
@@ -660,12 +697,15 @@ export function ResourceList({
           return
         }
 
-        // S - Open shell to selected pod/container
+        // S - Open shell to selected pod/container, or scale for deployments
         if (e.code === 'KeyS' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
           const normalizedType = resourceType.toLowerCase()
           if (normalizedType === 'pods' || normalizedType === 'pod' || normalizedType === 'containers') {
             e.preventDefault()
             handleAction('shell')
+          } else if (normalizedType === 'deployments' || normalizedType === 'deployment') {
+            e.preventDefault()
+            handleAction('scale')
           }
           return
         }
@@ -922,6 +962,7 @@ export function ResourceList({
       )}
       {deleteAction.DeleteModal}
       {rollingRestartAction.RollingRestartModal}
+      {scaleAction.ScaleModal}
       {portForwardAction.PortForwardModal}
     </div>
   )

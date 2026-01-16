@@ -3,6 +3,7 @@ mod config;
 mod editor;
 mod kubectl;
 mod log_stream;
+mod metrics;
 mod port_forward;
 mod resource_columns;
 mod resource_list;
@@ -38,8 +39,12 @@ pub fn run() {
             resources::rolling_restart_deployment,
             resources::get_hpa_for_target,
             resources::get_pdb_for_deployment,
+            resources::scale_deployment,
+            resources::patch_hpa,
+            resources::patch_pdb,
             resource_list::get_resources,
             resource_list::get_pod_containers,
+            metrics::refresh_metrics_cache,
             log_stream::start_log_stream,
             log_stream::stop_log_stream,
             terminal::open_terminal_with_command,
