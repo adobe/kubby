@@ -5,7 +5,7 @@ import {getCacheAge} from '../../kubectl/resourceCache.ts'
 import {useResourceLoader} from '../../kubectl/useResourceLoader.ts'
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 import type {NavigationNode} from '../../navigation/navigationTypes.ts'
-import {ResourceListShortcutsBar} from './ResourceListShortcutsBar.tsx'
+import {ResourceListShortcutsBar, getShortcutsForResourceType} from './ResourceListShortcutsBar.tsx'
 import {Alert} from '../../components/Alert/Alert.tsx'
 import {Button, type ButtonHandle} from '../../components/Button/Button.tsx'
 import {Combobox} from '../../components/Combobox/Combobox.tsx'
@@ -27,6 +27,23 @@ import {
   usePortForwardAction,
   useRunAction,
 } from './actions'
+
+/**
+ * Check if a keyboard event matches a shortcut string.
+ * Requires no modifiers (Ctrl/Cmd/Alt) for action shortcuts.
+ */
+function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
+  // Require no modifiers for action shortcuts
+  if (e.metaKey || e.ctrlKey || e.altKey) return false
+
+  switch (shortcut) {
+    case 'Enter': return e.key === 'Enter'
+    case 'Del': return e.key === 'Delete'
+    default:
+      // Single letter shortcuts use e.code (e.g., "D" → "KeyD")
+      return e.code === `Key${shortcut.toUpperCase()}`
+  }
+}
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -655,14 +672,6 @@ export function ResourceList({
           return
         }
 
-        // Enter activates selected resource
-        // Note: Modals capture all keyboard events, so this won't run when a modal is open
-        if (e.key === 'Enter' && selectedIndex >= 0) {
-          e.preventDefault()
-          handleRowActivate(selectedIndex)
-          return
-        }
-
         // Home/End for quick navigation
         if (e.key === 'Home') {
           e.preventDefault()
@@ -676,69 +685,6 @@ export function ResourceList({
           return
         }
 
-        // D - Describe selected resource
-        if (e.code === 'KeyD' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
-          e.preventDefault()
-          handleAction('describe')
-          return
-        }
-
-        // E - Edit selected resource
-        if (e.code === 'KeyE' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
-          e.preventDefault()
-          handleAction('edit')
-          return
-        }
-
-        // L - View logs for selected resource
-        if (e.code === 'KeyL' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
-          e.preventDefault()
-          handleAction('logs')
-          return
-        }
-
-        // S - Open shell to selected pod/container, or scale for deployments
-        if (e.code === 'KeyS' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
-          const normalizedType = resourceType.toLowerCase()
-          if (normalizedType === 'pods' || normalizedType === 'pod' || normalizedType === 'containers') {
-            e.preventDefault()
-            handleAction('shell')
-          } else if (normalizedType === 'deployments' || normalizedType === 'deployment') {
-            e.preventDefault()
-            handleAction('scale')
-          }
-          return
-        }
-
-        // U - Open Run modal
-        if (e.code === 'KeyU' && !e.metaKey && !e.ctrlKey && !e.altKey && runAction.hasRunCommands) {
-          e.preventDefault()
-          handleAction('run')
-          return
-        }
-
-        // R - Rolling restart (deployments only)
-        if (e.code === 'KeyR' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
-          const normalizedType = resourceType.toLowerCase()
-          if (normalizedType === 'deployments' || normalizedType === 'deployment') {
-            e.preventDefault()
-            handleAction('rolling_restart')
-          }
-          return
-        }
-
-        // F - Port forward (pods, containers, services)
-        if (e.code === 'KeyF' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
-          const normalizedType = resourceType.toLowerCase()
-          if (normalizedType === 'pods' || normalizedType === 'pod' || 
-              normalizedType === 'containers' || normalizedType === 'container' ||
-              normalizedType === 'services' || normalizedType === 'service') {
-            e.preventDefault()
-            handleAction('port_forward')
-          }
-          return
-        }
-
         // J - Open Jump dropdown (if available)
         if (e.code === 'KeyJ' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
           const relatedResources = getRelatedResources(resourceType)
@@ -749,21 +695,31 @@ export function ResourceList({
           return
         }
 
-        // Delete - Delete selected resource (not available for containers)
-        if (e.key === 'Delete' && selectedIndex >= 0) {
-          const normalizedType = resourceType.toLowerCase()
-          if (normalizedType !== 'containers') {
+        // Action shortcuts - derived from shortcut bar configuration
+        const hasSelection = selectedIndex >= 0
+        const activeShortcuts = getShortcutsForResourceType(resourceType, hasSelection, runAction.hasRunCommands)
+        
+        for (const shortcut of activeShortcuts) {
+          if (matchesShortcut(e, shortcut.shortcut)) {
+            // Skip if read-only and action is modifying
+            if (readOnly && shortcut.isModifying) return
+            
             e.preventDefault()
-            handleAction('delete')
+            // Special case: Enter activates row (pods/containers navigation)
+            if (shortcut.shortcut === 'Enter') {
+              handleRowActivate(selectedIndex)
+            } else {
+              handleAction(shortcut.code)
+            }
+            return
           }
-          return
         }
       }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, runAction.hasRunCommands, handleAction])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, runAction.hasRunCommands, handleAction, readOnly])
 
   return (
     <div class={classes.ResourceList}>

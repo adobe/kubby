@@ -5,7 +5,7 @@ import { Button, type SubItem, type ButtonHandle } from '../../components/Button
 import type { ActionCode } from './resourceActions.ts'
 import { getRelatedResources } from './relatedResources.ts'
 
-interface ShortcutConfig {
+export interface ShortcutConfig {
   label: string
   shortcut: string
   code: ActionCode
@@ -68,7 +68,7 @@ const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 
-function getShortcutsForResourceType(resourceType: string, hasSelection: boolean, hasRunCommands: boolean): ShortcutConfig[] {
+export function getShortcutsForResourceType(resourceType: string, hasSelection: boolean, hasRunCommands: boolean): ShortcutConfig[] {
   if (!hasSelection) {
     return []
   }
