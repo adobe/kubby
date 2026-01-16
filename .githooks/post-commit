@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Git post-commit hook to auto-increment version based on commit message
+# - Increments PATCH version if commit message starts with "fix" or "[fix]"
+# - Increments MINOR version otherwise
+# Source of truth: src-tauri/tauri.conf.json
+
+# Prevent infinite loop - check if this is an amend from this hook
+if [ "$KUBBY_VERSION_HOOK" = "1" ]; then
+    exit 0
+fi
+
+# Get the commit message of the commit that was just created
+COMMIT_MSG=$(git log -1 --pretty=%B)
+
+# Get the first line (title) of the commit message
+COMMIT_TITLE=$(echo "$COMMIT_MSG" | head -n 1)
+
+# Paths to version files (relative to repo root)
+REPO_ROOT=$(git rev-parse --show-toplevel)
+TAURI_CONF="$REPO_ROOT/src-tauri/tauri.conf.json"
+CARGO_TOML="$REPO_ROOT/src-tauri/Cargo.toml"
+CARGO_LOCK="$REPO_ROOT/src-tauri/Cargo.lock"
+PACKAGE_JSON="$REPO_ROOT/package.json"
+
+# Extract current version from tauri.conf.json
+CURRENT_VERSION=$(grep -o '"version": *"[^"]*"' "$TAURI_CONF" | head -1 | sed 's/.*"\([0-9]*\.[0-9]*\.[0-9]*\)".*/\1/')
+
+if [ -z "$CURRENT_VERSION" ]; then
+    echo "Error: Could not extract version from $TAURI_CONF"
+    exit 1
+fi
+
+# Parse version components
+MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
+MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
+
+# Determine bump type based on commit message title (case-insensitive)
+COMMIT_TITLE_LOWER=$(echo "$COMMIT_TITLE" | tr '[:upper:]' '[:lower:]')
+
+if [[ "$COMMIT_TITLE_LOWER" =~ ^fix[[:space:]:] ]] || [[ "$COMMIT_TITLE_LOWER" =~ ^\[fix\] ]]; then
+    # Increment patch version
+    PATCH=$((PATCH + 1))
+else
+    # Increment minor version, reset patch
+    MINOR=$((MINOR + 1))
+    PATCH=0
+fi
+
+NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+
+echo "Bumping version: $CURRENT_VERSION → $NEW_VERSION"
+
+# Update tauri.conf.json
+sed -i '' "s/\"version\": *\"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$TAURI_CONF"
+
+# Update Cargo.toml (only the package version, not dependency versions)
+sed -i '' "/^\[package\]/,/^\[/ s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" "$CARGO_TOML"
+
+# Update package.json
+sed -i '' "s/\"version\": *\"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$PACKAGE_JSON"
+
+# Stage all version files
+git add "$TAURI_CONF" "$CARGO_TOML" "$PACKAGE_JSON"
+
+# Also stage Cargo.lock if it has any changes (staged or unstaged)
+if [ -f "$CARGO_LOCK" ]; then
+    git add "$CARGO_LOCK"
+fi
+
+# Amend the commit with version changes (set env var to prevent infinite loop)
+KUBBY_VERSION_HOOK=1 git commit --amend --no-edit --no-verify
+
+exit 0
