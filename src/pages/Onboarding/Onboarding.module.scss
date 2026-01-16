@@ -12,19 +12,26 @@
 }
 
 .logo {
-  margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.version {
+  font-size: 0.75rem;
+  color: var(--fgColor-muted);
+  margin-bottom: 1rem;
 }
 
 .title {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 500;
   margin: 0 0 1.5rem 0;
   color: var(--fgColor-default);
 }
 
 .subtitle {
   font-size: 0.85rem;
-  color: var(--fgColor-muted);
+  color: var(--fgColor-default);
   margin: 0;
 }
 
@@ -44,6 +51,7 @@
   background: var(--bgColor-muted);
   border: 1px solid var(--borderColor-muted);
   border-radius: 6px;
+  padding: 1rem;
 }
 
 .sectionTitle {

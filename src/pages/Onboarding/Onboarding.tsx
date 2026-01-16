@@ -4,6 +4,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import classes from "./Onboarding.module.scss";
 import { Alert } from "../../components/Alert/Alert.tsx";
 import {KubbyTitle} from '../../components/KubbyTitle/KubbyTitle.tsx'
+import {getVersion} from '@tauri-apps/api/app'
 
 interface KubeContext {
   name: string;
@@ -39,6 +40,14 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [creating, setCreating] = useState(false);
   const [configPath, setConfigPath] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // App version from tauri.conf.json
+  const [version, setVersion] = useState<string>("");
+
+  // Fetch app version on mount
+  useEffect(() => {
+    getVersion().then(setVersion);
+  }, []);
   
   // Track which context errors are expanded
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
@@ -181,7 +190,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         <div class={classes.logo}>
           <KubbyTitle/>
         </div>
-        <h1 class={classes.title}>Welcome to Kubby</h1>
+        {version && <div class={classes.version}>v{version}</div>}
         <p class={classes.subtitle}>
           Kubby needs a configuration file to know which contexts and namespaces to display on the dashboard.
           We'll help you create one based on your kubeconfig.
