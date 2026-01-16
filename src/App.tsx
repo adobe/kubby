@@ -231,36 +231,62 @@ function App() {
 
   const handleContextChange = (newContext: string) => {
     if (navigationStack.length === 0 || !config) return;
-    const currentNode = navigationStack[navigationStack.length - 1];
     
     // Get available namespaces for the new context
     const availableNamespaces = getNamespacesForContext(config, newContext);
     
+    // If in containers view, go back to parent (pods) and update that instead
+    // This is needed because the pod won't exist in the new context
+    let stackToUpdate = navigationStack;
+    if (navigationStack.length > 1) {
+      const currentNode = navigationStack[navigationStack.length - 1];
+      if (currentNode.resourceType === 'containers') {
+        // Pop containers node and update the parent instead
+        stackToUpdate = navigationStack.slice(0, -1);
+      }
+    }
+    
+    const nodeToUpdate = stackToUpdate[stackToUpdate.length - 1];
+    
     // Keep current namespace if available in new context, otherwise use first available
-    let newNamespace = currentNode.namespace;
+    let newNamespace = nodeToUpdate.namespace;
     if (!availableNamespaces.includes(newNamespace)) {
-      newNamespace = availableNamespaces[0] || currentNode.namespace;
+      newNamespace = availableNamespaces[0] || nodeToUpdate.namespace;
     }
     
     const updatedNode: NavigationNode = {
-      ...currentNode,
+      ...nodeToUpdate,
       context: newContext,
       namespace: newNamespace,
+      filters: undefined, // Clear filters - they're bound to namespace-specific resources
       selectedIndex: undefined, // Reset selection when changing context
     };
-    setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
+    setNavigationStack([...stackToUpdate.slice(0, -1), updatedNode]);
   };
 
   const handleNamespaceChange = (newNamespace: string) => {
     if (navigationStack.length === 0) return;
-    const currentNode = navigationStack[navigationStack.length - 1];
+    
+    // If in containers view, go back to parent (pods) and update that instead
+    // This is needed because the pod won't exist in the new namespace
+    let stackToUpdate = navigationStack;
+    if (navigationStack.length > 1) {
+      const currentNode = navigationStack[navigationStack.length - 1];
+      if (currentNode.resourceType === 'containers') {
+        // Pop containers node and update the parent instead
+        stackToUpdate = navigationStack.slice(0, -1);
+      }
+    }
+    
+    const nodeToUpdate = stackToUpdate[stackToUpdate.length - 1];
     
     const updatedNode: NavigationNode = {
-      ...currentNode,
+      ...nodeToUpdate,
       namespace: newNamespace,
+      filters: undefined, // Clear filters - they're bound to namespace-specific resources
       selectedIndex: undefined, // Reset selection when changing namespace
     };
-    setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
+    setNavigationStack([...stackToUpdate.slice(0, -1), updatedNode]);
   };
 
   const handleDescribe = (resourceType: string, resourceName: string) => {

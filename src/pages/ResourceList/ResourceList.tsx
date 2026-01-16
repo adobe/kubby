@@ -491,13 +491,18 @@ export function ResourceList({
     }
   }, [deleteConfirmation, context, namespace, resourceType, refresh])
 
-  // Reset selection and filter when navigating to a different resource list
+  // Reset selection when navigating to a different resource list
   // Use initialSelectedIndex if returning to same node, otherwise start fresh
   useEffect(() => {
     const newIndex = initialSelectedIndex ?? (resources.length > 0 ? 0 : -1)
     setSelectedIndex(newIndex)
-    setFilterText('') // Clear filter when changing views
   }, [context, namespace, resourceType])
+
+  // Clear text filter only when resource type changes
+  // Keep text filter when switching context/namespace since it's user input
+  useEffect(() => {
+    setFilterText('')
+  }, [resourceType])
 
   // Select first row when resources load for the first time, adjust if out of bounds
   useEffect(() => {
@@ -587,26 +592,20 @@ export function ResourceList({
   // Handle context selection from combobox
   const handleContextSelect = useCallback((newContext: string | null) => {
     if (newContext && newContext !== context && onContextChange) {
-      if (isContainersView) {
-        // Go to parent first since the pod won't exist in the new context
-        onBack()
-      }
-      onClearFilters?.() // Clear label filters since they won't apply to new context
+      // Note: App.tsx handleContextChange handles containers view (goes back to parent)
+      // and clears filters to avoid race conditions
       onContextChange(newContext)
     }
-  }, [context, onContextChange, onClearFilters, isContainersView, onBack])
+  }, [context, onContextChange])
 
   // Handle namespace selection from combobox
   const handleNamespaceSelect = useCallback((newNamespace: string | null) => {
     if (newNamespace && newNamespace !== namespace && onNamespaceChange) {
-      if (isContainersView) {
-        // Go to parent first since the pod won't exist in the new namespace
-        onBack()
-      }
-      onClearFilters?.() // Clear label filters since they won't apply to new namespace
+      // Note: App.tsx handleNamespaceChange handles containers view (goes back to parent)
+      // and clears filters to avoid race conditions
       onNamespaceChange(newNamespace)
     }
-  }, [namespace, onNamespaceChange, onClearFilters, isContainersView, onBack])
+  }, [namespace, onNamespaceChange])
 
   // Global keyboard shortcuts
   useEffect(() => {
