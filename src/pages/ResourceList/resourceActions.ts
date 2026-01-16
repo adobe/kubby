@@ -19,6 +19,13 @@ export type ActionCode =
   | 'run'            // Open run modal
 
 /**
+ * Actions that modify resources (blocked in read-only mode)
+ */
+export const MODIFICATION_ACTIONS: ActionCode[] = [
+  'edit', 'delete', 'rolling_restart', 'shell', 'run', 'scale', 'port_forward'
+]
+
+/**
  * Context needed to execute actions
  */
 export interface ActionContext {
@@ -36,6 +43,18 @@ export interface ActionContext {
 export interface ActionResult {
   success: boolean
   error?: string
+}
+
+/** Active port forward information */
+export interface ActivePortForward {
+  id: string
+  context: string
+  namespace: string
+  resourceType: string
+  resourceName: string
+  containerName: string | null
+  localPort: number
+  targetPort: number
 }
 
 /**

@@ -15,26 +15,17 @@ import type {LabelSelector} from '../../kubectl/resourceTypes.ts'
 import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
 import {getResourceNameFilter, toLabelSelectors, getSpecFilters} from '../../kubectl/filterTypes.ts'
 import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
-import {RunModal} from '../../components/RunModal/RunModal.tsx'
-import {ConfirmModal} from '../../components/ConfirmModal/ConfirmModal.tsx'
-import {RollingRestartModal} from '../../components/RollingRestartModal/RollingRestartModal.tsx'
-import {PortForwardModal} from '../../components/PortForwardModal/PortForwardModal.tsx'
 import type {ActionCode} from './resourceActions.ts'
-import {executeShell, executeEdit, executeDelete} from './resourceActions.ts'
+import {executeShell, MODIFICATION_ACTIONS} from './resourceActions.ts'
 import {evaluateColumnColor} from '../../kubectl/columnColorEvaluator.ts'
 import {getRelatedResources, buildFiltersForRelation} from './relatedResources.ts'
-
-/** Active port forward information */
-interface ActivePortForward {
-  id: string
-  context: string
-  namespace: string
-  resourceType: string
-  resourceName: string
-  containerName: string | null
-  localPort: number
-  targetPort: number
-}
+import {
+  useDeleteAction,
+  useEditAction,
+  useRollingRestartAction,
+  usePortForwardAction,
+  useRunAction,
+} from './actions'
 
 /**
  * Filter and sort resource types by relevance to the input.
@@ -249,99 +240,54 @@ export function ResourceList({
   // Initialize from prop if provided, otherwise -1
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex ?? -1)
 
-  // Edit state
-  const [editError, setEditError] = useState<string | null>(null)
-  const [editingResourceName, setEditingResourceName] = useState<string | null>(null)
+  // Action hooks
+  const deleteAction = useDeleteAction({
+    context,
+    namespace,
+    resourceType,
+    onSuccess: refresh,
+    readOnly,
+  })
 
-  // Run modal state
-  const [isRunModalOpen, setIsRunModalOpen] = useState(false)
-  const allRunCommands = dashboardConfig.runCommands ?? []
+  const editAction = useEditAction({
+    context,
+    namespace,
+    resourceType,
+    onSuccess: refresh,
+  })
 
-  // Filter run commands to only those applicable to the current resource type
-  const runCommands = useMemo(() => {
-    const normalizedType = resourceType.toLowerCase()
-    return allRunCommands.filter(cmd => {
-      // If resources is not specified or empty, command applies to all resources
-      if (!cmd.resources || cmd.resources.length === 0) {
-        return true
-      }
-      // Check if current resource type matches any in the list (case-insensitive)
-      return cmd.resources.some(r => r.toLowerCase() === normalizedType || r.toLowerCase() + 's' === normalizedType || r.toLowerCase() === normalizedType + 's')
-    })
-  }, [allRunCommands, resourceType])
-  const hasRunCommands = runCommands.length > 0
+  const rollingRestartAction = useRollingRestartAction({
+    context,
+    namespace,
+    readOnly,
+  })
 
-  // Delete confirmation state
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{ resourceName: string } | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const portForwardAction = usePortForwardAction({
+    context,
+    namespace,
+    resourceType,
+    parentResourceName,
+    readOnly,
+  })
 
-  // Rolling restart modal state
-  const [rollingRestartTarget, setRollingRestartTarget] = useState<string | null>(null)
-
-  // Port forward modal state
-  const [portForwardTarget, setPortForwardTarget] = useState<string | null>(null)
-
-  // Active port forwards state (for displaying in PORTS column)
-  const [activePortForwards, setActivePortForwards] = useState<ActivePortForward[]>([])
-
-  // Build a lookup map from resource name to its forwarded local ports
-  const portForwardsByResource = useMemo(() => {
-    const map = new Map<string, number[]>()
-    for (const pf of activePortForwards) {
-      const ports = map.get(pf.resourceName) || []
-      ports.push(pf.localPort)
-      map.set(pf.resourceName, ports)
-    }
-    return map
-  }, [activePortForwards])
-
-  // Fetch active port forwards for the current context/namespace
-  const fetchActivePortForwards = useCallback(async () => {
-    try {
-      const forwards = await invoke<ActivePortForward[]>('list_active_port_forwards', {
-        context,
-        namespace,
-        resourceType: resourceType.toLowerCase(),
-      })
-      setActivePortForwards(forwards)
-    } catch (e) {
-      console.error('Failed to fetch active port forwards:', e)
-      setActivePortForwards([])
-    }
-  }, [context, namespace, resourceType])
-
-  // Fetch active port forwards on mount and when context/namespace/resourceType changes
-  useEffect(() => {
-    fetchActivePortForwards()
-  }, [fetchActivePortForwards])
-
-  // Refresh active port forwards periodically (every 5 seconds)
-  useEffect(() => {
-    const intervalId = setInterval(fetchActivePortForwards, 5000)
-    return () => clearInterval(intervalId)
-  }, [fetchActivePortForwards])
-
-  // Also refresh port forwards when the port forward modal closes
-  const handlePortForwardModalClose = useCallback(() => {
-    setPortForwardTarget(null)
-    fetchActivePortForwards()
-  }, [fetchActivePortForwards])
+  const runAction = useRunAction({
+    allRunCommands: dashboardConfig.runCommands ?? [],
+    resourceType,
+    context,
+    namespace,
+    readOnly,
+  })
 
   // Handle action from shortcuts bar or keyboard
   const handleAction = useCallback(async (code: ActionCode) => {
     // Check if action is a modification action and we're in read-only mode
-    const modificationActions: ActionCode[] = ['edit', 'delete', 'rolling_restart', 'shell', 'run', 'scale', 'port_forward']
-    if (readOnly && modificationActions.includes(code)) {
-      // No-op in read-only mode
+    if (readOnly && MODIFICATION_ACTIONS.includes(code)) {
       return
     }
 
     // Actions that don't require a selection
     if (code === 'run') {
-      if (hasRunCommands) {
-        setIsRunModalOpen(true)
-      }
+      runAction.openRun()
       return
     }
 
@@ -353,36 +299,15 @@ export function ResourceList({
       case 'pods':
       case 'containers':
         // Navigate to child resources (same as Enter/double-click)
-        if (onResourceClick) {
-          onResourceClick(resourceType, resource.name, resource.labels)
-        }
+        onResourceClick?.(resourceType, resource.name, resource.labels)
         break
 
       case 'describe':
-        if (onDescribe) {
-          onDescribe(resourceType, resource.name)
-        }
+        onDescribe?.(resourceType, resource.name)
         break
 
       case 'edit':
-        if (editingResourceName) return // Already editing
-        setEditingResourceName(resource.name)
-        setEditError(null)
-        try {
-          const result = await executeEdit({
-            context,
-            namespace,
-            resourceType,
-            resourceName: resource.name,
-          })
-          if (!result.success && result.error) {
-            setEditError(result.error)
-          } else {
-            refresh()
-          }
-        } finally {
-          setEditingResourceName(null)
-        }
+        editAction.startEdit(resource.name)
         break
 
       case 'logs':
@@ -411,19 +336,15 @@ export function ResourceList({
       }
 
       case 'delete':
-        // Open delete confirmation modal
-        setDeleteConfirmation({resourceName: resource.name})
-        setDeleteError(null)
+        deleteAction.openDelete(resource.name)
         break
 
       case 'rolling_restart':
-        // Open rolling restart modal (deployments only)
-        setRollingRestartTarget(resource.name)
+        rollingRestartAction.openRollingRestart(resource.name)
         break
 
       case 'port_forward':
-        // Open port forward modal
-        setPortForwardTarget(resource.name)
+        portForwardAction.openPortForward(resource.name)
         break
 
       case 'replica_sets':
@@ -435,8 +356,9 @@ export function ResourceList({
     }
   }, [
     selectedIndex, resources, resourceType, context, namespace,
-    parentResourceName, isContainersView, editingResourceName,
-    hasRunCommands, readOnly, onResourceClick, onDescribe, onLogs, refresh,
+    parentResourceName, isContainersView, readOnly,
+    onResourceClick, onDescribe, onLogs,
+    runAction, editAction, deleteAction, rollingRestartAction, portForwardAction,
   ])
 
   // Handle jump to related resource
@@ -462,34 +384,6 @@ export function ResourceList({
     
     onJump(relation.targetResourceType, jumpFilters)
   }, [selectedIndex, resources, resourceType, onJump])
-
-  // Handle confirmed delete
-  const handleConfirmDelete = useCallback(async () => {
-    if (!deleteConfirmation) return
-
-    setIsDeleting(true)
-    setDeleteError(null)
-
-    try {
-      const result = await executeDelete({
-        context,
-        namespace,
-        resourceType,
-        resourceName: deleteConfirmation.resourceName,
-      })
-
-      if (result.success) {
-        setDeleteConfirmation(null)
-        refresh()
-      } else {
-        setDeleteError(result.error || 'Failed to delete resource')
-      }
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [deleteConfirmation, context, namespace, resourceType, refresh])
 
   // Reset selection when navigating to a different resource list
   // Use initialSelectedIndex if returning to same node, otherwise start fresh
@@ -777,7 +671,7 @@ export function ResourceList({
         }
 
         // U - Open Run modal
-        if (e.code === 'KeyU' && !e.metaKey && !e.ctrlKey && !e.altKey && hasRunCommands) {
+        if (e.code === 'KeyU' && !e.metaKey && !e.ctrlKey && !e.altKey && runAction.hasRunCommands) {
           e.preventDefault()
           handleAction('run')
           return
@@ -829,7 +723,7 @@ export function ResourceList({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, hasRunCommands, handleAction])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, runAction.hasRunCommands, handleAction])
 
   return (
     <div class={classes.ResourceList}>
@@ -918,7 +812,7 @@ export function ResourceList({
       </header>
 
       <div class={classes.body}>
-        <Alert type="error" label="Edit Failed" message={editError}/>
+        <Alert type="error" label="Edit Failed" message={editAction.editError}/>
         <Alert type="error" label="Loading Error" message={error}/>
         <Alert type="error" label="Column Evaluation Error" message={evaluationError}/>
 
@@ -954,7 +848,7 @@ export function ResourceList({
                     <td class={classes.nameCell}>
                       <div class={classes.nameContent}>
                         <span>{resource.name}</span>
-                        {editingResourceName === resource.name && (
+                        {editAction.editingResourceName === resource.name && (
                           <span class={classes.editingChip}>Editing</span>
                         )}
                       </div>
@@ -971,7 +865,7 @@ export function ResourceList({
 
                       // Check if this is a PORTS column and if there are active port forwards
                       const isPortsColumn = col.name.toUpperCase() === 'PORTS' || col.name.toUpperCase() === 'PORT(S)'
-                      const forwardedPorts = portForwardsByResource.get(resource.name)
+                      const forwardedPorts = portForwardAction.portForwardsByResource.get(resource.name)
                       const hasPortForwards = isPortsColumn && forwardedPorts && forwardedPorts.length > 0
 
                       return (
@@ -1013,7 +907,7 @@ export function ResourceList({
         resourceType={resourceType}
         hasSelection={selectedIndex >= 0}
         disabled={error !== null}
-        hasRunCommands={hasRunCommands}
+        hasRunCommands={runAction.hasRunCommands}
         readOnly={readOnly}
         availableResourceTypes={resourceTypes}
         onAction={handleAction}
@@ -1021,54 +915,14 @@ export function ResourceList({
         jumpButtonRef={jumpButtonRef}
       />
 
-      <RunModal
-        isOpen={isRunModalOpen}
-        onClose={() => setIsRunModalOpen(false)}
-        runCommands={runCommands}
-        context={context}
-        namespace={namespace}
-        labels={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : []}
-        resourceName={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].name : ''}
-        readOnly={readOnly}
-      />
-
-      <ConfirmModal
-        isOpen={deleteConfirmation !== null}
-        onClose={() => {
-          setDeleteConfirmation(null)
-          setDeleteError(null)
-        }}
-        onConfirm={handleConfirmDelete}
-        title="Delete Resource"
-        message={<>Are you sure you want to delete <strong>{deleteConfirmation?.resourceName}</strong>?</>}
-        warningText="This action cannot be undone."
-        confirmLabel="Delete"
-        confirmingLabel="Deleting..."
-        isConfirming={isDeleting}
-        error={deleteError}
-        destructive
-        readOnly={readOnly}
-      />
-
-      <RollingRestartModal
-        isOpen={rollingRestartTarget !== null}
-        onClose={() => setRollingRestartTarget(null)}
-        deploymentName={rollingRestartTarget ?? ''}
-        context={context}
-        namespace={namespace}
-        readOnly={readOnly}
-      />
-
-      <PortForwardModal
-        isOpen={portForwardTarget !== null}
-        onClose={handlePortForwardModalClose}
-        context={context}
-        namespace={namespace}
-        resourceType={resourceType}
-        resourceName={portForwardTarget ?? ''}
-        parentResourceName={parentResourceName}
-        readOnly={readOnly}
-      />
+      {/* Action modals */}
+      {runAction.renderRunModal(
+        selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].name : '',
+        selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : []
+      )}
+      {deleteAction.DeleteModal}
+      {rollingRestartAction.RollingRestartModal}
+      {portForwardAction.PortForwardModal}
     </div>
   )
 }
