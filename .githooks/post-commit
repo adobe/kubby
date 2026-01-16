@@ -58,13 +58,18 @@ sed -i '' "s/\"version\": *\"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" 
 # Update Cargo.toml (only the package version, not dependency versions)
 sed -i '' "/^\[package\]/,/^\[/ s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" "$CARGO_TOML"
 
+# Update Cargo.lock (the package version is also recorded here)
+if [ -f "$CARGO_LOCK" ]; then
+    # Update the version for the kubby package in the lockfile
+    # The format is: name = "kubby" followed by version = "x.y.z"
+    sed -i '' "/^name = \"kubby\"/{n;s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/;}" "$CARGO_LOCK"
+fi
+
 # Update package.json
 sed -i '' "s/\"version\": *\"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$PACKAGE_JSON"
 
 # Stage all version files
 git add "$TAURI_CONF" "$CARGO_TOML" "$PACKAGE_JSON"
-
-# Also stage Cargo.lock if it has any changes (staged or unstaged)
 if [ -f "$CARGO_LOCK" ]; then
     git add "$CARGO_LOCK"
 fi
