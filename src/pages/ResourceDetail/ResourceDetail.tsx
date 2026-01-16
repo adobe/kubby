@@ -40,18 +40,11 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCo
   return (
     <ShortcutsBar>
       <Button
-        label={isEditing ? "Editing..." : "Edit"}
+        label={isEditing ? 'Editing...' : 'Edit'}
         shortcut="E"
         onClick={onEdit}
         tabIndex={0}
         disabled={isEditing}
-      />
-      <Button
-        label="Copy"
-        shortcut="C"
-        onClick={onCopy}
-        tabIndex={0}
-        disabled={!canCopy}
       />
       <span class={classes.label}>View: </span>
       <Button
@@ -75,6 +68,15 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCo
         tabIndex={0}
         className={viewMode === 'json' ? classes.activeViewButton : undefined}
       />
+      {canCopy && (
+        <Button
+          label="Copy"
+          shortcut="C"
+          onClick={onCopy}
+          tabIndex={0}
+          disabled={!canCopy}
+        />
+      )}
     </ShortcutsBar>
   )
 }
@@ -113,7 +115,7 @@ export function ResourceDetail({
     const intervalId = setInterval(() => {
       // Skip if a manual refresh is already in progress
       if (isRefreshing) return
-      
+
       // Perform silent refresh (doesn't set isRefreshing flag)
       fetchDetail()
     }, refreshRateSeconds * 1000)
@@ -150,10 +152,10 @@ export function ResourceDetail({
   // Handle edit resource
   const handleEdit = useCallback(async () => {
     if (isEditing) return
-    
+
     setIsEditing(true)
     setEditError(null)
-    
+
     try {
       await invoke('edit_resource', {
         resourceType,
@@ -174,7 +176,7 @@ export function ResourceDetail({
   // Handle copy to clipboard (yaml or json only)
   const handleCopy = useCallback(async () => {
     if (viewMode !== 'yaml' && viewMode !== 'json') return
-    
+
     const content = viewMode === 'yaml' ? yamlCode : jsonCode
     try {
       await navigator.clipboard.writeText(content)
@@ -294,8 +296,8 @@ export function ResourceDetail({
       </header>
 
       <div ref={bodyRef} class={classes.body} tabIndex={0}>
-        <Alert type="error" label="Edit Failed" message={editError} />
-        <Alert type="error" label="Loading Error" message={error} />
+        <Alert type="error" label="Edit Failed" message={editError}/>
+        <Alert type="error" label="Loading Error" message={error}/>
 
         {!error && (
           <div class={classes.contentWrapper}>
@@ -314,7 +316,8 @@ export function ResourceDetail({
         )}
       </div>
 
-      <DetailShortcutsBar viewMode={viewMode} onViewModeChange={handleViewModeChange} onEdit={handleEdit} isEditing={isEditing} onCopy={handleCopy}/>
+      <DetailShortcutsBar viewMode={viewMode} onViewModeChange={handleViewModeChange} onEdit={handleEdit}
+                          isEditing={isEditing} onCopy={handleCopy}/>
     </div>
   )
 }
