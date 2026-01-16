@@ -77,7 +77,7 @@
 .portRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--borderColor-muted);
 
@@ -110,9 +110,20 @@
   }
 }
 
-.portInfo {
-  font-size: 0.85rem;
-  color: var(--fgColor-default);
+.portLabel {
+  font-size: 0.75rem;
+  color: var(--fgColor-muted);
+}
+
+.containerPortInput {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.protocol {
+  font-size: 0.8rem;
+  color: var(--fgColor-muted);
   font-family: var(--fontStack-monospace);
 }
 
@@ -127,8 +138,8 @@
   color: var(--fgColor-muted);
 }
 
-.localPortField {
-  width: 80px;
+.portField {
+  width: 70px;
   padding: 0.25rem 0.5rem;
   font-size: 0.8rem;
   font-family: var(--fontStack-monospace);
