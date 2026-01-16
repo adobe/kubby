@@ -21,8 +21,6 @@
   font-weight: 500;
   color: var(--fgColor-muted);
   padding: 0.15rem 0.5rem;
-  background: var(--bgColor-default);
-  border-radius: 4px;
   white-space: nowrap;
 }
 
@@ -31,6 +29,7 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
+  padding-bottom: 1rem;
 }
 
 .content {

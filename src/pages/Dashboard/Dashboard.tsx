@@ -777,7 +777,6 @@ export function Dashboard({
   return (
     <div class={classes.dashboard}>
       <div class={classes.header}>
-        {version && <span class={classes.version}>v{version}</span>}
         <NavigationBar
           navigationStack={[]}
           onNavigateToNode={() => {}}
@@ -788,6 +787,7 @@ export function Dashboard({
           filterInputTabIndex={0}
           onFilterSubmit={handleFilterSubmit}
         />
+        {version && <span class={classes.version}>v{version}</span>}
       </div>
 
       <div class={classes.body}>
