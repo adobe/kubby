@@ -239,7 +239,7 @@ pub fn parse_memory_to_bytes(memory: &str) -> u64 {
 }
 
 /// Format nanocores to human-readable string
-fn format_nanocores(nanocores: u64) -> String {
+pub fn format_nanocores(nanocores: u64) -> String {
     if nanocores >= 1_000_000_000 {
         format!("{}", nanocores / 1_000_000_000)
     } else if nanocores >= 1_000_000 {
@@ -252,7 +252,7 @@ fn format_nanocores(nanocores: u64) -> String {
 }
 
 /// Format bytes to human-readable string
-fn format_bytes(bytes: u64) -> String {
+pub fn format_bytes(bytes: u64) -> String {
     if bytes >= 1024 * 1024 * 1024 {
         format!("{}Gi", bytes / (1024 * 1024 * 1024))
     } else if bytes >= 1024 * 1024 {

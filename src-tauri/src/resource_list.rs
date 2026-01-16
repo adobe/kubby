@@ -370,37 +370,146 @@ fn evaluate_metrics_percentage(item: &Value, field: &str, ctx: Option<&EvalConte
         None => return Ok("-".to_string()),
     };
     
-    // Get the spec value from the item (requests or limits)
-    let spec_path = format!("/resources/{}/{}", target, resource);
-    let spec_value = item.pointer(&spec_path)
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    // Get the spec value - different paths for containers vs pods
+    let spec_total: u64 = if ctx.container_name.is_some() {
+        // For containers: single value at /resources/{target}/{resource}
+        let spec_path = format!("/resources/{}/{}", target, resource);
+        let spec_value = item.pointer(&spec_path)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        
+        if spec_value.is_empty() || spec_value == "<none>" {
+            return Ok("-".to_string());
+        }
+        
+        match resource {
+            "cpu" => metrics::parse_cpu_to_nanocores(spec_value),
+            "memory" => metrics::parse_memory_to_bytes(spec_value),
+            _ => return Ok("-".to_string()),
+        }
+    } else {
+        // For pods: sum all container specs at /spec/containers[*]/resources/{target}/{resource}
+        let containers = item.pointer("/spec/containers")
+            .and_then(|v| v.as_array());
+        
+        let containers = match containers {
+            Some(c) => c,
+            None => return Ok("-".to_string()),
+        };
+        
+        let mut total: u64 = 0;
+        let mut found_any = false;
+        
+        for container in containers {
+            let spec_path = format!("/resources/{}/{}", target, resource);
+            if let Some(spec_value) = container.pointer(&spec_path).and_then(|v| v.as_str()) {
+                if !spec_value.is_empty() && spec_value != "<none>" {
+                    found_any = true;
+                    total += match resource {
+                        "cpu" => metrics::parse_cpu_to_nanocores(spec_value),
+                        "memory" => metrics::parse_memory_to_bytes(spec_value),
+                        _ => 0,
+                    };
+                }
+            }
+        }
+        
+        if !found_any {
+            return Ok("-".to_string());
+        }
+        
+        total
+    };
     
-    if spec_value.is_empty() || spec_value == "<none>" {
+    if spec_total == 0 {
         return Ok("-".to_string());
     }
     
     // Calculate percentage based on resource type
-    let percentage = match resource {
-        "cpu" => {
-            let current = metrics::parse_cpu_to_nanocores(&metrics.cpu);
-            let spec = metrics::parse_cpu_to_nanocores(spec_value);
-            if spec == 0 { 0 } else { (current * 100) / spec }
-        }
-        "memory" => {
-            let current = metrics::parse_memory_to_bytes(&metrics.memory);
-            let spec = metrics::parse_memory_to_bytes(spec_value);
-            if spec == 0 { 0 } else { (current * 100) / spec }
-        }
+    let current = match resource {
+        "cpu" => metrics::parse_cpu_to_nanocores(&metrics.cpu),
+        "memory" => metrics::parse_memory_to_bytes(&metrics.memory),
         _ => return Ok("-".to_string()),
     };
+    
+    let percentage = (current * 100) / spec_total;
     
     Ok(percentage.to_string())
 }
 
-// Evaluate a single JSONPath expression and return formatted string
-fn evaluate_jsonpath(item: &Value, json_path: &str, column_type: &ColumnType) -> Result<String, String> {
-    evaluate_jsonpath_with_context(item, json_path, column_type, None)
+/// Evaluate aggregated spec fields for pods (e.g., cpu_requests, memory_limits)
+/// Sums values across all containers and returns formatted string
+fn evaluate_spec_aggregate(item: &Value, field: &str, column_type: &ColumnType, ctx: Option<&EvalContext>) -> Result<String, String> {
+    // Parse field: {resource}_{target} (e.g., cpu_requests, memory_limits)
+    let parts: Vec<&str> = field.split('_').collect();
+    if parts.len() != 2 {
+        return Ok("-".to_string());
+    }
+    
+    let resource = parts[0]; // "cpu" or "memory"
+    let target = parts[1];   // "requests" or "limits"
+    
+    // For containers, get single value from /resources/{target}/{resource}
+    if let Some(ctx) = ctx {
+        if ctx.container_name.is_some() {
+            let spec_path = format!("/resources/{}/{}", target, resource);
+            let spec_value = item.pointer(&spec_path)
+                .and_then(|v| v.as_str())
+                .unwrap_or("-");
+            return Ok(spec_value.to_string());
+        }
+    }
+    
+    // For pods, sum all container specs
+    let containers = item.pointer("/spec/containers")
+        .and_then(|v| v.as_array());
+    
+    let containers = match containers {
+        Some(c) => c,
+        None => return Ok("-".to_string()),
+    };
+    
+    let mut total: u64 = 0;
+    let mut found_any = false;
+    
+    for container in containers {
+        let spec_path = format!("/resources/{}/{}", target, resource);
+        if let Some(spec_value) = container.pointer(&spec_path).and_then(|v| v.as_str()) {
+            if !spec_value.is_empty() && spec_value != "<none>" {
+                found_any = true;
+                total += match resource {
+                    "cpu" => metrics::parse_cpu_to_nanocores(spec_value),
+                    "memory" => metrics::parse_memory_to_bytes(spec_value),
+                    _ => 0,
+                };
+            }
+        }
+    }
+    
+    if !found_any {
+        return Ok("-".to_string());
+    }
+    
+    // Format the aggregated value
+    let formatted = match resource {
+        "cpu" => {
+            let raw = metrics::format_nanocores(total);
+            match column_type {
+                ColumnType::CpuValue => format_cpu_value(&raw),
+                _ => raw,
+            }
+        }
+        "memory" => {
+            let raw = metrics::format_bytes(total);
+            match column_type {
+                ColumnType::MemoryValue => format_memory_value(&raw),
+                _ => raw,
+            }
+        }
+        _ => "-".to_string(),
+    };
+    
+    Ok(formatted)
 }
 
 // Evaluate a single JSONPath expression with optional metrics context
@@ -410,6 +519,12 @@ fn evaluate_jsonpath_with_context(
     column_type: &ColumnType,
     ctx: Option<&EvalContext>,
 ) -> Result<String, String> {
+    // Handle $spec.* paths - aggregated spec values for pods
+    if json_path.starts_with("$spec.") {
+        let field = &json_path["$spec.".len()..];
+        return evaluate_spec_aggregate(item, field, column_type, ctx);
+    }
+    
     // Handle $metrics.* paths - lookup from metrics cache
     if json_path.starts_with("$metrics.") {
         let field = &json_path["$metrics.".len()..];
@@ -512,12 +627,6 @@ fn evaluate_jsonpath_with_context(
     }
 }
 
-// Evaluate column config and format the result
-// Returns (formatted_value, raw_values)
-fn evaluate_column(item: &Value, config: &ColumnConfig) -> Result<(String, Vec<String>), String> {
-    evaluate_column_with_context(item, config, None)
-}
-
 // Evaluate column config with optional metrics context
 // Returns (formatted_value, raw_values)
 fn evaluate_column_with_context(
@@ -598,7 +707,9 @@ fn evaluate_container_state(item: &Value) -> String {
 fn parse_kubectl_json(
     stdout: &str,
     config: &ResourceColumnConfig,
-    _resource_type: &str,
+    resource_type: &str,
+    context: &str,
+    namespace: &str,
 ) -> Result<(Vec<ResourceItem>, Option<String>), String> {
     let data: Value = serde_json::from_str(stdout)
         .map_err(|e| format!("Failed to parse kubectl JSON output: {}", e))?;
@@ -611,8 +722,11 @@ fn parse_kubectl_json(
     // Pre-validate all column configs to detect errors early
     let mut validation_error: Option<String> = None;
     for col in &config.columns {
-        // Validate each JSONPath can be parsed
+        // Validate each JSONPath can be parsed (skip $metrics.* and $spec.* paths which are handled specially)
         for json_path in &col.json_paths {
+            if json_path.starts_with("$metrics.") || json_path.starts_with("$spec.") {
+                continue;
+            }
             if let Err(e) = JsonPath::parse(json_path) {
                 validation_error = Some(format!("Column '{}': invalid JSONPath '{}': {}", col.name, json_path, e));
                 break;
@@ -680,13 +794,25 @@ fn parse_kubectl_json(
         let mut columns = std::collections::HashMap::new();
         let mut raw_values = std::collections::HashMap::new();
         
+        // For pods, create an EvalContext to enable metrics lookup
+        let eval_ctx = if resource_type.to_lowercase() == "pods" {
+            Some(EvalContext {
+                context,
+                namespace,
+                pod_name: &name,
+                container_name: None,
+            })
+        } else {
+            None
+        };
+        
         for col in &config.columns {
             let (value, raw_vals) = if validation_error.is_some() {
                 // If there's a validation error, show <error> in cells
                 ("<error>".to_string(), vec!["<error>".to_string()])
             } else {
-                // Evaluate the column using JSONPath
-                match evaluate_column(item, col) {
+                // Evaluate the column using JSONPath (with context for pods)
+                match evaluate_column_with_context(item, col, eval_ctx.as_ref()) {
                     Ok((v, r)) => (v, r),
                     Err(e) => {
                         // Set error on first occurrence
@@ -734,9 +860,9 @@ pub async fn get_resources(
         "get".to_string(),
         resource_type.clone(),
         "--context".to_string(),
-        context,
+        context.clone(),
         "-n".to_string(),
-        namespace,
+        namespace.clone(),
     ];
     
     // Add label selector if provided
@@ -783,7 +909,7 @@ pub async fn get_resources(
     let stdout = String::from_utf8_lossy(&output.stdout);
     
     // Parse and process resources
-    let (mut items, evaluation_error) = parse_kubectl_json(&stdout, &column_config, &resource_type)?;
+    let (mut items, evaluation_error) = parse_kubectl_json(&stdout, &column_config, &resource_type, &context, &namespace)?;
     
     // Apply post-fetch filtering for spec filters that couldn't use field selectors
     if !post_fetch_filters.is_empty() {

@@ -121,10 +121,16 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 }]
             ),
             col!(
-                "CPU / req".to_string(),
+                "CPU".to_string(),
+                vec!["$metrics.cpu".to_string()],
+                None,
+                Some(crate::ColumnType::CpuValue)
+            ),
+            col!(
+                "%CPU / REQ".to_string(),
                 vec![
                     "$metrics.cpu_percent_requests".to_string(),
-                    "$.resources.requests.cpu".to_string(),
+                    "$spec.cpu_requests".to_string(),
                 ],
                 Some("{0}% / {1}".to_string()),
                 Some(crate::ColumnType::CpuValue),
@@ -144,10 +150,10 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 ]
             ),
             col!(
-                "CPU / lim".to_string(),
+                "%CPU / LIM".to_string(),
                 vec![
                     "$metrics.cpu_percent_limits".to_string(),
-                    "$.resources.limits.cpu".to_string(),
+                    "$spec.cpu_limits".to_string(),
                 ],
                 Some("{0}% / {1}".to_string()),
                 Some(crate::ColumnType::CpuValue),
@@ -167,10 +173,16 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 ]
             ),
             col!(
-                "MEM / req".to_string(),
+                "MEM".to_string(),
+                vec!["$metrics.memory".to_string()],
+                None,
+                Some(crate::ColumnType::MemoryValue)
+            ),
+            col!(
+                "%MEM / REQ".to_string(),
                 vec![
                     "$metrics.memory_percent_requests".to_string(),
-                    "$.resources.requests.memory".to_string(),
+                    "$spec.memory_requests".to_string(),
                 ],
                 Some("{0}% / {1}".to_string()),
                 Some(crate::ColumnType::MemoryValue),
@@ -190,10 +202,10 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 ]
             ),
             col!(
-                "MEM / lim".to_string(),
+                "%MEM / LIM".to_string(),
                 vec![
                     "$metrics.memory_percent_limits".to_string(),
-                    "$.resources.limits.memory".to_string(),
+                    "$spec.memory_limits".to_string(),
                 ],
                 Some("{0}% / {1}".to_string()),
                 Some(crate::ColumnType::MemoryValue),
@@ -280,6 +292,110 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
             col!(
                 "PORTS".to_string(),
                 vec!["$.spec.containers[*].ports[*].containerPort".to_string()]
+            ),
+            col!(
+                "CPU".to_string(),
+                vec!["$metrics.cpu".to_string()],
+                None,
+                Some(crate::ColumnType::CpuValue)
+            ),
+            col!(
+                "%CPU / REQ".to_string(),
+                vec![
+                    "$metrics.cpu_percent_requests".to_string(),
+                    "$spec.cpu_requests".to_string(),
+                ],
+                Some("{0}% / {1}".to_string()),
+                Some(crate::ColumnType::CpuValue),
+                vec![
+                    ColorRule {
+                        expression: "{0} >= 90".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= 70".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} < 70".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "%CPU / LIM".to_string(),
+                vec![
+                    "$metrics.cpu_percent_limits".to_string(),
+                    "$spec.cpu_limits".to_string(),
+                ],
+                Some("{0}% / {1}".to_string()),
+                Some(crate::ColumnType::CpuValue),
+                vec![
+                    ColorRule {
+                        expression: "{0} >= 90".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= 70".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} < 70".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "MEM".to_string(),
+                vec!["$metrics.memory".to_string()],
+                None,
+                Some(crate::ColumnType::MemoryValue)
+            ),
+            col!(
+                "%MEM / REQ".to_string(),
+                vec![
+                    "$metrics.memory_percent_requests".to_string(),
+                    "$spec.memory_requests".to_string(),
+                ],
+                Some("{0}% / {1}".to_string()),
+                Some(crate::ColumnType::MemoryValue),
+                vec![
+                    ColorRule {
+                        expression: "{0} >= 90".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= 70".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} < 70".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
+            ),
+            col!(
+                "%MEM / LIM".to_string(),
+                vec![
+                    "$metrics.memory_percent_limits".to_string(),
+                    "$spec.memory_limits".to_string(),
+                ],
+                Some("{0}% / {1}".to_string()),
+                Some(crate::ColumnType::MemoryValue),
+                vec![
+                    ColorRule {
+                        expression: "{0} >= 90".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} >= 70".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} < 70".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]
             ),
             col!(
                 "AGE".to_string(),
