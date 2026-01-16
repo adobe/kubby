@@ -22,6 +22,8 @@ export interface ButtonHandle {
   open: () => void
   /** Close the dropdown */
   close: () => void
+  /** Focus the button */
+  focus: () => void
 }
 
 interface ButtonProps {
@@ -63,6 +65,7 @@ function ButtonComponent({
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const hasSubItems = subItems && subItems.length > 0
 
   // Get indices of available items for keyboard navigation
@@ -73,6 +76,7 @@ function ButtonComponent({
     toggle: () => setIsOpen(prev => !prev),
     open: () => setIsOpen(true),
     close: () => setIsOpen(false),
+    focus: () => buttonRef.current?.focus(),
   }), [])
 
   // Reset focused index when dropdown opens/closes
@@ -189,6 +193,7 @@ function ButtonComponent({
   if (!hasSubItems) {
     return (
       <button 
+        ref={buttonRef}
         class={`${classes.Button} ${className}`}
         onClick={onClick}
         disabled={disabled}
@@ -210,6 +215,7 @@ function ButtonComponent({
   return (
     <div class={classes.ButtonDropdown} ref={containerRef}>
       <button 
+        ref={buttonRef}
         class={`${classes.Button} ${classes.hasDropdown} ${className} ${isOpen ? classes.isOpen : ''}`}
         onClick={handleButtonClick}
         disabled={disabled}

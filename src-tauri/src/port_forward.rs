@@ -2,11 +2,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Mutex;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 
 use crate::types::KUBECTL_TIMEOUT_SECS;
+
+/// Timeout in seconds for waiting for port-forward confirmation
+const PORT_FORWARD_CONFIRM_TIMEOUT_SECS: u64 = 10;
 
 /// Global state for tracking active port forwards
 static PORT_FORWARDS: Mutex<Option<HashMap<String, PortForwardProcess>>> = Mutex::new(None);
@@ -380,14 +384,114 @@ pub async fn start_port_forward(
     args.push("--address".to_string());
     args.push("127.0.0.1".to_string());
 
-    // Spawn the port-forward process
-    let child = Command::new("kubectl")
+    // Spawn the port-forward process with stdout/stderr captured
+    let mut child = Command::new("kubectl")
         .args(&args)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
         .map_err(|e| format!("Failed to start port-forward: {}", e))?;
+
+    // Take ownership of stdout and stderr for reading
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "Failed to capture stdout".to_string())?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| "Failed to capture stderr".to_string())?;
+
+    let mut stdout_reader = BufReader::new(stdout).lines();
+    let mut stderr_reader = BufReader::new(stderr).lines();
+
+    // Wait for confirmation or error from kubectl
+    // kubectl outputs "Forwarding from 127.0.0.1:PORT -> PORT" on stdout when successful
+    // or an error message on stderr when it fails
+    let confirmation_result = timeout(
+        Duration::from_secs(PORT_FORWARD_CONFIRM_TIMEOUT_SECS),
+        async {
+            loop {
+                tokio::select! {
+                    // Check stdout for success message
+                    stdout_line = stdout_reader.next_line() => {
+                        match stdout_line {
+                            Ok(Some(line)) => {
+                                if line.starts_with("Forwarding from") {
+                                    return Ok(());
+                                }
+                            }
+                            Ok(None) => {
+                                // stdout closed, process may have exited
+                                return Err("Port forward process exited unexpectedly".to_string());
+                            }
+                            Err(e) => {
+                                return Err(format!("Error reading stdout: {}", e));
+                            }
+                        }
+                    }
+                    // Check stderr for error messages
+                    stderr_line = stderr_reader.next_line() => {
+                        match stderr_line {
+                            Ok(Some(line)) => {
+                                // Common error patterns
+                                if line.contains("address already in use") || 
+                                   line.contains("bind: address already in use") ||
+                                   line.contains("unable to listen") {
+                                    return Err(format!("Port {} is already in use", local_port));
+                                }
+                                if line.contains("error") || line.contains("Error") || line.contains("unable to") {
+                                    return Err(line);
+                                }
+                            }
+                            Ok(None) => {
+                                // stderr closed but no error found yet, continue checking stdout
+                            }
+                            Err(e) => {
+                                return Err(format!("Error reading stderr: {}", e));
+                            }
+                        }
+                    }
+                    // Also check if the process has exited
+                    exit_status = child.wait() => {
+                        match exit_status {
+                            Ok(status) => {
+                                if !status.success() {
+                                    return Err(format!("Port forward failed with exit code: {}", status));
+                                }
+                                return Err("Port forward process exited unexpectedly".to_string());
+                            }
+                            Err(e) => {
+                                return Err(format!("Error waiting for process: {}", e));
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    )
+    .await;
+
+    // Handle timeout or result
+    match confirmation_result {
+        Ok(Ok(())) => {
+            // Success! Port forward is confirmed
+        }
+        Ok(Err(e)) => {
+            // kubectl reported an error
+            let _ = child.kill().await;
+            return Err(e);
+        }
+        Err(_) => {
+            // Timeout waiting for confirmation
+            let _ = child.kill().await;
+            return Err(format!(
+                "Timeout waiting for port forward to start ({}s)",
+                PORT_FORWARD_CONFIRM_TIMEOUT_SECS
+            ));
+        }
+    }
 
     let id = Uuid::new_v4().to_string();
 

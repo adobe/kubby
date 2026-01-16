@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'preact/hooks'
 import { invoke } from '@tauri-apps/api/core'
 import { Modal } from '../Modal/Modal.tsx'
-import { Button } from '../Button/Button.tsx'
+import { Button, ButtonHandle } from '../Button/Button.tsx'
 import { Alert } from '../Alert/Alert.tsx'
 import classes from './PortForwardModal.module.scss'
 
@@ -67,14 +67,36 @@ interface PortForwardModalProps {
 
 /**
  * Compute the default local port for a container port.
- * For ports under 1000, double it (e.g., 80 -> 8080, 91 -> 9191).
- * For ports 1000 and above, use the same port.
+ * - Invalid/empty (0): return 0 (no proposal)
+ * - Single digit (1-9): duplicate the digit (8 -> 88)
+ * - Two digits (10-99): duplicate the number (80 -> 8080)
+ * - Three digits (100-999): prepend first digit (121 -> 1121, 443 -> 4443)
+ * - Four+ digits (1000+): use the same port
  */
 function computeLocalPort(containerPort: number): number {
-  if (containerPort < 1000) {
+  // No input or invalid
+  if (containerPort <= 0) {
+    return containerPort
+  }
+  
+  // Ports 1000+ use the same port
+  if (containerPort >= 1000) {
+    return containerPort
+  }
+  
+  // Single digit: duplicate the digit (8 -> 88)
+  if (containerPort < 10) {
+    return containerPort * 10 + containerPort
+  }
+  
+  // Two digits: duplicate the number (80 -> 8080)
+  if (containerPort < 100) {
     return containerPort * 100 + containerPort
   }
-  return containerPort
+  
+  // Three digits: prepend first digit (121 -> 1121, 443 -> 4443)
+  const firstDigit = Math.floor(containerPort / 100)
+  return firstDigit * 1000 + containerPort
 }
 
 /**
@@ -99,17 +121,24 @@ export function PortForwardModal({
   const [portSelections, setPortSelections] = useState<PortSelection[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const firstInputRef = useRef<HTMLInputElement>(null)
+  const stopAllButtonRef = useRef<ButtonHandle>(null)
 
-  // Focus first input when modal opens and loading completes
+  // Focus Stop All button if there are existing forwards, otherwise focus first input
   useEffect(() => {
-    if (isOpen && !isLoading && !loadingError && portSelections.length > 0) {
+    if (isOpen && !isLoading && !loadingError) {
       // Use setTimeout to ensure DOM has updated
       setTimeout(() => {
-        firstInputRef.current?.focus()
-        firstInputRef.current?.select()
+        if (activeForwards.length > 0) {
+          // Focus Stop All button when there are existing port forwards
+          stopAllButtonRef.current?.focus()
+        } else if (portSelections.length > 0) {
+          // Focus first input when adding new port forwards
+          firstInputRef.current?.focus()
+          firstInputRef.current?.select()
+        }
       }, 0)
     }
-  }, [isOpen, isLoading, loadingError, portSelections.length])
+  }, [isOpen, isLoading, loadingError, activeForwards.length, portSelections.length])
 
   // Fetch targets and active forwards when modal opens
   useEffect(() => {
@@ -266,13 +295,16 @@ export function PortForwardModal({
 
       // Update active forwards
       setActiveForwards(prev => [...prev, ...results])
-    } catch (e) {
-      setAddError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setIsAdding(false)
+
+      // Only close on success
       setTimeout(() => {
         onClose()
       })
+    } catch (e) {
+      // Show error and keep modal open
+      setAddError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setIsAdding(false)
     }
   }, [portSelections, context, namespace, resourceType, resourceName, parentResourceName, onClose])
 
@@ -364,6 +396,7 @@ export function PortForwardModal({
                 <div class={classes.sectionHeader}>
                   <h3 class={classes.sectionTitle}>Existing Port Forwards</h3>
                   <Button
+                    ref={stopAllButtonRef}
                     label="Stop All"
                     onClick={() => handleStopAll()}
                     disabled={readOnly}
