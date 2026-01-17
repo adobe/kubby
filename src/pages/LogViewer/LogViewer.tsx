@@ -701,21 +701,22 @@ export function LogViewer({
         ) : logs.length === 0 && isStreaming ? (
           <div class={classes.loading}>Waiting for logs...</div>
         ) : (
-          <VList
-            ref={listRef}
-            className={classes.logContainer}
-            onScroll={handleScroll}
-            onClick={handleLogClick}
-          >
-            {logs.map((log, index) => (
-              <div
-                key={`${index}-${wrap}-${formattedLines.has(index)}`}
-                data-index={index}
-                class={`${classes.logLine} ${wrap ? classes.wrap : classes.nowrap}`}
-                dangerouslySetInnerHTML={{ __html: renderLogLine(log, index) }}
-              />
-            ))}
-          </VList>
+          <div onClick={handleLogClick}>
+            <VList
+              ref={listRef}
+              className={classes.logContainer}
+              onScroll={handleScroll}
+            >
+              {logs.map((log, index) => (
+                <div
+                  key={`${index}-${wrap}-${formattedLines.has(index)}`}
+                  data-index={index}
+                  class={`${classes.logLine} ${wrap ? classes.wrap : classes.nowrap}`}
+                  dangerouslySetInnerHTML={{ __html: renderLogLine(log, index) }}
+                />
+              ))}
+            </VList>
+          </div>
         )}
       </div>
 
