@@ -1,4 +1,4 @@
-.PHONY: dev build release clean
+.PHONY: dev build release clean docs docs-dev docs-preview
 
 dev:
 	pnpm tauri dev
@@ -11,3 +11,12 @@ release:
 
 clean:
 	rm -rf src-tauri/target/release/bundle
+
+docs:
+	pnpm docs:build
+
+docs-dev:
+	pnpm docs:dev
+
+docs-preview:
+	pnpm docs:preview

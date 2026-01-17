@@ -45,3 +45,39 @@ gh release create "$TAG" \
     "$DMG"
 
 echo -e "${GREEN}✅ Released ${TAG}${NC}"
+
+# Build and deploy docs
+echo -e "${YELLOW}📚 Building documentation...${NC}"
+pnpm docs:build
+
+echo -e "${YELLOW}📤 Deploying docs to GitHub Pages...${NC}"
+DOCS_DIST="docs/.vitepress/dist"
+
+# Create a temporary directory for gh-pages deployment
+TEMP_DIR=$(mktemp -d)
+cp -r "${DOCS_DIST}/"* "${TEMP_DIR}/"
+
+# Switch to gh-pages branch, update, and push
+git worktree add --detach gh-pages-deploy gh-pages 2>/dev/null || {
+    # If gh-pages branch doesn't exist, create it as orphan
+    git worktree add --detach gh-pages-deploy
+    cd gh-pages-deploy
+    git checkout --orphan gh-pages
+    git rm -rf . 2>/dev/null || true
+    cd ..
+}
+
+cd gh-pages-deploy
+git rm -rf . 2>/dev/null || true
+cp -r "${TEMP_DIR}/"* .
+git add .
+git commit -m "docs: deploy for ${TAG}"
+git push upstream gh-pages --force
+cd ..
+
+# Cleanup
+git worktree remove gh-pages-deploy --force
+rm -rf "${TEMP_DIR}"
+
+echo -e "${GREEN}✅ Docs deployed to GitHub Pages${NC}"
+echo -e "${GREEN}📖 View at: https://oneadobe.github.io/kubby/${NC}"

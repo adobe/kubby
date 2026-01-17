@@ -1,0 +1,262 @@
+# Configuration
+
+Kubby uses a YAML configuration file to define your dashboard layout, contexts, namespaces, and custom commands.
+
+## Configuration File Location
+
+The configuration file is located at:
+
+```
+~/.config/kubby/kubby_config.yaml
+```
+
+## First-Time Setup
+
+When you first launch Kubby without a configuration file, the onboarding wizard will:
+
+1. Detect your available Kubernetes contexts from `~/.kube/config`
+2. Let you select which contexts to include
+3. Discover namespaces for each context
+4. Generate a starter configuration file
+
+You can always edit this file manually to customize your setup.
+
+## Configuration Structure
+
+### Basic Example
+
+```yaml
+# Kubby Dashboard Configuration
+
+# Global settings
+readOnly: false              # Set to true to disable modifying actions
+liveViewAutoRefresh: true    # Auto-refresh resource views
+refreshRateSeconds: 2        # How often to refresh resource lists
+metricsRefreshRateSeconds: 30  # How often to refresh metrics
+
+contexts:
+  groups:
+    - name: "Production"
+      contexts:
+        - group: "US East"
+          contexts:
+            - name: "prod-us-east-1"
+            - name: "prod-us-east-2"
+        - group: "US West"
+          contexts:
+            - name: "prod-us-west-1"
+      namespaces:
+        - name: "default"
+        - name: "app-frontend"
+        - name: "app-backend"
+
+    - name: "Development"
+      contexts:
+        - group: "Dev Clusters"
+          contexts:
+            - name: "dev-cluster"
+      namespaces:
+        - name: "default"
+        - name: "dev"
+```
+
+## Configuration Options
+
+### Global Settings
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `readOnly` | boolean | `false` | Disable all modifying actions (edit, delete, scale, etc.) |
+| `liveViewAutoRefresh` | boolean | `true` | Automatically refresh resource views |
+| `refreshRateSeconds` | number | `2` | Interval for refreshing resource lists |
+| `metricsRefreshRateSeconds` | number | `30` | Interval for refreshing metrics data |
+
+### Contexts Configuration
+
+The `contexts` section defines how your Kubernetes contexts are organized in the dashboard.
+
+#### Groups
+
+Groups are top-level organizational units. Each group creates a section in the dashboard:
+
+```yaml
+contexts:
+  groups:
+    - name: "Production"    # Display name for this group
+      contexts: [...]       # Context definitions
+      namespaces: [...]     # Namespace definitions
+```
+
+#### Context Groups
+
+Within each group, contexts can be organized into sub-groups (displayed as columns):
+
+```yaml
+contexts:
+  - group: "US Region"      # Column header
+    contexts:
+      - name: "prod-us-east"   # Must match kubeconfig context name
+      - name: "prod-us-west"
+  - group: "EU Region"
+    contexts:
+      - name: "prod-eu-west"
+```
+
+#### Namespaces
+
+Namespaces define the rows in your dashboard. They can be a simple list:
+
+```yaml
+namespaces:
+  - name: "default"
+  - name: "kube-system"
+  - name: "app-namespace"
+```
+
+Or grouped for better organization:
+
+```yaml
+namespaces:
+  - group: "System"
+    namespaces:
+      - name: "kube-system"
+      - name: "kube-public"
+  - group: "Applications"
+    namespaces:
+      - name: "frontend"
+      - name: "backend"
+```
+
+#### Context-Specific Namespaces
+
+You can restrict certain namespaces to specific contexts:
+
+```yaml
+namespaces:
+  - name: "default"                    # Available in all contexts
+  - name: "dev-only"
+    contexts: ["dev-cluster"]          # Only shows for dev-cluster context
+  - name: "prod-monitoring"
+    contexts: ["prod-us-east", "prod-us-west"]  # Only for these contexts
+```
+
+## Custom Run Commands
+
+Define custom kubectl commands that can be executed from the resource list using the `U` shortcut:
+
+```yaml
+resources:
+  run:
+    - name: "Debug Pod with Busybox"
+      command: "kubectl debug --context $context --namespace $namespace $name -it --image=busybox -- sh"
+      resources: ["pod"]    # Only show for pods
+
+    - name: "Network Troubleshooting"
+      command: "kubectl run net-debug --context $context --namespace $namespace --image=praqma/network-multitool --labels=$labels --restart=Never --command -- sleep infinity"
+      resources: ["pod"]
+
+    - name: "Port Forward 8080"
+      command: "kubectl port-forward --context $context --namespace $namespace $name 8080:80"
+      # No resources filter = available for all resource types
+```
+
+### Command Placeholders
+
+Use these placeholders in your custom commands:
+
+| Placeholder | Description |
+|-------------|-------------|
+| `$context` | Current Kubernetes context |
+| `$namespace` | Current namespace |
+| `$name` | Name of the selected resource |
+| `$labels` | Resource labels formatted as `key=value,key=value` |
+
+### Resource Filtering
+
+The `resources` field limits which resource types a command appears for:
+
+```yaml
+- name: "Pod-specific command"
+  command: "..."
+  resources: ["pod"]           # Only for pods
+
+- name: "Deployment commands"
+  command: "..."
+  resources: ["deployment", "statefulset"]  # For deployments and statefulsets
+
+- name: "Universal command"
+  command: "..."
+  # No resources field = available everywhere
+```
+
+## Complete Example
+
+```yaml
+# Kubby Dashboard Configuration
+
+readOnly: false
+liveViewAutoRefresh: true
+refreshRateSeconds: 2
+metricsRefreshRateSeconds: 30
+
+contexts:
+  groups:
+    - name: "Production"
+      contexts:
+        - group: "US East"
+          contexts:
+            - name: "prod-use1"
+            - name: "prod-use2"
+        - group: "US West"
+          contexts:
+            - name: "prod-usw2"
+      namespaces:
+        - group: "Core Services"
+          namespaces:
+            - name: "api-gateway"
+            - name: "auth-service"
+            - name: "user-service"
+        - group: "Infrastructure"
+          namespaces:
+            - name: "monitoring"
+            - name: "logging"
+
+    - name: "Development"
+      contexts:
+        - group: "Dev"
+          contexts:
+            - name: "dev-cluster"
+      namespaces:
+        - name: "default"
+        - name: "dev"
+        - name: "staging"
+
+resources:
+  run:
+    - name: "Debug with Busybox"
+      command: "kubectl debug --context $context --namespace $namespace $name -it --image=busybox -- sh"
+      resources: ["pod"]
+    - name: "Network Debug Container"
+      command: "kubectl run net-debug-$RANDOM --context $context --namespace $namespace --image=nicolaka/netshoot --restart=Never -it --rm -- /bin/bash"
+      resources: ["pod"]
+    - name: "Port Forward 8080:80"
+      command: "kubectl port-forward --context $context --namespace $namespace $name 8080:80"
+```
+
+## Tips
+
+::: tip Editing the Config
+You can edit the configuration file directly with any text editor. Changes take effect after restarting Kubby.
+:::
+
+::: tip Read-Only Mode
+Set `readOnly: true` for production clusters to prevent accidental modifications. This disables edit, delete, scale, and restart actions.
+:::
+
+::: tip Multiple Groups
+Use multiple groups to separate environments (Production, Staging, Development) or teams in your organization.
+:::
+
+::: warning Context Names
+Context names in the configuration must exactly match the names in your `~/.kube/config` file.
+:::
