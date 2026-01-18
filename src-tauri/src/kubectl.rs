@@ -64,16 +64,47 @@ pub fn get_path() -> &'static std::path::PathBuf {
     get_kubectl_path()
 }
 
+/// Apply kubectl-related environment variables from the user's shell.
+/// This ensures KUBECONFIG and other settings are properly inherited.
+fn apply_kubectl_env(cmd: &mut std::process::Command) {
+    // Pass through KUBECONFIG - critical for users with non-standard config locations
+    if let Some(kubeconfig) = shell_env::get_env_var("KUBECONFIG") {
+        cmd.env("KUBECONFIG", kubeconfig);
+    }
+    
+    // Pass through HOME for ~ expansion in config paths
+    if let Some(home) = shell_env::get_env_var("HOME") {
+        cmd.env("HOME", home);
+    }
+}
+
+/// Apply kubectl-related environment variables to async command.
+pub fn apply_env_async(cmd: &mut tokio::process::Command) {
+    if let Some(kubeconfig) = shell_env::get_env_var("KUBECONFIG") {
+        cmd.env("KUBECONFIG", kubeconfig);
+    }
+    
+    if let Some(home) = shell_env::get_env_var("HOME") {
+        cmd.env("HOME", home);
+    }
+}
+
 /// Create a new async (tokio) kubectl command.
 /// Use this in async contexts with tokio::process::Command.
+/// Automatically inherits KUBECONFIG from user's shell environment.
 pub fn async_command() -> tokio::process::Command {
-    tokio::process::Command::new(get_kubectl_path())
+    let mut cmd = tokio::process::Command::new(get_kubectl_path());
+    apply_env_async(&mut cmd);
+    cmd
 }
 
 /// Create a new sync (std) kubectl command.
 /// Use this in sync contexts with std::process::Command.
+/// Automatically inherits KUBECONFIG from user's shell environment.
 pub fn sync_command() -> std::process::Command {
-    std::process::Command::new(get_kubectl_path())
+    let mut cmd = std::process::Command::new(get_kubectl_path());
+    apply_kubectl_env(&mut cmd);
+    cmd
 }
 
 /// Output from a kubectl command
