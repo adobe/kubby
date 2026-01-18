@@ -74,20 +74,25 @@ pub async fn start_log_stream(
     // Spawn the kubectl process with unbuffered output
     // Use stdbuf to force line-buffering on stdout for real-time streaming
     let kubectl_path = kubectl::get_path();
-    let mut child = Command::new("stdbuf")
+    let mut stdbuf_cmd = Command::new("stdbuf");
+    stdbuf_cmd
         .arg("-oL") // Line-buffer stdout
         .arg(kubectl_path)
         .args(&args)
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
+        .stderr(std::process::Stdio::piped());
+    kubectl::apply_env_async(&mut stdbuf_cmd);
+    
+    let mut child = stdbuf_cmd.spawn()
         .or_else(|_| {
             // Fallback to direct kubectl if stdbuf is not available
-            Command::new(kubectl_path)
+            let mut fallback_cmd = Command::new(kubectl_path);
+            fallback_cmd
                 .args(&args)
                 .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
-                .spawn()
+                .stderr(std::process::Stdio::piped());
+            kubectl::apply_env_async(&mut fallback_cmd);
+            fallback_cmd.spawn()
         })
         .map_err(|e| format!("Failed to spawn kubectl logs: {}", e))?;
     

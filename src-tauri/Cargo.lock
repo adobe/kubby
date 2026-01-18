@@ -1928,7 +1928,7 @@ dependencies = [
 
 [[package]]
 name = "kubby"
-version = "0.13.2"
+version = "0.16.0"
 dependencies = [
  "chrono",
  "serde",
