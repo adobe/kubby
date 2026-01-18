@@ -5,26 +5,66 @@ use std::sync::OnceLock;
 static SHELL_ENV: OnceLock<HashMap<String, String>> = OnceLock::new();
 
 /// Load environment variables from the user's login shell.
-/// This spawns a login shell to properly source .bashrc/.zshrc etc.
+/// This spawns an interactive login shell to properly source all config files.
 fn load_shell_env() -> HashMap<String, String> {
     let mut env_map = HashMap::new();
     
     // Get the user's default shell
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
     
-    // Spawn a login shell to get the full environment
-    // -l = login shell (sources profile files)
-    // -c = execute command
+    // Try interactive login shell first (-i -l)
+    // This sources both login files (.zprofile) AND interactive files (.zshrc)
+    // which is where most users set their environment variables
     let output = std::process::Command::new(&shell)
-        .args(["-l", "-c", "env"])
+        .args(["-i", "-l", "-c", "env"])
+        .stderr(std::process::Stdio::null()) // Suppress shell startup messages
         .output();
     
-    if let Ok(output) = output {
+    if let Ok(output) = &output {
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 if let Some((key, value)) = line.split_once('=') {
                     env_map.insert(key.to_string(), value.to_string());
+                }
+            }
+        }
+    }
+    
+    // If interactive shell didn't work or returned empty, try login shell only
+    if env_map.is_empty() {
+        let output = std::process::Command::new(&shell)
+            .args(["-l", "-c", "env"])
+            .output();
+        
+        if let Ok(output) = output {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    if let Some((key, value)) = line.split_once('=') {
+                        env_map.insert(key.to_string(), value.to_string());
+                    }
+                }
+            }
+        }
+    }
+    
+    // On macOS, also try launchctl for environment variables
+    // This catches variables set via launchctl setenv
+    #[cfg(target_os = "macos")]
+    {
+        for key in ["KUBECONFIG", "PATH", "HOME", "EDITOR", "KUBE_EDITOR", "TERMINAL"] {
+            if !env_map.contains_key(key) || env_map.get(key).map(|v| v.is_empty()).unwrap_or(true) {
+                if let Ok(output) = std::process::Command::new("launchctl")
+                    .args(["getenv", key])
+                    .output()
+                {
+                    if output.status.success() {
+                        let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                        if !value.is_empty() {
+                            env_map.insert(key.to_string(), value);
+                        }
+                    }
                 }
             }
         }
