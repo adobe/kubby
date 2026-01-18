@@ -9,6 +9,9 @@ import { isControlModifierPressed } from '../../navigation/keyboardShortcuts.ts'
 
 const MAX_LOG_LINES = 10_000
 const LOG_BATCH_INTERVAL_MS = 50 // Batch log updates every 50ms to reduce re-renders
+const INITIAL_LINES = 100 // must match backend, see log_stream.rs --tail=100
+const TAIL_TIERS = [500, 2000, 5000, 10000] // Progressive fetch tiers for historical logs
+const DEFAULT_LINE_HEIGHT = 24 // Fallback line height before measurement
 
 // Helper to escape HTML and prevent XSS
 function escapeHtml(text: string): string {
@@ -341,8 +344,17 @@ export function LogViewer({
   const [timestamps, setTimestamps] = useState(false)
   const [autoscroll, setAutoscroll] = useState(true)
   const [formattedLines, setFormattedLines] = useState<Set<number>>(new Set())
+  
+  // History loading state
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [hasMoreHistory, setHasMoreHistory] = useState(true)
+  const [historyTier, setHistoryTier] = useState(0)
+  
+  // Session ID to detect if stream was restarted during history fetch
+  const sessionIdRef = useRef(0)
 
   const listRef = useRef<VListHandle>(null)
+  const logContainerRef = useRef<HTMLDivElement>(null)
   
   // Refs for batching log updates
   const pendingLogsRef = useRef<string[]>([])
@@ -350,6 +362,9 @@ export function LogViewer({
   
   // Track if we're doing programmatic scroll to avoid disabling autoscroll
   const isScrollingRef = useRef(false)
+  
+  // Cached line height for keyboard scrolling (measured from actual rendered line)
+  const lineHeightRef = useRef<number>(DEFAULT_LINE_HEIGHT)
 
   // Helper to refocus log container for keyboard scrolling
   const refocusLogs = useCallback(() => {
@@ -373,11 +388,114 @@ export function LogViewer({
     })
   }, [])
 
+  // Extract timestamp from a log line
+  // Format: [pod/name/container] 2026-01-11T08:00:39.783922111Z text
+  // Or: 2026-01-11T08:00:39.783922111Z text
+  const extractTimestamp = useCallback((line: string): string | null => {
+    // Try format with prefix first
+    const prefixMatch = line.match(/^\[[^\]]+\]\s+(\d{4}-\d{2}-\d{2}T[\d:.]+Z)/)
+    if (prefixMatch) return prefixMatch[1]
+    
+    // Try format without prefix
+    const directMatch = line.match(/^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)/)
+    if (directMatch) return directMatch[1]
+    
+    return null
+  }, [])
+
+  // Find earliest timestamp in current logs
+  const getEarliestTimestamp = useCallback((): string | null => {
+    for (const line of logs) {
+      const ts = extractTimestamp(line)
+      if (ts) return ts
+    }
+    return null
+  }, [logs, extractTimestamp])
+
+  // Fetch historical logs when user scrolls to top
+  const fetchHistoricalLogs = useCallback(async () => {
+    if (isLoadingHistory || !hasMoreHistory) return
+    if (historyTier >= TAIL_TIERS.length) {
+      setHasMoreHistory(false)
+      return
+    }
+
+    const earliestTs = getEarliestTimestamp()
+    if (!earliestTs) return // No logs yet, nothing to prepend to
+
+    // Capture session ID to detect if stream was restarted during fetch
+    const currentSessionId = sessionIdRef.current
+    
+    setIsLoadingHistory(true)
+    
+    try {
+      const tailLines = TAIL_TIERS[historyTier]
+      const historicalLogs = await invoke<string[]>('fetch_historical_logs', {
+        resourceType,
+        resourceName,
+        context,
+        namespace,
+        containerName: containerName || null,
+        tailLines,
+        beforeTimestamp: earliestTs,
+      })
+
+      // Discard results if stream was restarted while we were fetching
+      if (sessionIdRef.current !== currentSessionId) {
+        return
+      }
+
+      if (historicalLogs.length === 0) {
+        // No more history available at this tier, try next
+        if (historyTier < TAIL_TIERS.length - 1) {
+          setHistoryTier((t) => t + 1)
+        } else {
+          setHasMoreHistory(false)
+        }
+      } else {
+        // Prepend historical logs
+        setLogs((prev) => {
+          const combined = [...historicalLogs, ...prev]
+          // Cap at MAX_LOG_LINES (keep newest)
+          if (combined.length > MAX_LOG_LINES) {
+            return combined.slice(combined.length - MAX_LOG_LINES)
+          }
+          return combined
+        })
+        // Move to next tier for future fetches
+        setHistoryTier((t) => Math.min(t + 1, TAIL_TIERS.length - 1))
+      }
+    } catch (e) {
+      console.error('Failed to fetch historical logs:', e)
+    } finally {
+      // Only clear loading state if session hasn't changed
+      if (sessionIdRef.current === currentSessionId) {
+        setIsLoadingHistory(false)
+      }
+    }
+  }, [
+    isLoadingHistory,
+    hasMoreHistory,
+    historyTier,
+    getEarliestTimestamp,
+    resourceType,
+    resourceName,
+    context,
+    namespace,
+    containerName,
+  ])
+
   // Start log stream - always fetch with timestamps, visibility is controlled in the view
   const startStream = useCallback(async () => {
     setError(null)
     setLogs([]) // Clear logs on restart
     pendingLogsRef.current = []
+    
+    // Reset history loading state and increment session ID
+    setIsLoadingHistory(false)
+    setHasMoreHistory(true)
+    setHistoryTier(0)
+    sessionIdRef.current += 1
 
     try {
       await invoke('start_log_stream', {
@@ -528,23 +646,45 @@ export function LogViewer({
     }
   }, [isStreaming, refocusLogs])
 
+  // Measure and cache line height from rendered log lines
+  useEffect(() => {
+    if (logs.length === 0 || !logContainerRef.current) return
+    
+    // Find a rendered log line element to measure
+    const logLine = logContainerRef.current.querySelector('[data-index]') as HTMLElement
+    if (logLine) {
+      const height = logLine.getBoundingClientRect().height
+      if (height > 0) {
+        lineHeightRef.current = height
+      }
+    }
+  }, [logs.length > 0]) // Only re-measure when we go from 0 to having logs
+
   // Track last scroll offset to detect scroll direction
   const lastScrollOffsetRef = useRef(0)
   
-  // Handle scroll - only disable autoscroll if user scrolls UP
+  // Handle scroll - disable autoscroll if user scrolls UP, fetch history at top
   const handleScroll = useCallback((offset: number) => {
     // Ignore programmatic scrolls
-    if (isScrollingRef.current) return
-    if (!autoscroll) return
+    if (isScrollingRef.current) {
+      lastScrollOffsetRef.current = offset
+      return
+    }
     
     // Only disable autoscroll if user scrolled UP (offset decreased)
     const scrolledUp = offset < lastScrollOffsetRef.current - 10 // 10px threshold
     lastScrollOffsetRef.current = offset
     
-    if (scrolledUp) {
+    if (scrolledUp && autoscroll) {
       setAutoscroll(false)
     }
-  }, [autoscroll])
+    
+    // Fetch more history when scrolled to top (or near top)
+    // Skip if already at max lines - loading more would just discard newest logs
+    if (offset <= INITIAL_LINES && !isLoadingHistory && hasMoreHistory && logs.length > 0 && logs.length < MAX_LOG_LINES) {
+      fetchHistoricalLogs()
+    }
+  }, [autoscroll, isLoadingHistory, hasMoreHistory, logs.length, fetchHistoricalLogs])
 
   // Handle click on format/copy buttons (event delegation)
   const handleLogClick = useCallback((e: MouseEvent) => {
@@ -656,11 +796,62 @@ export function LogViewer({
         handleCopy()
         return
       }
+
+      // Log navigation shortcuts (only when logs exist)
+      if (logs.length === 0 || !listRef.current) return
+
+      // Arrow Up - scroll up one line
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setAutoscroll(false)
+        listRef.current.scrollBy(-lineHeightRef.current)
+        return
+      }
+
+      // Arrow Down - scroll down one line
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        listRef.current.scrollBy(lineHeightRef.current)
+        return
+      }
+
+      // Page Up - scroll up by page
+      if (e.key === 'PageUp') {
+        e.preventDefault()
+        setAutoscroll(false)
+        const containerHeight = logContainerRef.current?.clientHeight ?? 400
+        listRef.current.scrollBy(-containerHeight + lineHeightRef.current) // Keep one line visible
+        return
+      }
+
+      // Page Down - scroll down by page
+      if (e.key === 'PageDown') {
+        e.preventDefault()
+        const containerHeight = logContainerRef.current?.clientHeight ?? 400
+        listRef.current.scrollBy(containerHeight - lineHeightRef.current) // Keep one line visible
+        return
+      }
+
+      // Home - go to first log line
+      if (e.key === 'Home') {
+        e.preventDefault()
+        setAutoscroll(false)
+        listRef.current.scrollToIndex(0)
+        return
+      }
+
+      // End - go to last log line
+      if (e.key === 'End') {
+        e.preventDefault()
+        setAutoscroll(true)
+        listRef.current.scrollToIndex(logs.length - 1, { align: 'end' })
+        return
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll])
+  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll, logs.length])
 
   return (
     <div class={classes.LogViewer}>
@@ -670,9 +861,9 @@ export function LogViewer({
             {containerName ? `${resourceName} / ${containerName}` : resourceName}
           </span>
           <span class={classes.resourceType}>{containerName ? 'container logs' : `${resourceType} logs`}</span>
-          <div class={`${classes.streamingIndicator} ${!isStreaming ? classes.paused : ''}`}>
+          <div class={`${classes.streamingIndicator} ${!isStreaming ? classes.paused : ''} ${isLoadingHistory ? classes.loadingHistory : ''}`}>
             <span class={classes.dot} />
-            <span>{isStreaming ? 'Streaming' : 'Paused'}</span>
+            <span>{isLoadingHistory ? 'Loading history...' : isStreaming ? 'Streaming' : 'Paused'}</span>
           </div>
         </div>
         <div class={classes.headerButtons}>
@@ -701,7 +892,7 @@ export function LogViewer({
         ) : logs.length === 0 && isStreaming ? (
           <div class={classes.loading}>Waiting for logs...</div>
         ) : (
-          <div onClick={handleLogClick} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div ref={logContainerRef} onClick={handleLogClick} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <VList
               ref={listRef}
               className={classes.logContainer}

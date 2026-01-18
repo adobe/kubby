@@ -48,6 +48,7 @@ pub fn run() {
             metrics::refresh_metrics_cache,
             log_stream::start_log_stream,
             log_stream::stop_log_stream,
+            log_stream::fetch_historical_logs,
             terminal::open_terminal_with_command,
             port_forward::get_port_forward_targets,
             port_forward::start_port_forward,

@@ -49,7 +49,7 @@ pub async fn start_log_stream(
     let mut args = vec![
         "logs".to_string(),
         "-f".to_string(),
-        "--tail=1000".to_string(),
+        "--tail=100".to_string(),
         format!("{}/{}", resource_type, resource_name),
         "--context".to_string(),
         context,
@@ -153,4 +153,110 @@ pub async fn stop_log_stream_internal() {
 pub async fn stop_log_stream() -> Result<(), String> {
     stop_log_stream_internal().await;
     Ok(())
+}
+
+/// Parse timestamp from a log line.
+/// Expected formats:
+/// - With prefix: [pod/name/container] 2026-01-11T08:00:39.783922111Z log text
+/// - Without prefix: 2026-01-11T08:00:39.783922111Z log text
+fn parse_log_timestamp(line: &str) -> Option<&str> {
+    // Try format with prefix first: [prefix] timestamp
+    if line.starts_with('[') {
+        if let Some(bracket_end) = line.find("] ") {
+            let after_bracket = &line[bracket_end + 2..];
+            // Look for ISO8601 timestamp
+            if after_bracket.len() >= 30 && after_bracket.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                // Find end of timestamp (space after Z)
+                if let Some(space_idx) = after_bracket.find(' ') {
+                    let timestamp = &after_bracket[..space_idx];
+                    if timestamp.ends_with('Z') {
+                        return Some(timestamp);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Try format without prefix: timestamp directly at start
+    if line.len() >= 30 && line.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+        if let Some(space_idx) = line.find(' ') {
+            let timestamp = &line[..space_idx];
+            if timestamp.ends_with('Z') {
+                return Some(timestamp);
+            }
+        }
+    }
+    
+    None
+}
+
+/// Fetch historical logs (non-streaming, one-shot).
+/// Used for lazy loading when user scrolls up.
+#[tauri::command]
+pub async fn fetch_historical_logs(
+    resource_type: String,
+    resource_name: String,
+    context: String,
+    namespace: String,
+    container_name: Option<String>,
+    tail_lines: u32,
+    before_timestamp: Option<String>,
+) -> Result<Vec<String>, String> {
+    // Build kubectl logs command (non-streaming)
+    let mut args = vec![
+        "logs".to_string(),
+        format!("--tail={}", tail_lines),
+        "--timestamps".to_string(),
+        format!("{}/{}", resource_type, resource_name),
+        "--context".to_string(),
+        context,
+        "-n".to_string(),
+        namespace,
+    ];
+    
+    // If a specific container is requested, use -c flag
+    if let Some(container) = container_name {
+        args.push("-c".to_string());
+        args.push(container);
+    } else {
+        // Show logs from all containers
+        args.push("--all-containers".to_string());
+        args.push("--prefix".to_string());
+    }
+    
+    let kubectl_path = kubectl::get_path();
+    let output = Command::new(kubectl_path)
+        .args(&args)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to execute kubectl logs: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("kubectl logs failed: {}", stderr));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<String> = stdout.lines().map(|s| s.to_string()).collect();
+    
+    // If no before_timestamp provided, return all lines
+    let before_ts = match before_timestamp {
+        Some(ts) => ts,
+        None => return Ok(lines),
+    };
+    
+    // Filter to only lines with timestamps before the given timestamp
+    let filtered: Vec<String> = lines
+        .into_iter()
+        .filter(|line| {
+            if let Some(ts) = parse_log_timestamp(line) {
+                // Simple string comparison works for ISO8601 timestamps
+                ts < before_ts.as_str()
+            } else {
+                false // Skip lines without parseable timestamps
+            }
+        })
+        .collect();
+    
+    Ok(filtered)
 }

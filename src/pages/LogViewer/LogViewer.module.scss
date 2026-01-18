@@ -52,6 +52,15 @@
       background-color: var(--fgColor-attention);
       animation: none;
     }
+    
+    &.loadingHistory .dot {
+      background-color: var(--fgColor-accent);
+      animation: none;
+      border: 1px solid transparent;
+      border-top-color: var(--fgColor-accent);
+      background: transparent;
+      animation: spin 0.8s linear infinite;
+    }
   }
 
   @keyframes pulse {
@@ -265,6 +274,12 @@
     padding: 3rem;
     color: var(--fgColor-muted);
     font-size: 0.9rem;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   // Shortcuts bar
