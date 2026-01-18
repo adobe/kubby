@@ -65,7 +65,7 @@ pub fn get_path() -> &'static std::path::PathBuf {
 }
 
 /// Apply kubectl-related environment variables from the user's shell.
-/// This ensures KUBECONFIG and other settings are properly inherited.
+/// This ensures KUBECONFIG, PATH, and other settings are properly inherited.
 fn apply_kubectl_env(cmd: &mut std::process::Command) {
     // Pass through KUBECONFIG - critical for users with non-standard config locations
     if let Some(kubeconfig) = shell_env::get_env_var("KUBECONFIG") {
@@ -75,6 +75,12 @@ fn apply_kubectl_env(cmd: &mut std::process::Command) {
     // Pass through HOME for ~ expansion in config paths
     if let Some(home) = shell_env::get_env_var("HOME") {
         cmd.env("HOME", home);
+    }
+    
+    // Pass through PATH - required for kubectl to find credential plugins
+    // (e.g., kubelogin for Azure AD, aws-iam-authenticator for AWS EKS)
+    if let Some(path) = shell_env::get_env_var("PATH") {
+        cmd.env("PATH", path);
     }
 }
 
@@ -86,6 +92,11 @@ pub fn apply_env_async(cmd: &mut tokio::process::Command) {
     
     if let Some(home) = shell_env::get_env_var("HOME") {
         cmd.env("HOME", home);
+    }
+    
+    // Pass through PATH - required for kubectl to find credential plugins
+    if let Some(path) = shell_env::get_env_var("PATH") {
+        cmd.env("PATH", path);
     }
 }
 

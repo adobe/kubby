@@ -20,6 +20,11 @@ Kubby requires `kubectl` to be installed on your system. The app searches for ku
 - `~/.local/bin/kubectl`
 - User's shell `PATH`
 
+**Credential Plugins:** If your cluster uses exec-based authentication, ensure the required plugin is in your `PATH`:
+- Azure AKS: `kubelogin`
+- AWS EKS: `aws-iam-authenticator` or `aws`
+- GCP GKE: `gke-gcloud-auth-plugin`
+
 ### Environment Variables
 
 The following environment variables are read from your shell configuration (`.bashrc`, `.zshrc`, etc.):
