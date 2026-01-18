@@ -186,7 +186,7 @@ impl DashboardConfig {
 }
 
 /// Get the path to the kubby config file
-fn get_config_path() -> Result<PathBuf, String> {
+pub fn get_config_path() -> Result<PathBuf, String> {
     let home = std::env::var("HOME").map_err(|_| "Could not get HOME directory")?;
     Ok([&home, ".config", "kubby", "kubby_config.yaml"].iter().collect())
 }

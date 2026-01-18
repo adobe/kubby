@@ -12,6 +12,8 @@ mod shell_env;
 mod terminal;
 mod types;
 
+use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
+
 // Re-export types for use by other modules
 pub use types::{
     ColumnConfig, ColumnType, LabelSelector, ResourceColumnConfig, ResourceItem,
@@ -23,6 +25,60 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .setup(|app| {
+            // Create the "Open Config" menu item
+            let open_config = MenuItemBuilder::with_id("open_config", "Open Config File")
+                .accelerator("CmdOrCtrl+,")
+                .build(app)?;
+
+            // Create macOS app menu with standard items
+            #[cfg(target_os = "macos")]
+            let app_menu = SubmenuBuilder::new(app, "Kubby")
+                .item(&PredefinedMenuItem::about(app, Some("About Kubby"), None)?)
+                .separator()
+                .item(&open_config)
+                .separator()
+                .item(&PredefinedMenuItem::hide(app, Some("Hide Kubby"))?)
+                .item(&PredefinedMenuItem::hide_others(app, None)?)
+                .item(&PredefinedMenuItem::show_all(app, None)?)
+                .separator()
+                .item(&PredefinedMenuItem::quit(app, Some("Quit Kubby"))?)
+                .build()?;
+
+            // Build the menu
+            #[cfg(target_os = "macos")]
+            let menu = Menu::with_items(app, &[&app_menu])?;
+
+            #[cfg(not(target_os = "macos"))]
+            let menu = {
+                // On non-macOS, put Open Config in File menu
+                let file_menu_with_config = SubmenuBuilder::new(app, "File")
+                    .item(&open_config)
+                    .separator()
+                    .item(&PredefinedMenuItem::close_window(app, Some("Close Window"))?)
+                    .build()?;
+                Menu::with_items(app, &[&file_menu_with_config, &edit_menu])?
+            };
+
+            // Set menu at the app level
+            app.set_menu(menu)?;
+
+            Ok(())
+        })
+        .on_menu_event(|_app, event| {
+            if event.id() == "open_config" {
+                // Get config path and open it
+                match config::get_config_path() {
+                    Ok(path) => {
+                        let path_str = path.to_string_lossy().to_string();
+                        if let Err(e) = editor::open_file_in_editor(path_str) {
+                            eprintln!("Failed to open config: {}", e);
+                        }
+                    }
+                    Err(e) => eprintln!("Failed to get config path: {}", e),
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             kubectl::kubectl,
             config::get_dashboard_config,
