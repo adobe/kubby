@@ -1,8 +1,80 @@
+use std::path::PathBuf;
+use std::sync::OnceLock;
+
 use serde::Serialize;
-use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
+use crate::shell_env;
 use crate::types::KUBECTL_TIMEOUT_SECS;
+
+/// Cached kubectl path - resolved once on first use
+static KUBECTL_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+/// Get the path to the kubectl binary.
+/// This function searches common installation paths and the user's shell PATH
+/// since packaged apps don't inherit the shell environment.
+fn get_kubectl_path() -> &'static PathBuf {
+    KUBECTL_PATH.get_or_init(|| {
+        // Common kubectl installation paths on macOS and Linux
+        let common_paths = [
+            "/usr/local/bin/kubectl",
+            "/opt/homebrew/bin/kubectl",  // Apple Silicon Homebrew
+            "/usr/bin/kubectl",
+            "/opt/local/bin/kubectl",     // MacPorts
+            "/snap/bin/kubectl",          // Snap on Linux
+        ];
+
+        // Check common paths first
+        for path in &common_paths {
+            let path_buf = PathBuf::from(path);
+            if path_buf.exists() {
+                return path_buf;
+            }
+        }
+
+        // Check home directory paths
+        if let Ok(home) = std::env::var("HOME") {
+            let home_paths = [
+                format!("{}/.local/bin/kubectl", home),
+                format!("{}/bin/kubectl", home),
+                format!("{}/.krew/bin/kubectl", home),
+            ];
+            for path in &home_paths {
+                let path_buf = PathBuf::from(path);
+                if path_buf.exists() {
+                    return path_buf;
+                }
+            }
+        }
+
+        // Try finding kubectl in the user's shell PATH
+        // This properly reads PATH from .bashrc/.zshrc etc.
+        if let Some(path) = shell_env::find_executable("kubectl") {
+            return PathBuf::from(path);
+        }
+
+        // Final fallback - just use "kubectl" and let the OS try to find it
+        PathBuf::from("kubectl")
+    })
+}
+
+/// Get the path to kubectl.
+/// Useful when you need to pass the path to another command (like stdbuf).
+pub fn get_path() -> &'static std::path::PathBuf {
+    get_kubectl_path()
+}
+
+/// Create a new async (tokio) kubectl command.
+/// Use this in async contexts with tokio::process::Command.
+pub fn async_command() -> tokio::process::Command {
+    tokio::process::Command::new(get_kubectl_path())
+}
+
+/// Create a new sync (std) kubectl command.
+/// Use this in sync contexts with std::process::Command.
+pub fn sync_command() -> std::process::Command {
+    std::process::Command::new(get_kubectl_path())
+}
 
 /// Output from a kubectl command
 #[derive(Serialize)]
@@ -16,7 +88,7 @@ pub struct KubectlOutput {
 pub async fn kubectl(args: Vec<String>) -> Result<KubectlOutput, String> {
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        async_command()
             .args(&args)
             .output()
     )

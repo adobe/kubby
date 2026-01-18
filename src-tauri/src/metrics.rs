@@ -3,9 +3,9 @@ use std::sync::RwLock;
 
 use serde::Serialize;
 use serde_json::Value;
-use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
+use crate::kubectl;
 use crate::types::KUBECTL_TIMEOUT_SECS;
 
 /// Container metrics from the Kubernetes Metrics Server
@@ -56,7 +56,7 @@ pub async fn refresh_metrics_cache(
     // Execute kubectl with timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )

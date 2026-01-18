@@ -1,23 +1,26 @@
-use std::env;
 use tokio::io::AsyncWriteExt;
-use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
+use crate::kubectl;
+use crate::shell_env;
 use crate::types::KUBECTL_TIMEOUT_SECS;
 
 /// Get the editor command to use for editing resources.
 /// Priority: KUBE_EDITOR > EDITOR > platform default (vi on Unix, notepad on Windows)
+/// 
+/// Note: Uses shell_env to read from user's login shell environment,
+/// which properly sources .bashrc/.zshrc etc.
 fn get_editor() -> String {
-    if let Ok(editor) = env::var("KUBE_EDITOR") {
-        if !editor.is_empty() {
-            return editor;
-        }
+    // Try KUBE_EDITOR first (from user's shell environment)
+    if let Some(editor) = shell_env::get_env_var("KUBE_EDITOR") {
+        return editor;
     }
-    if let Ok(editor) = env::var("EDITOR") {
-        if !editor.is_empty() {
-            return editor;
-        }
+    
+    // Then try EDITOR
+    if let Some(editor) = shell_env::get_env_var("EDITOR") {
+        return editor;
     }
+    
     // Platform default
     #[cfg(target_os = "windows")]
     {
@@ -29,21 +32,39 @@ fn get_editor() -> String {
     }
 }
 
+/// Resolve an editor command to a full path if needed.
+/// Handles commands like "code --wait" by resolving just the executable part.
+fn resolve_editor_path(editor: &str) -> (String, Vec<String>) {
+    let parts: Vec<&str> = editor.split_whitespace().collect();
+    if parts.is_empty() {
+        return ("vi".to_string(), vec![]);
+    }
+    
+    let cmd = parts[0];
+    let args: Vec<String> = parts[1..].iter().map(|s| s.to_string()).collect();
+    
+    // If it's already an absolute path, use it directly
+    if cmd.starts_with('/') {
+        return (cmd.to_string(), args);
+    }
+    
+    // Try to find the executable in the shell's PATH
+    if let Some(full_path) = shell_env::find_executable(cmd) {
+        return (full_path, args);
+    }
+    
+    // Fall back to the original command (let the OS try to find it)
+    (cmd.to_string(), args)
+}
+
 /// Open a file in the default editor
 #[tauri::command]
 pub fn open_file_in_editor(path: String) -> Result<(), String> {
     let editor = get_editor();
+    let (editor_cmd, editor_args) = resolve_editor_path(&editor);
     
-    // Parse editor command - it might contain arguments (e.g., "code --wait")
-    let editor_parts: Vec<&str> = editor.split_whitespace().collect();
-    let (editor_cmd, editor_args) = if editor_parts.is_empty() {
-        ("vi", Vec::new())
-    } else {
-        (editor_parts[0], editor_parts[1..].to_vec())
-    };
-    
-    let mut cmd = std::process::Command::new(editor_cmd);
-    for arg in editor_args {
+    let mut cmd = std::process::Command::new(&editor_cmd);
+    for arg in &editor_args {
         cmd.arg(arg);
     }
     cmd.arg(&path);
@@ -76,7 +97,7 @@ pub async fn edit_resource(
     
     let get_output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&get_args)
             .output()
     )
@@ -109,18 +130,11 @@ pub async fn edit_resource(
     
     // Step 3: Open editor and wait for it to close
     let editor = get_editor();
+    let (editor_cmd, editor_args) = resolve_editor_path(&editor);
     let temp_path_str = temp_file_path.to_string_lossy().to_string();
     
-    // Parse editor command - it might contain arguments (e.g., "code --wait")
-    let editor_parts: Vec<&str> = editor.split_whitespace().collect();
-    let (editor_cmd, editor_args) = if editor_parts.is_empty() {
-        ("vi", Vec::new())
-    } else {
-        (editor_parts[0], editor_parts[1..].to_vec())
-    };
-    
-    let mut cmd = std::process::Command::new(editor_cmd);
-    for arg in editor_args {
+    let mut cmd = std::process::Command::new(&editor_cmd);
+    for arg in &editor_args {
         cmd.arg(arg);
     }
     cmd.arg(&temp_path_str);
@@ -144,7 +158,7 @@ pub async fn edit_resource(
     
     let apply_output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&apply_args)
             .output()
     )

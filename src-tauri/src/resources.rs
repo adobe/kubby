@@ -1,6 +1,6 @@
-use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
+use crate::kubectl;
 use crate::types::{KUBECTL_TIMEOUT_SECS, KUBECTL_DELETE_TIMEOUT_SECS};
 
 #[tauri::command]
@@ -16,7 +16,7 @@ pub async fn get_resource_types(context: String) -> Result<Vec<String>, String> 
     
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -81,7 +81,7 @@ pub async fn get_resource_detail(
     // Execute kubectl command asynchronously with timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -128,7 +128,7 @@ pub async fn delete_resource(
     // Delete operations can take longer, so we use a longer timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_DELETE_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -166,7 +166,7 @@ pub async fn rolling_restart_deployment(
     // Execute kubectl rollout restart command asynchronously with timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -204,7 +204,7 @@ pub async fn get_hpa_for_target(
     
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -286,7 +286,7 @@ pub async fn get_pdb_for_deployment(
     
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -349,7 +349,7 @@ pub async fn scale_deployment(
     // Execute kubectl scale command asynchronously with timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -396,7 +396,7 @@ pub async fn patch_hpa(
     // Execute kubectl patch command asynchronously with timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -469,7 +469,7 @@ pub async fn patch_pdb(
     // Execute kubectl patch command asynchronously with timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )

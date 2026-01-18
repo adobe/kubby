@@ -8,6 +8,7 @@ mod port_forward;
 mod resource_columns;
 mod resource_list;
 mod resources;
+mod shell_env;
 mod terminal;
 mod types;
 

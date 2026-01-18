@@ -5,6 +5,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::Mutex;
 
+use crate::kubectl;
+
 /// Global state for log streaming process
 static LOG_STREAM_PROCESS: std::sync::OnceLock<Arc<Mutex<Option<tokio::process::Child>>>> = std::sync::OnceLock::new();
 
@@ -71,16 +73,17 @@ pub async fn start_log_stream(
     
     // Spawn the kubectl process with unbuffered output
     // Use stdbuf to force line-buffering on stdout for real-time streaming
+    let kubectl_path = kubectl::get_path();
     let mut child = Command::new("stdbuf")
         .arg("-oL") // Line-buffer stdout
-        .arg("kubectl")
+        .arg(kubectl_path)
         .args(&args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
         .or_else(|_| {
             // Fallback to direct kubectl if stdbuf is not available
-            Command::new("kubectl")
+            Command::new(kubectl_path)
                 .args(&args)
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())

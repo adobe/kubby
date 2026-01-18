@@ -1,8 +1,7 @@
-use std::process::Command;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::kubectl;
 use crate::types::{ColorRule, ColorState, ColumnConfig, ResourceColumnConfig};
 
 // Macro to create a ColumnConfig with optional color rules
@@ -1062,7 +1061,7 @@ fn get_crd_columns(resource_type: &str, context: &str) -> Result<ResourceColumnC
         "json".to_string(),
     ];
 
-    let output = Command::new("kubectl")
+    let output = kubectl::sync_command()
         .args(&crd_args)
         .output()
         .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
@@ -1130,7 +1129,7 @@ fn get_crd_definition(crd_name: &str, context: &str) -> Result<ResourceColumnCon
         "json".to_string(),
     ];
 
-    let output = Command::new("kubectl")
+    let output = kubectl::sync_command()
         .args(&args)
         .output()
         .map_err(|e| format!("Failed to execute kubectl: {}", e))?;

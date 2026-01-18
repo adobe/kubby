@@ -701,7 +701,7 @@ export function LogViewer({
         ) : logs.length === 0 && isStreaming ? (
           <div class={classes.loading}>Waiting for logs...</div>
         ) : (
-          <div onClick={handleLogClick}>
+          <div onClick={handleLogClick} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <VList
               ref={listRef}
               className={classes.logContainer}

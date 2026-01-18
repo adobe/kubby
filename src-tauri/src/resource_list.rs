@@ -1,9 +1,9 @@
-use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
 use serde_json::Value;
 use serde_json_path::JsonPath;
 
+use crate::kubectl;
 use crate::types::{
     ColumnConfig, ColumnType, LabelSelector, ResourceColumnConfig, ResourceItem,
     ResourceListResponse, SpecFilter, KUBECTL_TIMEOUT_SECS,
@@ -893,7 +893,7 @@ pub async fn get_resources(
     // Execute kubectl command asynchronously with timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )
@@ -969,7 +969,7 @@ pub async fn get_pod_containers(
     // Execute kubectl command asynchronously with timeout
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(&args)
             .output()
     )

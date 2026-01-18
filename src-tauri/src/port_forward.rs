@@ -3,10 +3,11 @@ use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Mutex;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
+use tokio::process::Child;
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 
+use crate::kubectl;
 use crate::types::KUBECTL_TIMEOUT_SECS;
 
 /// Timeout in seconds for waiting for port-forward confirmation
@@ -122,7 +123,7 @@ async fn get_service_targets(
 
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl").args(&args).output(),
+        kubectl::async_command().args(&args).output(),
     )
     .await
     .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
@@ -198,7 +199,7 @@ async fn get_pod_targets(
 
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl").args(&args).output(),
+        kubectl::async_command().args(&args).output(),
     )
     .await
     .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
@@ -244,7 +245,7 @@ async fn get_container_targets(
 
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl").args(&args).output(),
+        kubectl::async_command().args(&args).output(),
     )
     .await
     .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
@@ -385,7 +386,7 @@ pub async fn start_port_forward(
     args.push("127.0.0.1".to_string());
 
     // Spawn the port-forward process with stdout/stderr captured
-    let mut child = Command::new("kubectl")
+    let mut child = kubectl::async_command()
         .args(&args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

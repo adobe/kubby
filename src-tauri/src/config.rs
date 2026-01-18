@@ -2,10 +2,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
-const KUBECTL_TIMEOUT_SECS: u64 = 10;
+use crate::kubectl;
+use crate::types::KUBECTL_TIMEOUT_SECS;
 
 // Run command configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -242,7 +242,7 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
     // Run kubectl config get-contexts
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(["config", "get-contexts", "-o", "name"])
             .output()
     )
@@ -265,7 +265,7 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
     // Get the current context
     let current_output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args(["config", "current-context"])
             .output()
     )
@@ -301,7 +301,7 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
 pub async fn get_namespaces_for_context(context: String) -> Result<Vec<String>, String> {
     let output = timeout(
         Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        Command::new("kubectl")
+        kubectl::async_command()
             .args([
                 "get", "namespaces",
                 "--context", &context,
