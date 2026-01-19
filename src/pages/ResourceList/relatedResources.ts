@@ -43,7 +43,7 @@ const RELATED_RESOURCES: Record<string, RelatedResource[]> = {
     },
     {
       code: 'hpa',
-      label: 'HPA',
+      label: 'HorizontalPodAutoscalers',
       targetResourceType: 'horizontalpodautoscalers',
       filterType: 'spec',
       specPath: 'spec.scaleTargetRef.name',

@@ -29,6 +29,9 @@ export interface NavigationNode {
   /** Selected row index to restore when navigating back (-1 or undefined means no selection) */
   selectedIndex?: number
   
+  /** Text filter for filtering resources by name (restored when navigating back) */
+  filterText?: string
+  
   /** Type of view: 'list' for resource list, 'describe' for single resource detail */
   viewType?: ViewType
   

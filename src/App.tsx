@@ -260,6 +260,7 @@ function App() {
       namespace: newNamespace,
       filters: undefined, // Clear filters - they're bound to namespace-specific resources
       selectedIndex: undefined, // Reset selection when changing context
+      filterText: undefined, // Clear text filter when changing context
     };
     setNavigationStack([...stackToUpdate.slice(0, -1), updatedNode]);
   };
@@ -285,6 +286,7 @@ function App() {
       namespace: newNamespace,
       filters: undefined, // Clear filters - they're bound to namespace-specific resources
       selectedIndex: undefined, // Reset selection when changing namespace
+      filterText: undefined, // Clear text filter when changing namespace
     };
     setNavigationStack([...stackToUpdate.slice(0, -1), updatedNode]);
   };
@@ -357,9 +359,11 @@ function App() {
     }
     
     // Otherwise render resource list
+    // Key forces remount when navigating, ensuring state (filterText, selectedIndex) initializes from props
     return (
       <main class={classes.App}>
         <ResourceList
+          key={navigationStack.length}
           context={currentNode.context}
           namespace={currentNode.namespace}
           resourceType={currentNode.resourceType}
@@ -376,6 +380,7 @@ function App() {
               resourceType: newResourceType,
               filters: undefined,
               selectedIndex: undefined,
+              filterText: undefined,
             };
             setNavigationStack([...navigationStack.slice(0, -1), updatedNode]);
           }}
@@ -390,6 +395,11 @@ function App() {
           onSelectionChange={(index) => {
             // Update current node's selection without triggering re-render cascade
             currentNode.selectedIndex = index;
+          }}
+          initialFilterText={currentNode.filterText}
+          onFilterTextChange={(text) => {
+            // Update current node's filter text without triggering re-render cascade
+            currentNode.filterText = text;
           }}
         />
       </main>

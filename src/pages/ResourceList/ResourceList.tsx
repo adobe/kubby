@@ -158,6 +158,8 @@ interface ResourceListProps {
   onJump?: (targetResourceType: string, filters: ResourceFilter[]) => void;
   initialSelectedIndex?: number;
   onSelectionChange?: (index: number) => void;
+  initialFilterText?: string;
+  onFilterTextChange?: (filterText: string) => void;
 }
 
 export function ResourceList({
@@ -180,6 +182,8 @@ export function ResourceList({
                                onJump,
                                initialSelectedIndex,
                                onSelectionChange,
+                               initialFilterText,
+                               onFilterTextChange,
                              }: ResourceListProps) {
   const isMountedRef = useRef(true)
   const resourceComboboxRef = useRef<ComboboxHandle>(null)
@@ -190,7 +194,7 @@ export function ResourceList({
   const jumpButtonRef = useRef<ButtonHandle>(null)
 
   // Text filter state for filtering resources by name
-  const [filterText, setFilterText] = useState('')
+  const [filterText, setFilterText] = useState(initialFilterText ?? '')
 
   // Containers view has a fixed resource type (not changeable)
   const isContainersView = resourceType === 'containers'
@@ -448,11 +452,11 @@ export function ResourceList({
     setSelectedIndex(newIndex)
   }, [context, namespace, resourceType])
 
-  // Clear text filter only when resource type changes
-  // Keep text filter when switching context/namespace since it's user input
+  // Restore text filter when navigating back to a node that had a filter
+  // Clear it when navigating to a new node (initialFilterText will be undefined)
   useEffect(() => {
-    setFilterText('')
-  }, [resourceType])
+    setFilterText(initialFilterText ?? '')
+  }, [context, namespace, resourceType, initialFilterText])
 
   // Select first row when resources load for the first time, adjust if out of bounds
   useEffect(() => {
@@ -475,6 +479,11 @@ export function ResourceList({
   useEffect(() => {
     onSelectionChange?.(selectedIndex)
   }, [selectedIndex, onSelectionChange])
+
+  // Notify parent when filter text changes (for navigation state persistence)
+  useEffect(() => {
+    onFilterTextChange?.(filterText)
+  }, [filterText, onFilterTextChange])
 
   // Scroll selected row into view when selection changes
   useEffect(() => {
@@ -564,7 +573,7 @@ export function ResourceList({
       const target = e.target as HTMLElement
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
-      // Escape - go back (but not if any combobox is open - let it close first)
+      // Escape - clear text filter first, then go back (but not if any combobox is open - let it close first)
       // Note: Modals capture all keyboard events, so this won't run when a modal is open
       // Note: FilterInput handles its own Escape (blur/clear) and stops propagation
       if (e.key === 'Escape') {
@@ -579,6 +588,11 @@ export function ResourceList({
           return
         }
         e.preventDefault()
+        // Clear text filter first before going back
+        if (filterText) {
+          setFilterText('')
+          return
+        }
         onBack()
         return
       }
@@ -721,7 +735,7 @@ export function ResourceList({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, runAction.hasRunCommands, handleAction, readOnly])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, runAction.hasRunCommands, handleAction, readOnly, filterText])
 
   return (
     <div class={classes.ResourceList}>
