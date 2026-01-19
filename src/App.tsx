@@ -62,6 +62,15 @@ function App() {
       return "deployments";
     }
   });
+  // Last used namespace per context - persisted to localStorage
+  const [lastNamespaceByContext, setLastNamespaceByContext] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem("kubby-last-namespace-by-context");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
   // Filter state lifted here to persist across navigation and page reloads
   const [filter, setFilter] = useState(() => {
     try {
@@ -88,6 +97,15 @@ function App() {
       // Ignore localStorage errors
     }
   }, [lastResourceType]);
+
+  // Persist last namespace by context to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("kubby-last-namespace-by-context", JSON.stringify(lastNamespaceByContext));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [lastNamespaceByContext]);
 
   // Function to load the config
   const loadConfig = useCallback(async () => {
@@ -131,6 +149,11 @@ function App() {
 
   const handleCellClick = (context: string, namespace: string) => {
     setLastSelectedCell({ context, namespace });
+    // Save the namespace for this context
+    setLastNamespaceByContext(prev => ({
+      ...prev,
+      [context]: namespace
+    }));
     
     const initialNode = createNavigationNode(
       context,
@@ -248,11 +271,24 @@ function App() {
     
     const nodeToUpdate = stackToUpdate[stackToUpdate.length - 1];
     
-    // Keep current namespace if available in new context, otherwise use first available
+    // Keep current namespace if available in new context, otherwise try saved namespace, then first available
     let newNamespace = nodeToUpdate.namespace;
     if (!availableNamespaces.includes(newNamespace)) {
-      newNamespace = availableNamespaces[0] || nodeToUpdate.namespace;
+      // Try saved namespace for this context first
+      const savedNamespace = lastNamespaceByContext[newContext];
+      if (savedNamespace && availableNamespaces.includes(savedNamespace)) {
+        newNamespace = savedNamespace;
+      } else {
+        // Fall back to first available namespace
+        newNamespace = availableNamespaces[0] || nodeToUpdate.namespace;
+      }
     }
+    
+    // Save the chosen namespace for the new context
+    setLastNamespaceByContext(prev => ({
+      ...prev,
+      [newContext]: newNamespace
+    }));
     
     const updatedNode: NavigationNode = {
       ...nodeToUpdate,
@@ -280,6 +316,12 @@ function App() {
     }
     
     const nodeToUpdate = stackToUpdate[stackToUpdate.length - 1];
+    
+    // Save the namespace for the current context
+    setLastNamespaceByContext(prev => ({
+      ...prev,
+      [nodeToUpdate.context]: newNamespace
+    }));
     
     const updatedNode: NavigationNode = {
       ...nodeToUpdate,
