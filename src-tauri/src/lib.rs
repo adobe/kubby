@@ -17,7 +17,7 @@ use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 // Re-export types for use by other modules
 pub use types::{
     ColumnConfig, ColumnType, LabelSelector, ResourceColumnConfig, ResourceItem,
-    ResourceListResponse, KUBECTL_TIMEOUT_SECS,
+    ResourceListResponse,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

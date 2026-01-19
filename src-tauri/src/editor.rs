@@ -1,9 +1,7 @@
 use tokio::io::AsyncWriteExt;
-use tokio::time::{timeout, Duration};
 
 use crate::kubectl;
 use crate::shell_env;
-use crate::types::KUBECTL_TIMEOUT_SECS;
 
 /// Get the editor command to use for editing resources.
 /// Priority: KUBE_EDITOR > EDITOR > platform default (vi on Unix, notepad on Windows)
@@ -83,27 +81,12 @@ pub async fn edit_resource(
     namespace: String,
 ) -> Result<String, String> {
     // Step 1: Fetch the resource as YAML
-    let get_args = vec![
-        "get".to_string(),
-        resource_type.clone(),
-        resource_name.clone(),
-        "--context".to_string(),
-        context.clone(),
-        "-n".to_string(),
-        namespace.clone(),
-        "-o".to_string(),
-        "yaml".to_string(),
-    ];
-    
-    let get_output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command()
-            .args(&get_args)
-            .output()
-    )
-    .await
-    .map_err(|_| format!("kubectl get timed out after {}s", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl get: {}", e))?;
+    let get_output = kubectl::run([
+        "get", &resource_type, &resource_name,
+        "--context", &context,
+        "-n", &namespace,
+        "-o", "yaml",
+    ]).await?;
     
     if !get_output.status.success() {
         let stderr = String::from_utf8_lossy(&get_output.stderr);
@@ -148,23 +131,10 @@ pub async fn edit_resource(
     }
     
     // Step 4: Apply the edited resource
-    let apply_args = vec![
-        "apply".to_string(),
-        "-f".to_string(),
-        temp_path_str,
-        "--context".to_string(),
-        context,
-    ];
-    
-    let apply_output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command()
-            .args(&apply_args)
-            .output()
-    )
-    .await
-    .map_err(|_| format!("kubectl apply timed out after {}s", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl apply: {}", e))?;
+    let apply_output = kubectl::run([
+        "apply", "-f", &temp_path_str,
+        "--context", &context,
+    ]).await?;
     
     // temp_dir will be cleaned up automatically when dropped
     

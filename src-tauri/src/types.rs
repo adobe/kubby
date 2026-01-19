@@ -1,11 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-/// Timeout for kubectl commands in seconds
-pub const KUBECTL_TIMEOUT_SECS: u64 = 10;
-
-/// Timeout for kubectl delete commands in seconds (longer because delete can take time)
-pub const KUBECTL_DELETE_TIMEOUT_SECS: u64 = 30;
-
 /// Label selector for filtering resources
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LabelSelector {
@@ -56,7 +50,6 @@ pub enum ColorState {
     Muted,      // Maps to --fgColor-muted (#9198a1)
     Neutral,    // Maps to --fgColor-neutral (#9198a1)
     Severe,     // Maps to --fgColor-severe (#db6d28)
-    Sponsors,   // Maps to --fgColor-sponsors (#db61a2)
     Success,    // Maps to --fgColor-success (#3fb950)
 }
 

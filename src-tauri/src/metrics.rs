@@ -3,10 +3,8 @@ use std::sync::RwLock;
 
 use serde::Serialize;
 use serde_json::Value;
-use tokio::time::{timeout, Duration};
 
 use crate::kubectl;
-use crate::types::KUBECTL_TIMEOUT_SECS;
 
 /// Container metrics from the Kubernetes Metrics Server
 #[derive(Debug, Clone, Serialize)]
@@ -45,24 +43,10 @@ pub async fn refresh_metrics_cache(
 ) -> Result<MetricsCacheStatus, String> {
     let api_path = format!("/apis/metrics.k8s.io/v1beta1/namespaces/{}/pods", namespace);
     
-    let args = vec![
-        "get".to_string(),
-        "--raw".to_string(),
-        api_path,
-        "--context".to_string(),
-        context.clone(),
-    ];
-    
-    // Execute kubectl with timeout
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command()
-            .args(&args)
-            .output()
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = kubectl::run([
+        "get", "--raw", &api_path,
+        "--context", &context,
+    ]).await?;
     
     // Check if metrics server is available
     if !output.status.success() {

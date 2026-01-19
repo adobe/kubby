@@ -4,8 +4,8 @@ use std::sync::OnceLock;
 use serde::Serialize;
 use tokio::time::{timeout, Duration};
 
+use crate::config::get_kubectl_timeout_secs;
 use crate::shell_env;
-use crate::types::KUBECTL_TIMEOUT_SECS;
 
 /// Cached kubectl path - resolved once on first use
 static KUBECTL_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -125,18 +125,32 @@ pub struct KubectlOutput {
     pub stderr: String,
 }
 
-/// Execute a kubectl command with the configured timeout
-#[tauri::command]
-pub async fn kubectl(args: Vec<String>) -> Result<KubectlOutput, String> {
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        async_command()
-            .args(&args)
-            .output()
+/// Execute kubectl with arguments and configured timeout.
+/// Returns the raw process output for callers to handle success/failure.
+pub async fn run<I, S>(args: I) -> Result<std::process::Output, String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<std::ffi::OsStr>,
+{
+    let timeout_secs = get_kubectl_timeout_secs();
+    timeout(
+        Duration::from_secs(timeout_secs),
+        async_command().args(args).output(),
     )
     .await
-    .map_err(|_| format!("kubectl timed out after {}s, check your network connection then click refresh to retry", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    .map_err(|_| {
+        format!(
+            "kubectl timed out after {}s, check your network connection then click refresh to retry",
+            timeout_secs
+        )
+    })?
+    .map_err(|e| format!("Failed to execute kubectl: {}", e))
+}
+
+/// Execute a kubectl command with the configured timeout (Tauri command wrapper)
+#[tauri::command]
+pub async fn kubectl(args: Vec<String>) -> Result<KubectlOutput, String> {
+    let output = run(&args).await?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();

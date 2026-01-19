@@ -1,11 +1,21 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
-use tokio::time::{timeout, Duration};
 
 use crate::kubectl;
-use crate::types::KUBECTL_TIMEOUT_SECS;
+
+/// Default timeout for kubectl commands in seconds
+const DEFAULT_KUBECTL_TIMEOUT_SECS: u64 = 10;
+
+/// Global storage for kubectl timeout from config
+static KUBECTL_TIMEOUT: OnceLock<u64> = OnceLock::new();
+
+/// Get the kubectl timeout in seconds (from config or default)
+pub fn get_kubectl_timeout_secs() -> u64 {
+    *KUBECTL_TIMEOUT.get().unwrap_or(&DEFAULT_KUBECTL_TIMEOUT_SECS)
+}
 
 // Run command configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +49,8 @@ pub struct DashboardConfig {
     pub refresh_rate_seconds: Option<u32>,
     #[serde(default)]
     pub metrics_refresh_rate_seconds: Option<u32>,
+    #[serde(default)]
+    pub kubectl_timeout_seconds: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -96,6 +108,7 @@ pub struct NormalizedDashboardConfig {
     pub live_view_auto_refresh: bool,
     pub refresh_rate_seconds: u32,
     pub metrics_refresh_rate_seconds: u32,
+    pub kubectl_timeout_seconds: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -181,6 +194,7 @@ impl DashboardConfig {
             live_view_auto_refresh: self.live_view_auto_refresh.unwrap_or(true),
             refresh_rate_seconds: self.refresh_rate_seconds.unwrap_or(2),
             metrics_refresh_rate_seconds: self.metrics_refresh_rate_seconds.unwrap_or(30),
+            kubectl_timeout_seconds: self.kubectl_timeout_seconds.unwrap_or(DEFAULT_KUBECTL_TIMEOUT_SECS),
         }
     }
 }
@@ -201,7 +215,12 @@ pub fn get_dashboard_config() -> Result<NormalizedDashboardConfig, String> {
     let config: DashboardConfig = serde_yaml::from_str(&content)
         .map_err(|e| format!("Failed to parse config YAML: {}", e))?;
 
-    Ok(config.normalize())
+    let normalized = config.normalize();
+    
+    // Initialize global kubectl timeout (only sets once, ignores subsequent calls)
+    let _ = KUBECTL_TIMEOUT.set(normalized.kubectl_timeout_seconds);
+
+    Ok(normalized)
 }
 
 /// Check if the kubby config file exists
@@ -239,16 +258,7 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
             format!("{}/.kube/config", home)
         });
 
-    // Run kubectl config get-contexts
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command()
-            .args(["config", "get-contexts", "-o", "name"])
-            .output()
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s, check your connection", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = kubectl::run(["config", "get-contexts", "-o", "name"]).await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -263,15 +273,7 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
         .collect();
 
     // Get the current context
-    let current_output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command()
-            .args(["config", "current-context"])
-            .output()
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s, check your connection", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let current_output = kubectl::run(["config", "current-context"]).await?;
 
     let current_context = if current_output.status.success() {
         String::from_utf8_lossy(&current_output.stdout).trim().to_string()
@@ -299,19 +301,11 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
 /// Get namespaces for a specific context
 #[tauri::command]
 pub async fn get_namespaces_for_context(context: String) -> Result<Vec<String>, String> {
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command()
-            .args([
-                "get", "namespaces",
-                "--context", &context,
-                "-o", "jsonpath={.items[*].metadata.name}"
-            ])
-            .output()
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s, check your connection", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = kubectl::run([
+        "get", "namespaces",
+        "--context", &context,
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]).await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -375,6 +369,7 @@ pub fn create_kubby_config(
     yaml.push_str("# readOnly: true # default is false\n");
     yaml.push_str("# liveViewAutoRefresh: false # default is true\n");
     yaml.push_str("# refreshRateSeconds: 5 # default is 2\n");
+    yaml.push_str("# kubectlTimeoutSeconds: 30 # default is 10\n");
     yaml.push_str("contexts:\n");
     yaml.push_str("  # Groups organize contexts and namespaces into logical sections on the dashboard.\n");
     yaml.push_str("  # You can have multiple groups (e.g., \"Production\", \"Staging\", \"Development\").\n");

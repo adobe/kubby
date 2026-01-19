@@ -1,12 +1,10 @@
-use tokio::time::{timeout, Duration};
-
 use serde_json::Value;
 use serde_json_path::JsonPath;
 
 use crate::kubectl;
 use crate::types::{
     ColumnConfig, ColumnType, LabelSelector, ResourceColumnConfig, ResourceItem,
-    ResourceListResponse, SpecFilter, KUBECTL_TIMEOUT_SECS,
+    ResourceListResponse, SpecFilter,
 };
 use crate::resource_columns;
 use crate::metrics;
@@ -890,16 +888,7 @@ pub async fn get_resources(
     args.push("-o".to_string());
     args.push("json".to_string());
     
-    // Execute kubectl command asynchronously with timeout
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command()
-            .args(&args)
-            .output()
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s, check your network connection then click refresh to retry", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = kubectl::run(&args).await?;
     
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -953,29 +942,12 @@ pub async fn get_pod_containers(
     namespace: String,
     pod_name: String,
 ) -> Result<ResourceListResponse, String> {
-    // Build kubectl command to get a single pod
-    let args = vec![
-        "get".to_string(),
-        "pod".to_string(),
-        pod_name.clone(),
-        "--context".to_string(),
-        context.clone(),
-        "-n".to_string(),
-        namespace.clone(),
-        "-o".to_string(),
-        "json".to_string(),
-    ];
-    
-    // Execute kubectl command asynchronously with timeout
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command()
-            .args(&args)
-            .output()
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s, check your network connection then click refresh to retry", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = kubectl::run([
+        "get", "pod", &pod_name,
+        "--context", &context,
+        "-n", &namespace,
+        "-o", "json",
+    ]).await?;
     
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

@@ -8,7 +8,6 @@ use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 
 use crate::kubectl;
-use crate::types::KUBECTL_TIMEOUT_SECS;
 
 /// Timeout in seconds for waiting for port-forward confirmation
 const PORT_FORWARD_CONFIRM_TIMEOUT_SECS: u64 = 10;
@@ -109,25 +108,12 @@ async fn get_service_targets(
     namespace: &str,
     service_name: &str,
 ) -> Result<PortForwardTargetsResponse, String> {
-    let args = vec![
-        "get".to_string(),
-        "service".to_string(),
-        service_name.to_string(),
-        "--context".to_string(),
-        context.to_string(),
-        "-n".to_string(),
-        namespace.to_string(),
-        "-o".to_string(),
-        "json".to_string(),
-    ];
-
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command().args(&args).output(),
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = kubectl::run([
+        "get", "service", service_name,
+        "--context", context,
+        "-n", namespace,
+        "-o", "json",
+    ]).await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -185,25 +171,12 @@ async fn get_pod_targets(
     namespace: &str,
     pod_name: &str,
 ) -> Result<PortForwardTargetsResponse, String> {
-    let args = vec![
-        "get".to_string(),
-        "pod".to_string(),
-        pod_name.to_string(),
-        "--context".to_string(),
-        context.to_string(),
-        "-n".to_string(),
-        namespace.to_string(),
-        "-o".to_string(),
-        "json".to_string(),
-    ];
-
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command().args(&args).output(),
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = kubectl::run([
+        "get", "pod", pod_name,
+        "--context", context,
+        "-n", namespace,
+        "-o", "json",
+    ]).await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -231,25 +204,12 @@ async fn get_container_targets(
     pod_name: &str,
     container_name: &str,
 ) -> Result<PortForwardTargetsResponse, String> {
-    let args = vec![
-        "get".to_string(),
-        "pod".to_string(),
-        pod_name.to_string(),
-        "--context".to_string(),
-        context.to_string(),
-        "-n".to_string(),
-        namespace.to_string(),
-        "-o".to_string(),
-        "json".to_string(),
-    ];
-
-    let output = timeout(
-        Duration::from_secs(KUBECTL_TIMEOUT_SECS),
-        kubectl::async_command().args(&args).output(),
-    )
-    .await
-    .map_err(|_| format!("kubectl timed out after {}s", KUBECTL_TIMEOUT_SECS))?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    let output = kubectl::run([
+        "get", "pod", pod_name,
+        "--context", context,
+        "-n", namespace,
+        "-o", "json",
+    ]).await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
