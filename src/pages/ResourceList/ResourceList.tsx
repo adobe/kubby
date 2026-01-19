@@ -37,8 +37,10 @@ function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
   if (e.metaKey || e.ctrlKey || e.altKey) return false
 
   switch (shortcut) {
-    case 'Enter': return e.key === 'Enter'
-    case 'Del': return e.key === 'Delete'
+    case 'Enter':
+      return e.key === 'Enter'
+    case 'Del':
+      return e.key === 'Delete'
     default:
       // Single letter shortcuts use e.code (e.g., "D" → "KeyD")
       return e.code === `Key${shortcut.toUpperCase()}`
@@ -201,7 +203,7 @@ export function ResourceList({
   // Extract spec filters for backend filtering
   const specFilters = useMemo(() => {
     const specs = getSpecFilters(filters)
-    return specs.map(f => ({ path: f.path, value: f.value }))
+    return specs.map(f => ({path: f.path, value: f.value}))
   }, [filters])
 
   // Use the resource loader hook - handles caching and background refresh
@@ -263,7 +265,7 @@ export function ResourceList({
 
     const refreshMetrics = async () => {
       try {
-        await invoke('refresh_metrics_cache', { context, namespace })
+        await invoke('refresh_metrics_cache', {context, namespace})
         // Trigger resource refresh to pick up new metrics
         fetchResources()
       } catch (e) {
@@ -418,24 +420,24 @@ export function ResourceList({
   // Handle jump to related resource
   const handleJump = useCallback((relationCode: string) => {
     if (selectedIndex < 0 || !resources[selectedIndex] || !onJump) return
-    
+
     const resource = resources[selectedIndex]
     const relatedResources = getRelatedResources(resourceType)
     const relation = relatedResources.find(r => r.code === relationCode)
-    
+
     if (!relation) {
       console.warn(`Unknown relation code: ${relationCode}`)
       return
     }
-    
+
     // Build filters for the target resource
     const jumpFilters = buildFiltersForRelation(
       relation,
       resourceType,
       resource.name,
-      resource.labels
+      resource.labels,
     )
-    
+
     onJump(relation.targetResourceType, jumpFilters)
   }, [selectedIndex, resources, resourceType, onJump])
 
@@ -698,12 +700,12 @@ export function ResourceList({
         // Action shortcuts - derived from shortcut bar configuration
         const hasSelection = selectedIndex >= 0
         const activeShortcuts = getShortcutsForResourceType(resourceType, hasSelection, runAction.hasRunCommands)
-        
+
         for (const shortcut of activeShortcuts) {
           if (matchesShortcut(e, shortcut.shortcut)) {
             // Skip if read-only and action is modifying
             if (readOnly && shortcut.isModifying) return
-            
+
             e.preventDefault()
             // Special case: Enter activates row (pods/containers navigation)
             if (shortcut.shortcut === 'Enter') {
@@ -724,47 +726,49 @@ export function ResourceList({
   return (
     <div class={classes.ResourceList}>
       <header class={classes.header}>
-        <div className={classes.headerInfo}>
-          <Combobox
-            ref={resourceComboboxRef}
-            items={resourceTypes}
-            selectedItem={resourceType}
-            onSelectedItemChange={handleResourceTypeSelect}
-            itemToString={(item) => item || ''}
-            filterItems={filterResourceTypes}
-            placeholder="Select resource type..."
-            emptyMessage="No resource types found"
-            tabIndex={1}
-            onOpenChange={setIsResourceComboboxOpen}
-            label="Resource"
-            shortcut="Opt+R"
-          />
-          <Combobox
-            ref={contextComboboxRef}
-            items={allContexts}
-            selectedItem={context}
-            onSelectedItemChange={handleContextSelect}
-            itemToString={(item) => item || ''}
-            placeholder="Select context..."
-            emptyMessage="No contexts found"
-            tabIndex={2}
-            onOpenChange={setIsContextComboboxOpen}
-            label="Context"
-            shortcut="Opt+C"
-          />
-          <Combobox
-            ref={namespaceComboboxRef}
-            items={availableNamespaces}
-            selectedItem={namespace}
-            onSelectedItemChange={handleNamespaceSelect}
-            itemToString={(item) => item || ''}
-            placeholder="Select namespace..."
-            emptyMessage="No namespaces found"
-            tabIndex={3}
-            onOpenChange={setIsNamespaceComboboxOpen}
-            label="Namespace"
-            shortcut="Opt+N"
-          />
+        <div className={classes.headerContext}>
+          <div className={classes.headerSwitchers}>
+            <Combobox
+              ref={resourceComboboxRef}
+              items={resourceTypes}
+              selectedItem={resourceType}
+              onSelectedItemChange={handleResourceTypeSelect}
+              itemToString={(item) => item || ''}
+              filterItems={filterResourceTypes}
+              placeholder="Select resource type..."
+              emptyMessage="No resource types found"
+              tabIndex={1}
+              onOpenChange={setIsResourceComboboxOpen}
+              label="Resource"
+              shortcut="Opt+R"
+            />
+            <Combobox
+              ref={contextComboboxRef}
+              items={allContexts}
+              selectedItem={context}
+              onSelectedItemChange={handleContextSelect}
+              itemToString={(item) => item || ''}
+              placeholder="Select context..."
+              emptyMessage="No contexts found"
+              tabIndex={2}
+              onOpenChange={setIsContextComboboxOpen}
+              label="Context"
+              shortcut="Opt+C"
+            />
+            <Combobox
+              ref={namespaceComboboxRef}
+              items={availableNamespaces}
+              selectedItem={namespace}
+              onSelectedItemChange={handleNamespaceSelect}
+              itemToString={(item) => item || ''}
+              placeholder="Select namespace..."
+              emptyMessage="No namespaces found"
+              tabIndex={3}
+              onOpenChange={setIsNamespaceComboboxOpen}
+              label="Namespace"
+              shortcut="Opt+N"
+            />
+          </div>
 
           <div className={classes.headerButtons}>
             <Button
@@ -914,7 +918,7 @@ export function ResourceList({
       {/* Action modals */}
       {runAction.renderRunModal(
         selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].name : '',
-        selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : []
+        selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].labels : [],
       )}
       {deleteAction.DeleteModal}
       {rollingRestartAction.RollingRestartModal}
