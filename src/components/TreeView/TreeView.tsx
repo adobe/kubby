@@ -1,14 +1,19 @@
 import { useState, useMemo } from 'preact/hooks'
 import classes from './TreeView.module.scss'
 import { findLinearizer, defaultLinearizers, LinearizerConfig, LinearizedResult, LinearizedPart } from './linearizers.ts'
+import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
 
 const MAX_VALUE_LENGTH = 100
+
+/** Callback for jumping to a related resource */
+export type OnJumpFn = (targetResourceType: string, filters: ResourceFilter[]) => void
 
 interface TreeViewProps {
   data: unknown
   level?: number
   path?: string[]
   linearizers?: LinearizerConfig[]
+  onJump?: OnJumpFn
 }
 
 /**
@@ -46,7 +51,7 @@ function TruncatableValue({
 /**
  * Render a single linearized part with proper type formatting
  */
-function LinearizedPartView({ part }: { part: LinearizedPart }) {
+function LinearizedPartView({ part, onJump }: { part: LinearizedPart; onJump?: OnJumpFn }) {
   switch (part.type) {
     case 'key':
       return <span class={classes.objectKey}>{part.value}</span>
@@ -60,6 +65,8 @@ function LinearizedPartView({ part }: { part: LinearizedPart }) {
       return <span class={classes.valueText}>{part.value}</span>
     case 'separator':
       return <span class={classes.valueSeparator}>|</span>
+    case 'secretRef':
+      return <span class={classes.valueString}>{part.secretName}</span>
     case 'table':
       return (
         <table class={classes.linearizedTable}>
@@ -75,7 +82,7 @@ function LinearizedPartView({ part }: { part: LinearizedPart }) {
               <tr key={rowIdx}>
                 {row.map((cell, cellIdx) => (
                   <td key={cellIdx}>
-                    <LinearizedPartView part={cell} />
+                    <LinearizedPartView part={cell} onJump={onJump} />
                   </td>
                 ))}
               </tr>
@@ -96,13 +103,15 @@ function LinearizedValue({
   data,
   level,
   path,
-  linearizers
+  linearizers,
+  onJump
 }: {
   linearized: LinearizedResult
   data: unknown
   level: number
   path: string[]
   linearizers?: LinearizerConfig[]
+  onJump?: OnJumpFn
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -111,20 +120,37 @@ function LinearizedValue({
     setExpanded(prev => !prev)
   }
 
+  // Find any secretRef in the linearized parts for the Jump button
+  const secretRefPart = linearized.find(part => part.type === 'secretRef')
+  const secretName = secretRefPart?.type === 'secretRef' ? secretRefPart.secretName : null
+
   return (
     <div class={classes.linearizedContainer}>
-      <span
-        class={`${classes.linearizedValue} ${expanded ? classes.expanded : ''}`}
-        onClick={handleClick}
-        title={expanded ? 'Click to collapse' : 'Click to expand full view'}
-      >
-        <span class={classes.linearizedParts}>
-          {linearized.map((part, i) => (
-            <LinearizedPartView key={i} part={part} />
-          ))}
+      <div class={classes.linearizedRow}>
+        <span
+          class={`${classes.linearizedValue} ${expanded ? classes.expanded : ''}`}
+          onClick={handleClick}
+          title={expanded ? 'Click to collapse' : 'Click to expand full view'}
+        >
+          <span class={classes.linearizedParts}>
+            {linearized.map((part, i) => (
+              <LinearizedPartView key={i} part={part} onJump={onJump} />
+            ))}
+          </span>
+          <span class={classes.expandIcon}>{expanded ? '▼' : '▶'}</span>
         </span>
-        <span class={classes.expandIcon}>{expanded ? '▼' : '▶'}</span>
-      </span>
+        {onJump && secretName && (
+          <button
+            class={classes.jumpButton}
+            onClick={(e) => {
+              e.stopPropagation()
+              onJump('secrets', [{ type: 'text', value: secretName }])
+            }}
+          >
+            Jump
+          </button>
+        )}
+      </div>
       {expanded && (
         <div class={classes.expandedTree}>
           <TreeViewInternal
@@ -132,6 +158,7 @@ function LinearizedValue({
             level={level + 1}
             path={path}
             linearizers={linearizers}
+            onJump={onJump}
             skipLinearization
           />
         </div>
@@ -152,6 +179,7 @@ function TreeViewInternal({
   level = 0,
   path = [],
   linearizers = defaultLinearizers,
+  onJump,
   skipLinearization = false
 }: TreeViewInternalProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -178,6 +206,7 @@ function TreeViewInternal({
           level={level}
           path={path}
           linearizers={linearizers}
+          onJump={onJump}
         />
       )
     }
@@ -218,6 +247,7 @@ function TreeViewInternal({
               level={level + 1}
               path={[...path, String(index)]}
               linearizers={linearizers}
+              onJump={onJump}
             />
           </div>
         ))}
@@ -268,6 +298,7 @@ function TreeViewInternal({
                       level={level + 1}
                       path={childPath}
                       linearizers={linearizers}
+                      onJump={onJump}
                     />
                   </span>
                 )}
@@ -284,6 +315,7 @@ function TreeViewInternal({
                     level={level + 1}
                     path={childPath}
                     linearizers={linearizers}
+                    onJump={onJump}
                   />
                 </div>
               )}
@@ -300,13 +332,14 @@ function TreeViewInternal({
 /**
  * Render a hierarchical tree view of JSON data with linearization support
  */
-export function TreeView({ data, level = 0, path = [], linearizers }: TreeViewProps) {
+export function TreeView({ data, level = 0, path = [], linearizers, onJump }: TreeViewProps) {
   return (
     <TreeViewInternal
       data={data}
       level={level}
       path={path}
       linearizers={linearizers}
+      onJump={onJump}
     />
   )
 }

@@ -6,6 +6,7 @@ import {getCacheAge} from '../../kubectl/resourceCache.ts'
 import {useResourceDetailLoader} from '../../kubectl/useResourceDetailLoader.ts'
 import type {NavigationNode} from '../../navigation/navigationTypes.ts'
 import type {DashboardConfig} from '../Dashboard/Dashboard.tsx'
+import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
 import {Button} from '../../components/Button/Button.tsx'
 import {Alert} from '../../components/Alert/Alert.tsx'
 import {CodeView} from '../../components/CodeView/CodeView.tsx'
@@ -24,17 +25,21 @@ interface ResourceDetailProps {
   navigationStack: NavigationNode[];
   onNavigateToNode: (index: number) => void;
   onBack: () => void;
+  onJump?: (targetResourceType: string, filters: ResourceFilter[]) => void;
 }
 
 /**
  * Shortcuts bar for resource detail view
  */
-function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCopy}: {
+function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCopy, isSecretResource, isDecoded, onToggleDecode}: {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onEdit: () => void;
   isEditing: boolean;
   onCopy: () => void;
+  isSecretResource: boolean;
+  isDecoded: boolean;
+  onToggleDecode: () => void;
 }) {
   const canCopy = viewMode === 'yaml' || viewMode === 'json'
   return (
@@ -77,8 +82,84 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCo
           disabled={!canCopy}
         />
       )}
+      {isSecretResource && (
+        <Button
+          label="Decode"
+          shortcut="X"
+          onClick={onToggleDecode}
+          tabIndex={0}
+          className={isDecoded ? classes.activeViewButton : undefined}
+        />
+      )}
     </ShortcutsBar>
   )
+}
+
+/**
+ * Check if resource type is a secret (contains sensitive data)
+ */
+function isSecretResourceType(resourceType: string): boolean {
+  const type = resourceType.toLowerCase()
+  return type === 'secret' || type === 'secrets'
+}
+
+/**
+ * Decode base64 encoded secret data
+ */
+function decodeSecretData(data: Record<string, unknown>): Record<string, string> {
+  const decoded: Record<string, string> = {}
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'string') {
+      try {
+        decoded[key] = atob(value)
+      } catch {
+        decoded[key] = value // If decode fails, show original
+      }
+    } else {
+      decoded[key] = String(value)
+    }
+  }
+  return decoded
+}
+
+/**
+ * Transform secret resource data for display
+ * - When hidden: shows character count for each secret value
+ * - When decoded: base64 decodes the values
+ */
+function transformSecretData(detail: Record<string, unknown>, isDecoded: boolean): Record<string, unknown> {
+  if (!detail || typeof detail !== 'object') return detail
+
+  const data = detail.data as Record<string, unknown> | undefined
+  if (!data || typeof data !== 'object') return detail
+
+  if (!isDecoded) {
+    // Show character count for each secret value
+    const hiddenData: Record<string, string> = {}
+    for (const [key, value] of Object.entries(data)) {
+      if (typeof value === 'string') {
+        // Decode to get actual character count (base64 encoded length differs from decoded)
+        try {
+          const decoded = atob(value)
+          hiddenData[key] = `[${decoded.length} chars]`
+        } catch {
+          hiddenData[key] = `[${value.length} chars]`
+        }
+      } else {
+        hiddenData[key] = `[? chars]`
+      }
+    }
+    return {
+      ...detail,
+      data: hiddenData
+    }
+  }
+
+  // Decode the secret values
+  return {
+    ...detail,
+    data: decodeSecretData(data)
+  }
 }
 
 export function ResourceDetail({
@@ -88,11 +169,16 @@ export function ResourceDetail({
                                  resourceName,
                                  dashboardConfig,
                                  onBack,
+                                 onJump,
                                }: ResourceDetailProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('tree')
   const [editError, setEditError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [isDecoded, setIsDecoded] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
+
+  // Check if this is a secret resource
+  const isSecretResource = isSecretResourceType(resourceType)
 
   // Use the resource detail loader hook - handles caching and background refresh
   const {
@@ -145,9 +231,18 @@ export function ResourceDetail({
     refocusBody()
   }, [refresh, refocusBody])
 
+  // Transform detail data for secrets (hide or decode)
+  const displayDetail = useMemo(() => {
+    if (!detail) return detail
+    if (isSecretResource) {
+      return transformSecretData(detail as Record<string, unknown>, isDecoded)
+    }
+    return detail
+  }, [detail, isSecretResource, isDecoded])
+
   // Memoize the code strings to avoid re-highlighting on every render
-  const yamlCode = useMemo(() => detail ? stringify(detail) : '', [detail])
-  const jsonCode = useMemo(() => detail ? JSON.stringify(detail, null, 2) : '', [detail])
+  const yamlCode = useMemo(() => displayDetail ? stringify(displayDetail) : '', [displayDetail])
+  const jsonCode = useMemo(() => displayDetail ? JSON.stringify(displayDetail, null, 2) : '', [displayDetail])
 
   // Handle edit resource
   const handleEdit = useCallback(async () => {
@@ -185,6 +280,12 @@ export function ResourceDetail({
     }
     refocusBody()
   }, [viewMode, yamlCode, jsonCode, refocusBody])
+
+  // Handle toggle decode for secrets
+  const handleToggleDecode = useCallback(() => {
+    setIsDecoded(prev => !prev)
+    refocusBody()
+  }, [refocusBody])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -244,14 +345,21 @@ export function ResourceDetail({
         handleCopy()
         return
       }
+
+      // X - Toggle decode for secrets
+      if (e.code === 'KeyX' && !e.metaKey && !e.ctrlKey && !e.altKey && isSecretResource) {
+        e.preventDefault()
+        handleToggleDecode()
+        return
+      }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, handleRefresh, handleEdit, handleViewModeChange, handleCopy])
+  }, [onBack, handleRefresh, handleEdit, handleViewModeChange, handleCopy, isSecretResource, handleToggleDecode])
 
   const renderContent = useCallback(() => {
-    if (!detail) {
+    if (!displayDetail) {
       if (isRefreshing) {
         return <div class={classes.loading}>Loading...</div>
       }
@@ -265,9 +373,9 @@ export function ResourceDetail({
         return <CodeView code={jsonCode} language="json"/>
       case 'tree':
       default:
-        return <TreeView data={detail}/>
+        return <TreeView data={displayDetail} onJump={onJump}/>
     }
-  }, [detail, viewMode, isRefreshing, yamlCode, jsonCode])
+  }, [displayDetail, viewMode, isRefreshing, yamlCode, jsonCode])
 
   return (
     <div class={classes.ResourceDetail}>
@@ -317,7 +425,8 @@ export function ResourceDetail({
       </div>
 
       <DetailShortcutsBar viewMode={viewMode} onViewModeChange={handleViewModeChange} onEdit={handleEdit}
-                          isEditing={isEditing} onCopy={handleCopy}/>
+                          isEditing={isEditing} onCopy={handleCopy} isSecretResource={isSecretResource}
+                          isDecoded={isDecoded} onToggleDecode={handleToggleDecode}/>
     </div>
   )
 }

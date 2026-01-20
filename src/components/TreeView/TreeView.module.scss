@@ -182,6 +182,36 @@
     flex-direction: column;
     max-width: 100%;
   }
+  
+  .linearizedRow {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    
+    // Jump button shown on hover, after the linearized value
+    .jumpButton {
+      opacity: 0;
+      font-size: 0.6rem;
+      padding: 0.1rem 0.3rem;
+      border: 1px solid var(--borderColor-muted);
+      border-radius: 3px;
+      background: var(--bgColor-muted);
+      color: var(--fgColor-muted);
+      cursor: pointer;
+      transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+      white-space: nowrap;
+      
+      &:hover {
+        background: var(--bgColor-accent-muted);
+        color: var(--fgColor-accent);
+        border-color: var(--borderColor-accent-muted);
+      }
+    }
+    
+    &:hover .jumpButton {
+      opacity: 1;
+    }
+  }
 
   .linearizedValue {
     display: inline-flex;

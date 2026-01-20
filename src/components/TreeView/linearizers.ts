@@ -16,6 +16,7 @@ export type LinearizedPart =
   | { type: 'text'; value: string }     // Plain/dimmed text for labels
   | { type: 'separator' }               // Visual separator (|)
   | { type: 'table'; headers: string[]; rows: LinearizedPart[][] } // Table with headers and rows
+  | { type: 'secretRef'; secretName: string } // Secret reference with jump action
 
 export type LinearizedResult = LinearizedPart[]
 
@@ -35,6 +36,8 @@ export const text = (value: string): LinearizedPart => ({ type: 'text', value })
 export const sep = (): LinearizedPart => ({ type: 'separator' })
 export const table = (headers: string[], rows: LinearizedPart[][]): LinearizedPart => 
   ({ type: 'table', headers, rows })
+export const secretRef = (secretName: string): LinearizedPart => 
+  ({ type: 'secretRef', secretName })
 
 /**
  * Match a path against a pattern
@@ -151,7 +154,7 @@ export const linearizeEnvVar: LinearizerFn = (data, pathKey) => {
       const ref = valueFrom.secretKeyRef as Record<string, unknown>
       const secretName = ref.name as string || '?'
       const secretKey = ref.key as string || '?'
-      return [key(name + ':'), text('from secret'), str(secretName), text('/'), str(secretKey)]
+      return [key(name + ':'), text('from secret'), secretRef(secretName), text('/'), str(secretKey)]
     }
     
     // Field ref

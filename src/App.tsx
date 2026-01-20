@@ -9,6 +9,7 @@ import { Onboarding } from "./pages/Onboarding/Onboarding.tsx";
 import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
 import type { ResourceFilter } from "./kubectl/filterTypes";
+import { isTextFilter, getTextFilter } from "./kubectl/filterTypes";
 import { 
   createNavigationNode, 
   createNavigationNodeWithLabels, 
@@ -222,14 +223,24 @@ function App() {
 
     const currentNode = navigationStack[navigationStack.length - 1];
 
+    // Extract TextFilter separately - it becomes filterText, not a structured filter
+    const textFilter = getTextFilter(filters);
+    const structuredFilters = filters.filter(f => !isTextFilter(f));
+
     // Create a new navigation node for the target resource type with filters
     const newNode = createNavigationNode(
       currentNode.context,
       currentNode.namespace,
       targetResourceType,
       currentNode.resourceType, // Display name shows where we came from
-      filters
+      structuredFilters.length > 0 ? structuredFilters : undefined
     );
+    
+    // Set filterText if we have a text filter
+    if (textFilter) {
+      newNode.filterText = textFilter.value;
+    }
+    
     setNavigationStack([...navigationStack, newNode]);
   };
 
@@ -379,6 +390,7 @@ function App() {
             navigationStack={navigationStack}
             onNavigateToNode={handleNavigateToNode}
             onBack={handleBackNavigation}
+            onJump={handleJump}
           />
         </main>
       );
