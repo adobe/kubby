@@ -29,9 +29,10 @@ pub struct RunCommand {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct ResourcesConfig {
     #[serde(default)]
-    pub run: Vec<RunCommand>,
+    pub run_commands: Vec<RunCommand>,
 }
 
 // Dashboard config types
@@ -188,7 +189,7 @@ impl DashboardConfig {
             run_commands: self
                 .resources
                 .as_ref()
-                .map(|r| r.run.clone())
+                .map(|r| r.run_commands.clone())
                 .unwrap_or_default(),
             read_only: self.read_only,
             live_view_auto_refresh: self.live_view_auto_refresh.unwrap_or(true),

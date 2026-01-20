@@ -1,9 +1,9 @@
-import { useCallback } from 'preact/hooks'
-import { invoke } from '@tauri-apps/api/core'
-import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { Modal } from '../Modal/Modal.tsx'
+import {useCallback} from 'preact/hooks'
+import {invoke} from '@tauri-apps/api/core'
+import {writeText} from '@tauri-apps/plugin-clipboard-manager'
+import {Modal} from '../Modal/Modal.tsx'
 import classes from './RunModal.module.scss'
-import type { LabelSelector } from '../../kubectl/resourceTypes.ts'
+import type {LabelSelector} from '../../kubectl/resourceTypes.ts'
 
 export interface RunCommand {
   name: string
@@ -34,11 +34,13 @@ interface RunModalProps {
  * These are either managed by Kubernetes or can cause issues with the new pod.
  */
 const EXCLUDED_LABEL_PATTERNS = [
-  'pod-template-hash',           // Managed by Deployments
-  'controller-revision-hash',    // Managed by StatefulSets
-  'statefulset.kubernetes.io/',  // StatefulSet-specific labels
-  'inject-sidecar',              // Sidecar injection (can cause issues)
-  'rollouts-pod-template-hash',  // Argo Rollouts
+  'pod-template-hash',            // Managed by Deployments
+  'controller-revision-hash',     // Managed by StatefulSets
+  'statefulset.kubernetes.io/',   // StatefulSet-specific labels
+  'inject-sidecar',               // Sidecar injection (can cause issues)
+  'rollouts-pod-template-hash',   // Argo Rollouts
+  'app.kubernetes.io/managed-by', // Helm
+  'helm.sh/chart',                // Helm
 ]
 
 /**
@@ -47,7 +49,7 @@ const EXCLUDED_LABEL_PATTERNS = [
 function filterLabels(labels: LabelSelector[]): LabelSelector[] {
   return labels.filter(label => {
     const key = label.key.toLowerCase()
-    return !EXCLUDED_LABEL_PATTERNS.some(pattern => key.includes(pattern.toLowerCase()))
+    return !EXCLUDED_LABEL_PATTERNS.some(pattern => key.startsWith(pattern.toLowerCase()))
   })
 }
 
@@ -68,7 +70,7 @@ function substituteCommand(
   context: string,
   namespace: string,
   labels: LabelSelector[],
-  resourceName: string
+  resourceName: string,
 ): string {
   const labelsStr = formatLabels(labels)
   return command
@@ -82,19 +84,19 @@ function substituteCommand(
  * Modal dialog for running kubectl commands with the current context/namespace/labels
  */
 export function RunModal({
-  isOpen,
-  onClose,
-  runCommands,
-  context,
-  namespace,
-  labels,
-  resourceName,
-  readOnly,
-}: RunModalProps) {
+                           isOpen,
+                           onClose,
+                           runCommands,
+                           context,
+                           namespace,
+                           labels,
+                           resourceName,
+                           readOnly,
+                         }: RunModalProps) {
   const handleExecute = useCallback(async (command: RunCommand) => {
     const substitutedCommand = substituteCommand(command.command, context, namespace, labels, resourceName)
     try {
-      await invoke('open_terminal_with_command', { command: substitutedCommand })
+      await invoke('open_terminal_with_command', {command: substitutedCommand})
       onClose()
     } catch (e) {
       console.error('Failed to open terminal:', e)
@@ -136,7 +138,7 @@ export function RunModal({
                   <button
                     class={classes.actionButton}
                     onClick={() => handleExecute(cmd)}
-                    title={readOnly ? "Disabled in read-only mode" : "Execute in terminal"}
+                    title={readOnly ? 'Disabled in read-only mode' : 'Execute in terminal'}
                     disabled={readOnly}
                   >
                     Execute
