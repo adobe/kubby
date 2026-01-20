@@ -45,9 +45,20 @@ pub fn run() {
                 .item(&PredefinedMenuItem::quit(app, Some("Quit Kubby"))?)
                 .build()?;
 
+            // Create Edit menu with standard items (needed for Cmd+A, Cmd+C, Cmd+V to work)
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .item(&PredefinedMenuItem::undo(app, None)?)
+                .item(&PredefinedMenuItem::redo(app, None)?)
+                .separator()
+                .item(&PredefinedMenuItem::cut(app, None)?)
+                .item(&PredefinedMenuItem::copy(app, None)?)
+                .item(&PredefinedMenuItem::paste(app, None)?)
+                .item(&PredefinedMenuItem::select_all(app, None)?)
+                .build()?;
+
             // Build the menu
             #[cfg(target_os = "macos")]
-            let menu = Menu::with_items(app, &[&app_menu])?;
+            let menu = Menu::with_items(app, &[&app_menu, &edit_menu])?;
 
             #[cfg(not(target_os = "macos"))]
             let menu = {

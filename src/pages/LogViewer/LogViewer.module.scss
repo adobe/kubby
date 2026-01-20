@@ -18,14 +18,17 @@
 
   .headerInfo {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.75rem;
     flex: 1;
   }
 
   .resourceName {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
+    overflow-x: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .resourceType {
@@ -54,12 +57,20 @@
     }
     
     &.loadingHistory .dot {
-      background-color: var(--fgColor-accent);
-      animation: none;
       border: 1px solid transparent;
       border-top-color: var(--fgColor-accent);
       background: transparent;
       animation: spin 0.8s linear infinite;
+    }
+
+    .streamingText {
+
+    }
+
+    @media (max-width: 1024px) {
+      .streamingText {
+        display: none;
+      }
     }
   }
 
@@ -70,6 +81,20 @@
     50% {
       opacity: 0.4;
     }
+  }
+
+  .filterSection {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    padding-right: 0.5rem;
+  }
+
+  .filterCount {
+    font-size: 0.7rem;
+    color: var(--fgColor-accent);
+    white-space: nowrap;
   }
 
   .headerButtons {
@@ -316,5 +341,9 @@
     margin-left: auto;
     font-size: 0.7rem;
     color: var(--fgColor-muted);
+  }
+
+  .filteredLineCount {
+    color: var(--fgColor-accent);
   }
 }

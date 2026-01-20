@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef, useCallback } from 'preact/hooks'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'preact/hooks'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import { VList, VListHandle } from 'virtua'
 import classes from './LogViewer.module.scss'
 import { Button } from '../../components/Button/Button.tsx'
 import { Alert } from '../../components/Alert/Alert.tsx'
+import { FilterInput } from '../../components/FilterInput/FilterInput.tsx'
 import { isControlModifierPressed } from '../../navigation/keyboardShortcuts.ts'
 
 const MAX_LOG_LINES = 10_000
@@ -346,6 +347,21 @@ export function LogViewer({
   const [autoscroll, setAutoscroll] = useState(true)
   const [formattedLines, setFormattedLines] = useState<Set<number>>(new Set())
   
+  // Text filter state for filtering log lines
+  const [filterText, setFilterText] = useState('')
+  const filterInputRef = useRef<HTMLInputElement>(null)
+  
+  // Filter logs by text filter (case-insensitive substring match)
+  const filteredLogs = useMemo(() => {
+    if (!filterText.trim()) {
+      return logs.map((log, index) => ({ log, originalIndex: index }))
+    }
+    const lowerFilter = filterText.toLowerCase()
+    return logs
+      .map((log, index) => ({ log, originalIndex: index }))
+      .filter(({ log }) => log.toLowerCase().includes(lowerFilter))
+  }, [logs, filterText])
+  
   // History loading state
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
@@ -363,6 +379,26 @@ export function LogViewer({
   
   // Track if we're doing programmatic scroll to avoid disabling autoscroll
   const isScrollingRef = useRef(false)
+  
+  // Track filter changes to prevent autoscroll from being disabled when content size changes
+  const prevFilterTextRef = useRef(filterText)
+  const filterJustChangedRef = useRef(false)
+  
+  // Set filterJustChanged synchronously during render (before scroll events fire)
+  if (prevFilterTextRef.current !== filterText) {
+    prevFilterTextRef.current = filterText
+    filterJustChangedRef.current = true
+  }
+  
+  // Reset filterJustChanged flag after scroll events have settled
+  useEffect(() => {
+    if (filterJustChangedRef.current) {
+      const timeoutId = window.setTimeout(() => {
+        filterJustChangedRef.current = false
+      }, 100)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [filterText])
   
   // Track if we're in the initial load phase (accumulating logs before first render)
   const isInitialLoadRef = useRef(true)
@@ -655,13 +691,13 @@ export function LogViewer({
 
   // Autoscroll effect - scroll to last item when new logs arrive
   useEffect(() => {
-    if (autoscroll && logs.length > 0 && listRef.current) {
+    if (autoscroll && filteredLogs.length > 0 && listRef.current) {
       // Mark as programmatic scroll to prevent handleScroll from disabling autoscroll
       isScrollingRef.current = true
       
       // Detect if this is the initial load (going from 0 to many logs)
       const isInitialLoad = prevLogsLengthRef.current === 0
-      prevLogsLengthRef.current = logs.length
+      prevLogsLengthRef.current = filteredLogs.length
       
       // Use requestAnimationFrame to wait for paint before scrolling
       // For initial load, wait extra frames for VList to fully measure items
@@ -670,7 +706,7 @@ export function LogViewer({
       
       const doScroll = () => {
         if (listRef.current) {
-          listRef.current.scrollToIndex(logs.length - 1, { align: 'end' })
+          listRef.current.scrollToIndex(filteredLogs.length - 1, { align: 'end' })
         }
         // Reset flag after scroll completes
         // Use longer timeout for initial load since VList may fire multiple scroll events
@@ -697,7 +733,7 @@ export function LogViewer({
         clearTimeout(timeoutId)
       }
     }
-  }, [logs.length, autoscroll])
+  }, [filteredLogs.length, autoscroll])
 
   // Focus log container when streaming starts for keyboard scrolling
   useEffect(() => {
@@ -725,8 +761,8 @@ export function LogViewer({
   
   // Handle scroll - disable autoscroll if user scrolls UP, fetch history at top
   const handleScroll = useCallback((offset: number) => {
-    // Ignore programmatic scrolls
-    if (isScrollingRef.current) {
+    // Ignore programmatic scrolls and filter-change-induced scrolls
+    if (isScrollingRef.current || filterJustChangedRef.current) {
       lastScrollOffsetRef.current = offset
       return
     }
@@ -775,15 +811,16 @@ export function LogViewer({
     }
   }, [logs])
 
-  // Copy logs to clipboard
+  // Copy logs to clipboard (copies filtered logs when filter is active)
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(logs.join('\n'))
+      const textToCopy = filteredLogs.map(({ log }) => log).join('\n')
+      await navigator.clipboard.writeText(textToCopy)
     } catch (e) {
       console.error('Failed to copy logs:', e)
     }
     refocusLogs()
-  }, [logs, refocusLogs])
+  }, [filteredLogs, refocusLogs])
 
   // Refresh (restart stream)
   const handleRefresh = useCallback(() => {
@@ -813,14 +850,31 @@ export function LogViewer({
       const target = e.target as HTMLElement
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
-      // Escape - go back
+      // Escape - clear filter first, then go back
+      // Note: FilterInput handles its own Escape (blur/clear) and stops propagation
       if (e.key === 'Escape') {
+        // If in an input, let it handle its own Escape
+        if (isInput) {
+          return
+        }
         e.preventDefault()
+        // Clear text filter first before going back
+        if (filterText) {
+          setFilterText('')
+          return
+        }
         onBack()
         return
       }
 
       if (isInput) return
+
+      // "/" - Focus filter input
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        filterInputRef.current?.focus()
+        return
+      }
 
       // Ctrl+R / Cmd+R - Refresh
       if (e.code === 'KeyR' && isControlModifierPressed(e)) {
@@ -850,7 +904,7 @@ export function LogViewer({
         return
       }
 
-      // C - Copy logs
+      // C - Copy logs (copies filtered logs when filter is active)
       if (e.code === 'KeyC' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
         handleCopy()
@@ -858,7 +912,7 @@ export function LogViewer({
       }
 
       // Log navigation shortcuts (only when logs exist)
-      if (logs.length === 0 || !listRef.current) return
+      if (filteredLogs.length === 0 || !listRef.current) return
 
       // Arrow Up - scroll up one line
       if (e.key === 'ArrowUp') {
@@ -904,14 +958,14 @@ export function LogViewer({
       if (e.key === 'End') {
         e.preventDefault()
         setAutoscroll(true)
-        listRef.current.scrollToIndex(logs.length - 1, { align: 'end' })
+        listRef.current.scrollToIndex(filteredLogs.length - 1, { align: 'end' })
         return
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll, logs.length])
+  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll, filteredLogs.length, filterText])
 
   return (
     <div class={classes.LogViewer}>
@@ -923,7 +977,20 @@ export function LogViewer({
           <span class={classes.resourceType}>{containerName ? 'container logs' : `${resourceType} logs`}</span>
           <div class={`${classes.streamingIndicator} ${!isStreaming ? classes.paused : ''} ${isLoadingHistory ? classes.loadingHistory : ''}`}>
             <span class={classes.dot} />
-            <span>{isLoadingHistory ? 'Loading history...' : isStreaming ? 'Streaming' : 'Paused'}</span>
+            <span class={classes.streamingText}>{isLoadingHistory ? 'Loading history...' : isStreaming ? 'Streaming' : 'Paused'}</span>
+          </div>
+          <div class={classes.filterSection}>
+            <FilterInput
+              value={filterText}
+              onChange={setFilterText}
+              onClear={() => setFilterText('')}
+              onSubmit={() => {
+                // Blur the input and return focus to logs
+                filterInputRef.current?.blur()
+              }}
+              inputRef={filterInputRef}
+              tabIndex={0}
+            />
           </div>
         </div>
         <div class={classes.headerButtons}>
@@ -951,6 +1018,8 @@ export function LogViewer({
           <div class={classes.empty}>No logs available</div>
         ) : logs.length === 0 && isStreaming ? (
           <div class={classes.loading}>Waiting for logs...</div>
+        ) : filteredLogs.length === 0 && filterText ? (
+          <div class={classes.empty}>No logs match filter "{filterText}"</div>
         ) : (
           <div ref={logContainerRef} onClick={handleLogClick} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <VList
@@ -958,12 +1027,12 @@ export function LogViewer({
               className={classes.logContainer}
               onScroll={handleScroll}
             >
-              {logs.map((log, index) => (
+              {filteredLogs.map(({ log, originalIndex }) => (
                 <div
-                  key={`${index}-${wrap}-${formattedLines.has(index)}`}
-                  data-index={index}
+                  key={`${originalIndex}-${wrap}-${formattedLines.has(originalIndex)}`}
+                  data-index={originalIndex}
                   class={`${classes.logLine} ${wrap ? classes.wrap : classes.nowrap}`}
-                  dangerouslySetInnerHTML={{ __html: renderLogLine(log, index) }}
+                  dangerouslySetInnerHTML={{ __html: renderLogLine(log, originalIndex) }}
                 />
               ))}
             </VList>
@@ -1001,8 +1070,16 @@ export function LogViewer({
           tabIndex={0}
         />
         <span class={classes.lineCount}>
-          {logs.length.toLocaleString()} line{logs.length !== 1 ? 's' : ''}
-          {logs.length >= MAX_LOG_LINES ? ' (max)' : ''}
+          {filterText ? (
+            <>
+              <span class={classes.filteredLineCount}>{filteredLogs.length.toLocaleString()}</span> / {logs.length.toLocaleString()} line{logs.length !== 1 ? 's' : ''}
+            </>
+          ) : (
+            <>
+              {logs.length.toLocaleString()} line{logs.length !== 1 ? 's' : ''}
+              {logs.length >= MAX_LOG_LINES ? ' (max)' : ''}
+            </>
+          )}
         </span>
       </div>
     </div>
