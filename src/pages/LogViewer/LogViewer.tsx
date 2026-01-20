@@ -10,6 +10,7 @@ import { isControlModifierPressed } from '../../navigation/keyboardShortcuts.ts'
 const MAX_LOG_LINES = 10_000
 const LOG_BATCH_INTERVAL_MS = 50 // Batch log updates every 50ms to reduce re-renders
 const INITIAL_LINES = 100 // must match backend, see log_stream.rs --tail=100
+const INITIAL_LOAD_DELAY_MS = 150 // Wait this long before rendering initial batch to avoid flicker
 const TAIL_TIERS = [500, 2000, 5000, 10000] // Progressive fetch tiers for historical logs
 const DEFAULT_LINE_HEIGHT = 24 // Fallback line height before measurement
 
@@ -363,6 +364,13 @@ export function LogViewer({
   // Track if we're doing programmatic scroll to avoid disabling autoscroll
   const isScrollingRef = useRef(false)
   
+  // Track if we're in the initial load phase (accumulating logs before first render)
+  const isInitialLoadRef = useRef(true)
+  const initialLoadTimeoutRef = useRef<number | null>(null)
+  
+  // Track previous logs length to detect initial load for autoscroll
+  const prevLogsLengthRef = useRef(0)
+  
   // Cached line height for keyboard scrolling (measured from actual rendered line)
   const lineHeightRef = useRef<number>(DEFAULT_LINE_HEIGHT)
 
@@ -490,6 +498,15 @@ export function LogViewer({
     setError(null)
     setLogs([]) // Clear logs on restart
     pendingLogsRef.current = []
+    prevLogsLengthRef.current = 0 // Reset so next batch triggers initial scroll
+    isInitialLoadRef.current = true // Reset initial load state
+    isScrollingRef.current = true // Prevent scroll events during initial load
+    
+    // Clear any pending initial load timeout
+    if (initialLoadTimeoutRef.current !== null) {
+      clearTimeout(initialLoadTimeoutRef.current)
+      initialLoadTimeoutRef.current = null
+    }
     
     // Reset history loading state and increment session ID
     setIsLoadingHistory(false)
@@ -527,7 +544,22 @@ export function LogViewer({
         
         pendingLogsRef.current.push(event.payload.line)
         
-        // Schedule a batched update if not already scheduled
+        // During initial load, accumulate logs and flush after a delay
+        // This prevents flickering from multiple renders during rapid initial log delivery
+        if (isInitialLoadRef.current) {
+          // Clear any existing initial load timeout and set a new one
+          if (initialLoadTimeoutRef.current !== null) {
+            clearTimeout(initialLoadTimeoutRef.current)
+          }
+          initialLoadTimeoutRef.current = window.setTimeout(() => {
+            initialLoadTimeoutRef.current = null
+            isInitialLoadRef.current = false
+            flushPendingLogs()
+          }, INITIAL_LOAD_DELAY_MS)
+          return
+        }
+        
+        // After initial load, use normal batching
         if (batchTimeoutRef.current === null) {
           batchTimeoutRef.current = window.setTimeout(() => {
             batchTimeoutRef.current = null
@@ -570,6 +602,9 @@ export function LogViewer({
       unlistenEnd?.()
       if (batchTimeoutRef.current !== null) {
         clearTimeout(batchTimeoutRef.current)
+      }
+      if (initialLoadTimeoutRef.current !== null) {
+        clearTimeout(initialLoadTimeoutRef.current)
       }
       invoke('stop_log_stream').catch(console.error)
     }
@@ -624,18 +659,43 @@ export function LogViewer({
       // Mark as programmatic scroll to prevent handleScroll from disabling autoscroll
       isScrollingRef.current = true
       
-      // Small delay to ensure VList is ready
-      const timeoutId = setTimeout(() => {
+      // Detect if this is the initial load (going from 0 to many logs)
+      const isInitialLoad = prevLogsLengthRef.current === 0
+      prevLogsLengthRef.current = logs.length
+      
+      // Use requestAnimationFrame to wait for paint before scrolling
+      // For initial load, wait extra frames for VList to fully measure items
+      let rafId: number
+      let timeoutId: number
+      
+      const doScroll = () => {
         if (listRef.current) {
           listRef.current.scrollToIndex(logs.length - 1, { align: 'end' })
         }
         // Reset flag after scroll completes
-        setTimeout(() => {
+        // Use longer timeout for initial load since VList may fire multiple scroll events
+        const resetDelay = isInitialLoad ? 300 : 100
+        timeoutId = window.setTimeout(() => {
           isScrollingRef.current = false
-        }, 100)
-      }, 0)
+        }, resetDelay)
+      }
       
-      return () => clearTimeout(timeoutId)
+      if (isInitialLoad) {
+        // Initial load: wait three animation frames for VList to fully render and measure
+        rafId = requestAnimationFrame(() => {
+          rafId = requestAnimationFrame(() => {
+            rafId = requestAnimationFrame(doScroll)
+          })
+        })
+      } else {
+        // Subsequent updates: single frame is sufficient
+        rafId = requestAnimationFrame(doScroll)
+      }
+      
+      return () => {
+        cancelAnimationFrame(rafId)
+        clearTimeout(timeoutId)
+      }
     }
   }, [logs.length, autoscroll])
 
