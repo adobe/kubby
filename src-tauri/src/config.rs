@@ -370,6 +370,7 @@ pub fn create_kubby_config(
     yaml.push_str("# readOnly: true # default is false\n");
     yaml.push_str("# liveViewAutoRefresh: false # default is true\n");
     yaml.push_str("# refreshRateSeconds: 5 # default is 2\n");
+    yaml.push_str("# metricsRefreshRateSeconds: 60 # default is 30\n");
     yaml.push_str("# kubectlTimeoutSeconds: 30 # default is 10\n");
     yaml.push_str("contexts:\n");
     yaml.push_str("  # Groups organize contexts and namespaces into logical sections on the dashboard.\n");
