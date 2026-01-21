@@ -146,6 +146,9 @@ pub async fn stop_log_stream_internal() {
     let mut guard = state.lock().await;
     if let Some(mut child) = guard.take() {
         let _ = child.kill().await;
+        // Wait for the process to be reaped to avoid zombie processes
+        // and ensure all file descriptors are properly closed
+        let _ = child.wait().await;
     }
 }
 

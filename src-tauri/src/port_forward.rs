@@ -440,13 +440,15 @@ pub async fn start_port_forward(
             // Success! Port forward is confirmed
         }
         Ok(Err(e)) => {
-            // kubectl reported an error
+            // kubectl reported an error - kill and wait to clean up resources
             let _ = child.kill().await;
+            let _ = child.wait().await;
             return Err(e);
         }
         Err(_) => {
-            // Timeout waiting for confirmation
+            // Timeout waiting for confirmation - kill and wait to clean up resources
             let _ = child.kill().await;
+            let _ = child.wait().await;
             return Err(format!(
                 "Timeout waiting for port forward to start ({}s)",
                 PORT_FORWARD_CONFIRM_TIMEOUT_SECS
@@ -496,6 +498,9 @@ pub async fn stop_port_forward(id: String) -> Result<(), String> {
     // Now kill the process outside the lock
     if let Some(mut process) = process {
         let _ = process.child.kill().await;
+        // Wait for the process to be reaped to avoid zombie processes
+        // and ensure all file descriptors are properly closed
+        let _ = process.child.wait().await;
         Ok(())
     } else {
         Err(format!("Port forward not found: {}", id))

@@ -133,18 +133,27 @@ where
     S: AsRef<std::ffi::OsStr>,
 {
     let timeout_secs = get_kubectl_timeout_secs();
-    timeout(
-        Duration::from_secs(timeout_secs),
-        async_command().args(args).output(),
-    )
-    .await
-    .map_err(|_| {
-        format!(
-            "kubectl timed out after {}s, check your network connection then click refresh to retry",
-            timeout_secs
-        )
-    })?
-    .map_err(|e| format!("Failed to execute kubectl: {}", e))
+    
+    // Spawn the child process with kill_on_drop to ensure cleanup on timeout.
+    // When the timeout fires, the future is dropped, which drops the Child,
+    // triggering kill_on_drop to terminate the process and close all file descriptors.
+    let child = async_command()
+        .args(args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|e| format!("Failed to execute kubectl: {}", e))?;
+    
+    timeout(Duration::from_secs(timeout_secs), child.wait_with_output())
+        .await
+        .map_err(|_| {
+            format!(
+                "kubectl timed out after {}s, check your network connection then click refresh to retry",
+                timeout_secs
+            )
+        })?
+        .map_err(|e| format!("Failed to execute kubectl: {}", e))
 }
 
 /// Execute a kubectl command with the configured timeout (Tauri command wrapper)
