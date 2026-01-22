@@ -66,6 +66,7 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
   const isMountedRef = useRef(true)
   const prevCacheKeyRef = useRef(cacheKey)
   const currentCacheKeyRef = useRef(cacheKey) // Track which cacheKey we expect results for
+  const fetchInProgressRef = useRef(false) // Guard against concurrent fetches
   
   // Keep currentCacheKeyRef in sync with cacheKey
   currentCacheKeyRef.current = cacheKey
@@ -116,6 +117,10 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
 
   // Fetch function - doesn't touch state except at the end
   const fetchResources = useCallback(async () => {
+    // Prevent concurrent fetches to avoid race conditions causing UI flickering
+    if (fetchInProgressRef.current) return
+    fetchInProgressRef.current = true
+    
     // Capture the cacheKey at fetch start to detect stale responses
     const fetchCacheKey = cacheKey
     
@@ -141,7 +146,9 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
       }
 
       // Ignore stale results if cacheKey has changed (user navigated away)
-      if (currentCacheKeyRef.current !== fetchCacheKey) return
+      if (currentCacheKeyRef.current !== fetchCacheKey) {
+        return
+      }
 
       // Save full (unfiltered) result to cache
       saveCachedResources(cacheKey, result)
@@ -159,13 +166,19 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
       }))
     } catch (e) {
       // Ignore stale errors if cacheKey has changed (user navigated away)
-      if (currentCacheKeyRef.current !== fetchCacheKey) return
+      if (currentCacheKeyRef.current !== fetchCacheKey) {
+        return
+      }
 
       setState(prev => ({
         ...prev,
         isRefreshing: false,
-        error: String(e),
+        // Only set error if we have no cached data to display
+        // This prevents UI flickering when refresh fails but we have valid data
+        error: prev.resources.length === 0 ? String(e) : null,
       }))
+    } finally {
+      fetchInProgressRef.current = false
     }
   }, [cacheKey, context, namespace, resourceType, parentResourceName, specFilters])
 

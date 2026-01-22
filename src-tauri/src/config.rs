@@ -429,11 +429,8 @@ pub fn create_kubby_config(
     yaml.push_str("      command: \"kubectl run test-network-multitool --context $context --namespace $namespace --image=praqma/network-multitool --labels=$labels --restart=Never --command -- sleep infinity\"\n");
     yaml.push_str("      resources: [\"pod\"]  # Only show this command when viewing pods\n");
     yaml.push_str("    - name: \"Debug Selected Pod\"\n");
-    yaml.push_str("      command: \"kubectl debug --context $context --namespace $namespace $name -it --image=busybox -- sh\"\n");
-    yaml.push_str("      resources: [\"pod\"]  # Uses $name to reference the selected pod\n");
-    yaml.push_str("    - name: \"Port Forward\"\n");
-    yaml.push_str("      command: \"kubectl port-forward --context $context --namespace $namespace $name 8080:80\"\n");
-    yaml.push_str("      # Uses $name to forward ports from the selected resource\n");
+    yaml.push_str("      command: \"kubectl debug --context $context --namespace $namespace $name -it --image=busybox -- sh\" # Uses $name to reference the selected pod\n");
+    yaml.push_str("      resources: [\"pod\"]\n");
 
     fs::write(&config_path, &yaml)
         .map_err(|e| format!("Failed to write config file: {}", e))?;

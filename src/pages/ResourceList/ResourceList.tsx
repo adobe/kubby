@@ -830,7 +830,8 @@ export function ResourceList({
         <Alert type="error" label="Loading Error" message={error}/>
         <Alert type="error" label="Column Evaluation Error" message={evaluationError}/>
 
-        {!error && (
+        {/* Show table if we have resources OR if there's no error (empty state) */}
+        {(resources.length > 0 || !error) && (
           <div class={classes.tableWrapper}>
             <table class={classes.table}>
               <thead>
