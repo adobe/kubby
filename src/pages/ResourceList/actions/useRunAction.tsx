@@ -84,10 +84,11 @@ export function useRunAction({
         namespace={namespace}
         labels={labels}
         resourceName={resourceName}
+        resourceType={resourceType}
         readOnly={readOnly}
       />
     )
-  }, [isRunModalOpen, handleClose, runCommands, context, namespace, readOnly])
+  }, [isRunModalOpen, handleClose, runCommands, context, namespace, resourceType, readOnly])
 
   return {
     openRun,

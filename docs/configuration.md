@@ -170,6 +170,36 @@ Use these placeholders in your custom commands:
 | `$namespace` | Current namespace |
 | `$name` | Name of the selected resource |
 | `$labels` | Resource labels formatted as `key=value,key=value` |
+| `${path.to.field}` | Deep path into the resource definition (see below) |
+
+#### Deep Path Placeholders
+
+You can reference any field from the Kubernetes resource definition using `${path.to.field}` syntax. This is useful for accessing nested values like spec fields, annotations, or status information.
+
+Examples:
+
+```yaml
+resources:
+  run:
+    - name: "Ping HTTPProxy FQDN"
+      command: "kubectl run ping-curl --image=curlimages/curl --rm -it --restart=Never --context $context --namespace $namespace -- curl -sSv https://${spec.virtualhost.fqdn}/ping"
+      resources: ["httpproxy"]
+
+    - name: "Check Service Port"
+      command: "curl -v http://${spec.clusterIP}:${spec.ports.0.port}"
+      resources: ["service"]
+
+    - name: "Show Image"
+      command: "echo Container image: ${spec.containers.0.image}"
+      resources: ["pod"]
+```
+
+::: tip Syntax Difference
+- Simple placeholders use `$name` syntax (e.g., `$context`, `$namespace`)
+- Deep path placeholders use `${path}` syntax with braces (e.g., `${spec.virtualhost.fqdn}`)
+
+This distinction avoids conflicts between the two placeholder types.
+:::
 
 ### Resource Filtering
 

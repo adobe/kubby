@@ -1,9 +1,9 @@
-import {useCallback} from 'preact/hooks'
+import {useCallback, useEffect, useMemo, useState} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
 import {writeText} from '@tauri-apps/plugin-clipboard-manager'
 import {Modal} from '../Modal/Modal.tsx'
 import classes from './RunModal.module.scss'
-import type {LabelSelector} from '../../kubectl/resourceTypes.ts'
+import type {LabelSelector, ResourceDetailResponse} from '../../kubectl/resourceTypes.ts'
 
 export interface RunCommand {
   name: string
@@ -25,6 +25,8 @@ interface RunModalProps {
   labels: LabelSelector[]
   /** Name of the selected resource */
   resourceName: string
+  /** Type of the selected resource (e.g., 'pod', 'deployment', 'httpproxy') */
+  resourceType: string
   /** Whether in read-only mode (disables execute, keeps copy enabled) */
   readOnly: boolean
 }
@@ -63,7 +65,27 @@ function formatLabels(labels: LabelSelector[]): string {
 }
 
 /**
- * Substitute placeholders in command template
+ * Extract a value from a nested object using dot-notation path.
+ * For example, getValueByPath(obj, 'spec.virtualhost.fqdn') returns obj.spec.virtualhost.fqdn
+ * Returns empty string if the path doesn't exist or value is null/undefined.
+ */
+function getValueByPath(obj: Record<string, unknown>, path: string): string {
+  const parts = path.split('.')
+  let current: unknown = obj
+  for (const part of parts) {
+    if (current == null || typeof current !== 'object') return ''
+    current = (current as Record<string, unknown>)[part]
+  }
+  return current != null ? String(current) : ''
+}
+
+/**
+ * Substitute placeholders in command template.
+ * 
+ * Supports two syntaxes:
+ * - Simple placeholders: $context, $namespace, $name, $labels
+ * - Deep path placeholders: ${spec.virtualhost.fqdn}, ${metadata.annotations.key}
+ *   These reference paths in the resource definition.
  */
 function substituteCommand(
   command: string,
@@ -71,13 +93,24 @@ function substituteCommand(
   namespace: string,
   labels: LabelSelector[],
   resourceName: string,
+  resourceDef?: ResourceDetailResponse,
 ): string {
   const labelsStr = formatLabels(labels)
-  return command
+  let result = command
+    // Simple placeholders (existing behavior)
     .replace(/\$context/g, context)
     .replace(/\$namespace/g, namespace)
     .replace(/\$labels/g, labelsStr)
     .replace(/\$name/g, resourceName)
+
+  // Deep path substitutions ${path.to.value}
+  if (resourceDef) {
+    result = result.replace(/\$\{([^}]+)\}/g, (_, path) =>
+      getValueByPath(resourceDef, path)
+    )
+  }
+
+  return result
 }
 
 /**
@@ -91,26 +124,77 @@ export function RunModal({
                            namespace,
                            labels,
                            resourceName,
+                           resourceType,
                            readOnly,
                          }: RunModalProps) {
+  const [resourceDef, setResourceDef] = useState<ResourceDetailResponse | null>(null)
+  const [isLoadingDef, setIsLoadingDef] = useState(false)
+
+  // Check if any command uses ${...} syntax and needs the resource definition
+  const needsResourceDef = useMemo(() =>
+    runCommands.some(cmd => /\$\{[^}]+\}/.test(cmd.command)),
+    [runCommands]
+  )
+
+  // Fetch resource detail when modal opens (if any command needs deep path substitution)
+  useEffect(() => {
+    if (!isOpen || !needsResourceDef || !resourceName) {
+      setResourceDef(null)
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingDef(true)
+
+    invoke<ResourceDetailResponse>('get_resource_detail', {
+      resourceType,
+      resourceName,
+      context,
+      namespace,
+    })
+      .then(result => {
+        if (!cancelled) {
+          setResourceDef(result)
+        }
+      })
+      .catch(e => {
+        if (!cancelled) {
+          console.error('Failed to fetch resource detail for command substitution:', e)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingDef(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, needsResourceDef, resourceName, resourceType, context, namespace])
+
   const handleExecute = useCallback(async (command: RunCommand) => {
-    const substitutedCommand = substituteCommand(command.command, context, namespace, labels, resourceName)
+    const substitutedCommand = substituteCommand(
+      command.command, context, namespace, labels, resourceName, resourceDef ?? undefined
+    )
     try {
       await invoke('open_terminal_with_command', {command: substitutedCommand})
       onClose()
     } catch (e) {
       console.error('Failed to open terminal:', e)
     }
-  }, [context, namespace, labels, resourceName, onClose])
+  }, [context, namespace, labels, resourceName, resourceDef, onClose])
 
   const handleCopy = useCallback(async (command: RunCommand) => {
-    const substitutedCommand = substituteCommand(command.command, context, namespace, labels, resourceName)
+    const substitutedCommand = substituteCommand(
+      command.command, context, namespace, labels, resourceName, resourceDef ?? undefined
+    )
     try {
       await writeText(substitutedCommand)
     } catch (e) {
       console.error('Failed to copy to clipboard:', e)
     }
-  }, [context, namespace, labels, resourceName])
+  }, [context, namespace, labels, resourceName, resourceDef])
 
   if (runCommands.length === 0) {
     return (
@@ -128,8 +212,13 @@ export function RunModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Run Command">
       <div class={classes.commandList}>
+        {needsResourceDef && isLoadingDef && (
+          <div class={classes.loading}>Loading resource details...</div>
+        )}
         {runCommands.map((cmd, index) => {
-          const substitutedCommand = substituteCommand(cmd.command, context, namespace, labels, resourceName)
+          const substitutedCommand = substituteCommand(
+            cmd.command, context, namespace, labels, resourceName, resourceDef ?? undefined
+          )
           return (
             <div key={index} class={classes.commandItem}>
               <div class={classes.commandHeader}>
