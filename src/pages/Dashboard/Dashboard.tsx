@@ -825,6 +825,67 @@ interface DashboardTableProps {
 function DashboardTable({ group, groupIndex, filterWords, groupPositionsRef, onCellClick }: DashboardTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const hasNamespaceGroups = group.namespaceGroups.some((ng) => ng.name !== null);
+  const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
+  const [hoveredCol, setHoveredCol] = useState<number | null>(null);
+
+  // Track focus within this table
+  useEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains(classes.cellButton)) {
+        const row = parseInt(target.dataset.row || "0", 10);
+        const col = parseInt(target.dataset.col || "0", 10);
+        setFocusedCell({ row, col });
+      }
+    };
+
+    const handleFocusOut = (e: FocusEvent) => {
+      const relatedTarget = e.relatedTarget as HTMLElement | null;
+      // Only clear if focus is leaving the table entirely
+      if (!relatedTarget || !table.contains(relatedTarget)) {
+        setFocusedCell(null);
+      }
+    };
+
+    table.addEventListener('focusin', handleFocusIn);
+    table.addEventListener('focusout', handleFocusOut);
+    return () => {
+      table.removeEventListener('focusin', handleFocusIn);
+      table.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
+
+  // Track column hover within this table
+  useEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const cell = target.closest(`.${classes.cell}`) as HTMLElement | null;
+      if (cell && cell.dataset.col !== undefined) {
+        const col = parseInt(cell.dataset.col, 10);
+        setHoveredCol(col);
+      } else {
+        // Clear when hovering over non-cell areas (headers, etc.)
+        setHoveredCol(null);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setHoveredCol(null);
+    };
+
+    table.addEventListener('mouseover', handleMouseOver);
+    table.addEventListener('mouseleave', handleMouseLeave);
+    return () => {
+      table.removeEventListener('mouseover', handleMouseOver);
+      table.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
 
   const { filtered: filteredContextGroups } = filterContextGroups(group.contextGroups, filterWords);
   const { filtered: filteredNamespaceGroups } = filterNamespaces(group.namespaceGroups, filterWords);
@@ -866,6 +927,7 @@ function DashboardTable({ group, groupIndex, filterWords, groupPositionsRef, onC
               {(() => {
                 let prevRegion = "";
                 let isFirstVisibleGroup = true;
+                let colIndex = 0;
                 return filteredContextGroups.map((cg) => {
                   if (cg.contexts.length === 0) return null;
                   prevRegion = "";
@@ -878,11 +940,14 @@ function DashboardTable({ group, groupIndex, filterWords, groupPositionsRef, onC
                     const isFirstInGroup = ctxIndex === 0 && hasVisibleGroupBefore;
                     const showRegion = parsed.region !== prevRegion;
                     prevRegion = parsed.region;
+                    const currentColIndex = colIndex++;
+                    const isHighlighted = focusedCell?.col === currentColIndex;
+                    const isHovered = hoveredCol === currentColIndex;
                     
                     return (
                       <th 
                         key={ctx} 
-                        class={`${classes.contextHeader} ${isFirstInGroup ? classes.groupBorder : ""}`} 
+                        class={`${classes.contextHeader} ${isFirstInGroup ? classes.groupBorder : ""} ${isHighlighted ? classes.headerHighlight : ""} ${isHovered && !isHighlighted ? classes.headerHover : ""}`} 
                         title={ctx}
                       >
                         <div class={classes.contextLabel}>
@@ -918,6 +983,7 @@ function DashboardTable({ group, groupIndex, filterWords, groupPositionsRef, onC
                   groupIndex={groupIndex}
                   groupPositionsRef={groupPositionsRef}
                   tableRef={tableRef}
+                  focusedCell={focusedCell}
                   onCellClick={onCellClick}
                 />
               );
@@ -938,6 +1004,7 @@ interface NamespaceGroupRowsProps {
   groupIndex: number;
   groupPositionsRef: { current: Map<number, { row: number; col: number }> };
   tableRef: { current: HTMLTableElement | null };
+  focusedCell: { row: number; col: number } | null;
   onCellClick: (context: string, namespace: string) => void;
 }
 
@@ -950,6 +1017,7 @@ function NamespaceGroupRows({
   groupIndex,
   groupPositionsRef,
   tableRef,
+  focusedCell,
   onCellClick,
 }: NamespaceGroupRowsProps) {
   const contextsWithBoundary: { ctx: string; isFirstInGroup: boolean; colIndex: number }[] = [];
@@ -985,10 +1053,11 @@ function NamespaceGroupRows({
         const prefix = hasPrefix ? namespacePrefix : "";
         const suffix = hasPrefix ? ns.name.slice(namespacePrefix.length) : ns.name;
         const rowIndex = startRowIndex + nsIndex;
+        const isRowHighlighted = focusedCell?.row === rowIndex;
         
         return (
           <tr key={ns.name} class={classes.namespaceRow}>
-            <td class={classes.stickyCol} title={ns.name}>
+            <td class={`${classes.stickyCol} ${isRowHighlighted ? classes.headerHighlight : ""}`} title={ns.name}>
               <span class={classes.namespaceLabel}>
                 {prefix && <span class={classes.namespacePrefix}>{prefix}</span>}
                 <span class={classes.namespaceSuffix}>{suffix}</span>
@@ -1001,6 +1070,7 @@ function NamespaceGroupRows({
                 <td 
                   key={`${ns.name}-${ctx}`} 
                   class={`${classes.cell} ${isFirstInGroup ? classes.groupBorder : ""}`}
+                  data-col={col}
                 >
                   {isAvailable ? (
                     <button 

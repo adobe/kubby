@@ -63,7 +63,8 @@
 .matrix {
   --header-row-height: 24px;
   
-  border-collapse: separate;
+  border-collapse: collapse;
+  border-top: var(--border-muted);
   border-spacing: 0;
   width: max-content;
 
@@ -124,6 +125,7 @@
   text-align: left;
   border-right: 1px solid var(--borderColor-muted);
   border-bottom: 1px solid var(--borderColor-muted);
+  background-color: var(--bgColor-default);
 }
 
 // Vertical border to separate context groups
@@ -223,10 +225,11 @@
     .stickyCol {
       background: var(--control-bgColor-hover);
     }
-    
-    .cell {
-      background: var(--bgColor-muted);
-    }
+  }
+
+  th, td {
+    border-top: var(--border-muted);
+    border-bottom: var(--border-muted);
   }
 }
 
@@ -305,5 +308,18 @@
   display: inline-block;
   width: 22px;
   height: 22px;
+}
+
+// Highlight for row/column headers when a cell is focused
+.headerHighlight {
+  background: var(--bgColor-accent-muted) !important;
+  .contextRegion, .namespaceSuffix {
+    color: var(--fgColor-accent) !important;
+  }
+}
+
+// Hover effect for column headers when hovering cells in that column
+.headerHover {
+  background: var(--control-bgColor-hover) !important;
 }
 
