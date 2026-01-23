@@ -173,9 +173,9 @@ export function useResourceLoader({ context, namespace, resourceType, labelSelec
       setState(prev => ({
         ...prev,
         isRefreshing: false,
-        // Only set error if we have no cached data to display
-        // This prevents UI flickering when refresh fails but we have valid data
-        error: prev.resources.length === 0 ? String(e) : null,
+        // Always show the error so user knows there's a connection issue
+        // The table will still display cached data if available (handled in ResourceList)
+        error: String(e),
       }))
     } finally {
       fetchInProgressRef.current = false

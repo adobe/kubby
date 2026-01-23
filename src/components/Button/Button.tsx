@@ -47,6 +47,8 @@ interface ButtonProps {
   onSubItemClick?: (code: string) => void
   /** Direction for dropdown popup ('up' for shortcuts bar, 'down' for normal) */
   dropDirection?: 'up' | 'down'
+  /** Whether to show external icon */
+  external?: boolean
 }
 
 function ButtonComponent({
@@ -60,6 +62,7 @@ function ButtonComponent({
   subItems,
   onSubItemClick,
   dropDirection = 'down',
+  external = false,
 }: ButtonProps, ref: Ref<ButtonHandle>) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -202,6 +205,7 @@ function ButtonComponent({
       >
         <span class={classes.label}>{label}</span>
         {shortcut && (<span class={classes.shortcutKey}>{formatShortcut(shortcut)}</span>)}
+        {external && (<span class={classes.external} />)}
       </button>
     )
   }

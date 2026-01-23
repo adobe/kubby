@@ -348,6 +348,26 @@ export function ResourceList({
       return
     }
 
+    // AI action - opens AI assistant with current context
+    if (code === 'ai' && dashboardConfig.ai) {
+      const selectedResource = selectedIndex >= 0 ? resources[selectedIndex] : null
+      try {
+        await invoke('open_ai_tool', {
+          params: {
+            tool: dashboardConfig.ai.tool,
+            context,
+            namespace,
+            resourceType: resourceType !== 'containers' ? resourceType : undefined,
+            resourceName: selectedResource?.name,
+            readOnly: dashboardConfig.ai.readOnly,
+          }
+        })
+      } catch (e) {
+        console.error('Failed to open AI tool:', e)
+      }
+      return
+    }
+
     // All other actions require a selection
     if (selectedIndex < 0 || !resources[selectedIndex]) return
     const resource = resources[selectedIndex]
@@ -711,6 +731,13 @@ export function ResourceList({
           return
         }
 
+        // A - Open AI assistant (if configured)
+        if (e.code === 'KeyA' && !e.metaKey && !e.ctrlKey && !e.altKey && dashboardConfig.ai) {
+          e.preventDefault()
+          handleAction('ai')
+          return
+        }
+
         // Action shortcuts - derived from shortcut bar configuration
         const hasSelection = selectedIndex >= 0
         const activeShortcuts = getShortcutsForResourceType(resourceType, hasSelection, runAction.hasRunCommands)
@@ -735,7 +762,7 @@ export function ResourceList({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, runAction.hasRunCommands, handleAction, readOnly, filterText])
+  }, [onBack, refresh, resources, resourceType, selectedIndex, handleRowActivate, isAnyComboboxOpen, runAction.hasRunCommands, handleAction, readOnly, filterText, dashboardConfig.ai])
 
   return (
     <div class={classes.ResourceList}>
@@ -924,6 +951,7 @@ export function ResourceList({
         disabled={error !== null}
         hasRunCommands={runAction.hasRunCommands}
         readOnly={readOnly}
+        aiConfig={dashboardConfig.ai}
         availableResourceTypes={resourceTypes}
         onAction={handleAction}
         onJump={handleJump}

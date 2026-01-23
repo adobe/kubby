@@ -1,6 +1,6 @@
 # Kubby
 
-<img src="docs/public/images/light/kubby_banner.png" height="192" alt="Kubby Logo"/>
+<img src="docs/public/images/light/kubby_banner.png" height="256" alt="Kubby Logo"/>
 
 A fast, keyboard-driven desktop app for managing Kubernetes clusters.
 

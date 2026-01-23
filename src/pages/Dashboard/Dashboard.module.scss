@@ -286,6 +286,10 @@
     border-color: var(--fgColor-accent);
     box-shadow: 0 0 0 2px var(--bgColor-accent-muted);
     transform: scale(1.1);
+
+    .bullet {
+      color: var(--label-cyan-fgColor-active);
+    }
   }
   
   &:active {
@@ -296,11 +300,11 @@
 
 .bullet {
   font-size: 8px;
-  color: var(--fgColor-muted);
+  color: var(--label-cyan-bgColor-active);
   line-height: 1;
   
   .cellButton:hover & {
-    color: var(--borderColor-default);
+    color: var(--label-cyan-fgColor-hover);
   }
 }
 

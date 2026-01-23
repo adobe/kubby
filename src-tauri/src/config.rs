@@ -35,6 +35,55 @@ pub struct ResourcesConfig {
     pub run_commands: Vec<RunCommand>,
 }
 
+// AI assistant configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AiTool {
+    CursorAgent,  // cursor agent CLI
+    Cursor,       // Open Cursor IDE window
+    Claude,       // claude CLI
+    Augment,      // auggie CLI
+    Codex,        // codex CLI
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiConfig {
+    /// Which AI tool to use
+    pub tool: Option<AiTool>,
+    /// Custom name for the AI button (defaults to "AI")
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Read-only mode for AI kubectl (separate from global readOnly)
+    #[serde(default)]
+    pub read_only: Option<bool>,
+}
+
+impl AiTool {
+    /// Get the display name for this tool (used in tooltip)
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            AiTool::CursorAgent => "Cursor Agent",
+            AiTool::Cursor => "Cursor IDE",
+            AiTool::Claude => "Claude Code",
+            AiTool::Augment => "Augment",
+            AiTool::Codex => "Codex",
+        }
+    }
+}
+
+/// Normalized AI config for frontend consumption
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NormalizedAiConfig {
+    pub tool: AiTool,
+    /// Custom button name (defaults to "AI")
+    pub name: String,
+    /// Display name of the tool (for tooltip)
+    pub tool_display_name: String,
+    pub read_only: bool,
+}
+
 // Dashboard config types
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +91,8 @@ pub struct DashboardConfig {
     pub contexts: Dashboard,
     #[serde(default)]
     pub resources: Option<ResourcesConfig>,
+    #[serde(default)]
+    pub ai: Option<AiConfig>,
     #[serde(default)]
     pub read_only: bool,
     #[serde(default)]
@@ -105,6 +156,7 @@ pub struct NamespaceGroup {
 pub struct NormalizedDashboardConfig {
     pub groups: Vec<NormalizedDashboardGroup>,
     pub run_commands: Vec<RunCommand>,
+    pub ai: Option<NormalizedAiConfig>,
     pub read_only: bool,
     pub live_view_auto_refresh: bool,
     pub refresh_rate_seconds: u32,
@@ -141,6 +193,16 @@ pub struct NormalizedNamespaceItem {
 
 impl DashboardConfig {
     pub fn normalize(&self) -> NormalizedDashboardConfig {
+        // Normalize AI config: only include if a tool is specified
+        let ai = self.ai.as_ref().and_then(|ai_config| {
+            ai_config.tool.as_ref().map(|tool| NormalizedAiConfig {
+                name: ai_config.name.clone().unwrap_or_else(|| "AI".to_string()),
+                tool_display_name: tool.display_name().to_string(),
+                tool: tool.clone(),
+                read_only: ai_config.read_only.unwrap_or(true), // Default to read-only for safety
+            })
+        });
+
         NormalizedDashboardConfig {
             groups: self
                 .contexts
@@ -191,6 +253,7 @@ impl DashboardConfig {
                 .as_ref()
                 .map(|r| r.run_commands.clone())
                 .unwrap_or_default(),
+            ai,
             read_only: self.read_only,
             live_view_auto_refresh: self.live_view_auto_refresh.unwrap_or(true),
             refresh_rate_seconds: self.refresh_rate_seconds.unwrap_or(2),
@@ -431,6 +494,24 @@ pub fn create_kubby_config(
     yaml.push_str("    - name: \"Debug Selected Pod\"\n");
     yaml.push_str("      command: \"kubectl debug --context $context --namespace $namespace $name -it --image=busybox -- sh\" # Uses $name to reference the selected pod\n");
     yaml.push_str("      resources: [\"pod\"]\n");
+    yaml.push_str("\n");
+    yaml.push_str("# AI Assistant Configuration\n");
+    yaml.push_str("# Configure an AI coding assistant to help with Kubernetes operations.\n");
+    yaml.push_str("# The AI button [A] will appear in the shortcuts bar when configured.\n");
+    yaml.push_str("# ai:\n");
+    yaml.push_str("#   # Tool to launch. Options:\n");
+    yaml.push_str("#   #   cursor-agent  - Cursor agent CLI (terminal-based)\n");
+    yaml.push_str("#   #   cursor        - Open Cursor IDE window\n");
+    yaml.push_str("#   #   claude        - Claude Code CLI\n");
+    yaml.push_str("#   #   augment       - Augment (auggie) CLI\n");
+    yaml.push_str("#   #   codex         - OpenAI Codex CLI\n");
+    yaml.push_str("#   tool: cursor-agent\n");
+    yaml.push_str("#   # Custom button name (default: \"AI\")\n");
+    yaml.push_str("#   name: Agent\n");
+    yaml.push_str("#   # Read-only mode restricts kubectl to safe commands (get, describe, logs, etc.)\n");
+    yaml.push_str("#   # and locks the context/namespace to prevent escaping to other clusters.\n");
+    yaml.push_str("#   # Default is true for safety.\n");
+    yaml.push_str("#   readOnly: true\n");
 
     fs::write(&config_path, &yaml)
         .map_err(|e| format!("Failed to write config file: {}", e))?;

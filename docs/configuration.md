@@ -70,6 +70,7 @@ contexts:
 | `liveViewAutoRefresh` | boolean | `true` | Automatically refresh resource views |
 | `refreshRateSeconds` | number | `2` | Interval for refreshing resource lists |
 | `metricsRefreshRateSeconds` | number | `30` | Interval for refreshing metrics data |
+| `ai` | object | - | AI assistant configuration (see [AI Assistant](/features/ai-assistant)) |
 
 ### Contexts Configuration
 
@@ -219,6 +220,41 @@ The `resources` field limits which resource types a command appears for:
   # No resources field = available everywhere
 ```
 
+## AI Assistant Configuration
+
+Configure an AI coding assistant to help with Kubernetes operations. When configured, the button appears in the shortcuts bar with your custom name (or "AI" by default).
+
+```yaml
+ai:
+  tool: cursor-agent    # Which AI tool to launch
+  name: Agent           # Custom button label (default: "AI")
+  readOnly: true        # Restrict kubectl to safe commands (default: true)
+```
+
+### AI Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `tool` | string | (required) | AI tool: `cursor-agent`, `cursor`, `claude`, `augment`, or `codex` |
+| `name` | string | `"AI"` | Custom button label (tooltip shows actual tool) |
+| `readOnly` | boolean | `true` | Restrict kubectl to read-only commands |
+
+### Supported Tools
+
+| Tool | Config Value | Description |
+|------|--------------|-------------|
+| Cursor Agent | `cursor-agent` | Cursor's CLI agent (terminal-based) |
+| Cursor IDE | `cursor` | Opens a new Cursor window |
+| Claude Code | `claude` | Anthropic's Claude CLI |
+| Augment | `augment` | Augment's auggie CLI |
+| Codex | `codex` | OpenAI's Codex CLI |
+
+::: tip Read-Only Mode
+When `readOnly: true`, the AI can only use safe kubectl commands like `get`, `describe`, and `logs`. It cannot modify resources or switch to a different context/namespace. This is the recommended setting for production clusters.
+:::
+
+See [AI Assistant](/features/ai-assistant) for more details.
+
 ## Complete Example
 
 ```yaml
@@ -271,6 +307,12 @@ resources:
       resources: ["pod"]
     - name: "Port Forward 8080:80"
       command: "kubectl port-forward --context $context --namespace $namespace $name 8080:80"
+
+# AI Assistant (optional)
+ai:
+  tool: cursor-agent
+  name: Agent
+  readOnly: true
 ```
 
 ## Tips

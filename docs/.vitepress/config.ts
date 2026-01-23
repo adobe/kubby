@@ -40,6 +40,7 @@ export default defineConfig({
           { text: 'Log Viewer', link: '/features/log-viewer' },
           { text: 'Port Forwarding', link: '/features/port-forwarding' },
           { text: 'Shell Access', link: '/features/shell' },
+          { text: 'AI Assistant', link: '/features/ai-assistant' },
           { text: 'Actions', link: '/features/actions' },
         ]
       },

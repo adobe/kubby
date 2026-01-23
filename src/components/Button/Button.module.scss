@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0;
+  padding: 0.15rem 0.35rem;
   //padding: 0.2rem 0.4rem;
   background: var(--bgColor-muted);
   border: 1px solid var(--borderColor-muted);
@@ -45,9 +45,19 @@
   }
 
   .label {
-    padding: 0.2rem 0.4rem;
+    padding: 0;
     color: var(--fgColor-default);
     white-space: nowrap;
+  }
+
+  .external {
+    display: inline-block;
+    background-image: url(../../assets/icons/external.svg);
+    background-size: 12px;
+    width: 12px;
+    height: 12px;
+    background-position: center center;
+    background-repeat: no-repeat;
   }
 
   .shortcutKey {
@@ -55,15 +65,15 @@
     align-items: center;
     justify-content: center;
     min-width: 1.2em;
-    padding: 0.05rem 0.25rem;
-    background: var(--bgColor-muted);
+    padding: 0.05rem 0.2rem;
+    background: var(--bgColor-accent-muted);
     border: 1px solid var(--borderColor-default);
     border-radius: 3px;
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.1rem;
     line-height: 1.2;
-    color: var(--fgColor-muted);
+    color: var(--label-cyan-fgColor-rest);
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
   }
 
@@ -71,9 +81,8 @@
     display: inline-block;
     align-items: center;
     justify-content: center;
-    //margin-left: 0.15rem;
-    margin: 0;
     padding: 0 0.15rem 0 0.35rem;
+    margin: -0.15rem; // compensate for button padding, so the border below is for the entire height
     border-left: 1px solid var(--borderColor-muted);
     font-size: 1rem;
     color: var(--fgColor-muted);

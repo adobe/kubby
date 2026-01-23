@@ -41,6 +41,7 @@ Kubby displays shortcuts appropriate for your platform:
 | `↓`            | Select next resource                        |
 | `Enter`        | Primary action (context-dependent)          |
 | `J`            | Jump to related resources                   |
+| `A`            | Open AI assistant (if configured)           |
 | `Esc`          | Clear filters, then return to previous view |
 
 ### Actions

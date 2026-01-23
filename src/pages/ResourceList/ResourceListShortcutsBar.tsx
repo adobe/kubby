@@ -4,6 +4,7 @@ import { ShortcutsBar } from '../../components/ShortcutsBar/ShortcutsBar.tsx'
 import { Button, type SubItem, type ButtonHandle } from '../../components/Button/Button.tsx'
 import type { ActionCode } from './resourceActions.ts'
 import { getRelatedResources } from './relatedResources.ts'
+import type { AiConfig } from '../Dashboard/Dashboard.tsx'
 
 export interface ShortcutConfig {
   label: string
@@ -19,6 +20,8 @@ interface ResourceListShortcutsBarProps {
   disabled: boolean
   hasRunCommands: boolean
   readOnly: boolean
+  /** AI assistant configuration (if configured) */
+  aiConfig?: AiConfig
   /** Available resource types in the cluster (for filtering Jump options) */
   availableResourceTypes?: string[]
   onAction: (code: ActionCode) => void
@@ -102,6 +105,7 @@ export function ResourceListShortcutsBar({
   disabled,
   hasRunCommands,
   readOnly,
+  aiConfig,
   availableResourceTypes = [],
   onAction,
   onJump,
@@ -155,12 +159,15 @@ export function ResourceListShortcutsBar({
           />
         )
       })}
+
+      {/* Spacer to push remaining buttons to the right */}
+      <div style={{ flexGrow: 1 }} />
       
       {/* Jump dropdown button - only show if there are related resources */}
       {hasJumpOptions && (
         <Button
           ref={jumpButtonRef}
-          label="Jump..."
+          label="Jump"
           shortcut="J"
           subItems={jumpSubItems}
           onSubItemClick={onJump}
@@ -168,6 +175,19 @@ export function ResourceListShortcutsBar({
           tabIndex={0}
           disabled={disabled || !hasSelection}
           tooltip="Jump to related resources"
+        />
+      )}
+      
+      {/* AI assistant button - only show if configured */}
+      {aiConfig && (
+        <Button
+          label={aiConfig.name}
+          shortcut="A"
+          onClick={() => onAction('ai')}
+          tabIndex={0}
+          disabled={disabled}
+          tooltip={`Open ${aiConfig.toolDisplayName} with current context`}
+          external={true}
         />
       )}
     </ShortcutsBar>

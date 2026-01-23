@@ -38,9 +38,26 @@ export interface RunCommand {
   resources?: string[];
 }
 
+/** AI tool options */
+export type AiTool = 'cursor-agent' | 'cursor' | 'claude' | 'augment' | 'codex';
+
+/** AI assistant configuration */
+export interface AiConfig {
+  /** Which AI tool to use */
+  tool: AiTool;
+  /** Custom button name (defaults to "AI") */
+  name: string;
+  /** Display name of the tool (for tooltip) */
+  toolDisplayName: string;
+  /** Read-only mode for AI kubectl (separate from global readOnly) */
+  readOnly: boolean;
+}
+
 export interface DashboardConfig {
   groups: DashboardGroup[];
   runCommands: RunCommand[];
+  /** AI assistant configuration (optional - button only shows if configured) */
+  ai?: AiConfig;
   readOnly: boolean;
   liveViewAutoRefresh: boolean;
   refreshRateSeconds: number;

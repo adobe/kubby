@@ -36,6 +36,10 @@ Stream logs in real-time from pods and containers. Features syntax highlighting,
 Perform common operations like scaling deployments, rolling restarts, editing resources, port-forward 
 and more with single keystrokes.
 
+### [AI Assistant](/features/ai-assistant)
+Launch an AI coding assistant with your current Kubernetes context pre-configured. 
+Supports Cursor, Claude Code, Augment, and Codex CLI tools.
+
 ## Design Principles
 
 Kubby is built around these core principles:

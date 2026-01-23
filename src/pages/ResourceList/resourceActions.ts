@@ -17,6 +17,7 @@ export type ActionCode =
   | 'show_port_forward' // Show active port forwards
   | 'shell'          // Open shell to pod/container
   | 'run'            // Open run modal
+  | 'ai'             // Open AI assistant
 
 /**
  * Actions that modify resources (blocked in read-only mode)
@@ -171,6 +172,7 @@ export function isActionAvailable(action: ActionCode, resourceType: string): boo
       // Available for most resource types (but not containers)
       return normalizedType !== 'containers'
     case 'run':
+    case 'ai':
       return true // Availability depends on config, handled elsewhere
     default:
       return false
