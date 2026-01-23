@@ -77,17 +77,26 @@ Press `E` to edit the resource:
 The view has an automatic refresh so any changes are updated live.
 You can still press `Ctrl+R` to manually refresh the resource detail and fetch the latest state from the cluster.
 
+### Secret Decoding
+
+When viewing Secrets, press `X` to toggle base64 decoding:
+
+- Decodes all secret values from base64 to plain text
+- Helpful for inspecting secret contents without manual decoding
+- Toggle off to see the original base64-encoded values
+
 ## Keyboard Shortcuts
 
-| Shortcut | Action              |
-|----------|---------------------|
-| `T`      | Switch to Tree view |
-| `Y`      | Switch to YAML view |
-| `J`      | Switch to JSON view |
-| `E`      | Edit resource       |
-| `C`      | Copy to clipboard   |
-| `Ctrl+R` | Refresh             |
-| `Esc`    | Go back             |
+| Shortcut | Action                            |
+|----------|-----------------------------------|
+| `T`      | Switch to Tree view               |
+| `Y`      | Switch to YAML view               |
+| `J`      | Switch to JSON view               |
+| `E`      | Edit resource                     |
+| `C`      | Copy to clipboard                 |
+| `X`      | Toggle base64 decode (Secrets)    |
+| `Ctrl+R` | Refresh                           |
+| `Esc`    | Go back                           |
 
 ## Tips
 

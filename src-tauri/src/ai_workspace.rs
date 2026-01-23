@@ -1,11 +1,15 @@
 use std::fs;
 use std::path::PathBuf;
 
+use include_dir::{include_dir, Dir};
 use serde::Deserialize;
 
 use crate::config::AiTool;
 use crate::shell_env;
 use crate::terminal;
+
+// App version from Cargo.toml - used for workspace regeneration
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Template files embedded at compile time
 const KUBECTL_READONLY_TEMPLATE: &str = include_str!("../ai_templates/bin/kubectl-readonly-template.sh");
@@ -14,6 +18,9 @@ const KUBECTL_FULL_TEMPLATE: &str = include_str!("../ai_templates/bin/kubectl-fu
 // It gets written to .cursorrules, CLAUDE.md, and AGENTS.md in the workspace
 const AI_INSTRUCTIONS: &str = include_str!("../ai_templates/AGENTS.md");
 const AUGMENT_YAML: &str = include_str!("../ai_templates/augment.yaml");
+
+// Embed the entire docs directory at compile time
+static DOCS_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/../docs");
 
 // MCP config embedded directly (can't use include_str for .cursor directory)
 const CURSOR_MCP_JSON: &str = r#"{
@@ -35,11 +42,58 @@ fn get_ai_workspace_dir() -> Result<PathBuf, String> {
     Ok(PathBuf::from(home).join(".kubby").join("ai"))
 }
 
+/// Check if workspace needs regeneration based on version
+fn needs_regeneration(workspace: &PathBuf) -> bool {
+    let version_file = workspace.join(".version");
+    match fs::read_to_string(&version_file) {
+        Ok(version) => version.trim() != APP_VERSION,
+        Err(_) => true, // File doesn't exist or can't be read
+    }
+}
+
+/// Write the version file
+fn write_version_file(workspace: &PathBuf) -> Result<(), String> {
+    fs::write(workspace.join(".version"), APP_VERSION)
+        .map_err(|e| format!("Failed to write version file: {}", e))
+}
+
+/// Write documentation files from embedded directory to workspace
+fn write_docs_to_workspace(workspace: &PathBuf) -> Result<(), String> {
+    fn write_dir_recursive(dir: &Dir, base_path: &PathBuf) -> Result<(), String> {
+        for entry in dir.entries() {
+            match entry {
+                include_dir::DirEntry::Dir(d) => {
+                    let name = d.path().file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    // Skip .vitepress and public directories
+                    if name == ".vitepress" || name == "public" {
+                        continue;
+                    }
+                    write_dir_recursive(d, base_path)?;
+                }
+                include_dir::DirEntry::File(f) => {
+                    if f.path().extension().map_or(false, |ext| ext == "md") {
+                        let file_path = base_path.join(f.path());
+                        if let Some(parent) = file_path.parent() {
+                            fs::create_dir_all(parent)
+                                .map_err(|e| format!("Failed to create dir: {}", e))?;
+                        }
+                        fs::write(&file_path, f.contents())
+                            .map_err(|e| format!("Failed to write {}: {}", f.path().display(), e))?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    
+    write_dir_recursive(&DOCS_DIR, workspace)
+}
+
 /// Ensure the AI workspace directory exists with all necessary files
 fn ensure_ai_workspace() -> Result<PathBuf, String> {
     let workspace = get_ai_workspace_dir()?;
     
-    // Create directories
+    // Create base directories (always needed)
     fs::create_dir_all(workspace.join("bin"))
         .map_err(|e| format!("Failed to create bin directory: {}", e))?;
     fs::create_dir_all(workspace.join(".cursor"))
@@ -54,22 +108,28 @@ fn ensure_ai_workspace() -> Result<PathBuf, String> {
             .map_err(|e| format!("Failed to initialize git repo: {}", e))?;
     }
     
-    // Write static template files (only if they don't exist, to preserve user edits)
-    // AI_INSTRUCTIONS (from AGENTS.md) is written to multiple files for different AI tools
-    let static_files = [
-        (".cursor/mcp.json", CURSOR_MCP_JSON),
-        (".cursorrules", AI_INSTRUCTIONS),
-        ("CLAUDE.md", AI_INSTRUCTIONS),
-        ("AGENTS.md", AI_INSTRUCTIONS),
-        ("augment.yaml", AUGMENT_YAML),
-    ];
-    
-    for (path, content) in static_files {
-        let full_path = workspace.join(path);
-        if !full_path.exists() {
-            fs::write(&full_path, content)
+    // Check if we need to regenerate static files (version changed or first run)
+    if needs_regeneration(&workspace) {
+        // Write all static template files (overwrite existing)
+        // AI_INSTRUCTIONS (from AGENTS.md) is written to multiple files for different AI tools
+        let static_files = [
+            (".cursor/mcp.json", CURSOR_MCP_JSON),
+            (".cursorrules", AI_INSTRUCTIONS),
+            ("CLAUDE.md", AI_INSTRUCTIONS),
+            ("AGENTS.md", AI_INSTRUCTIONS),
+            ("augment.yaml", AUGMENT_YAML),
+        ];
+        
+        for (path, content) in static_files {
+            fs::write(workspace.join(path), content)
                 .map_err(|e| format!("Failed to write {}: {}", path, e))?;
         }
+        
+        // Write documentation files
+        write_docs_to_workspace(&workspace)?;
+        
+        // Update version file
+        write_version_file(&workspace)?;
     }
     
     Ok(workspace)

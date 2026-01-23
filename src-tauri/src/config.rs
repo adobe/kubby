@@ -31,7 +31,7 @@ pub struct RunCommand {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourcesConfig {
-    #[serde(default)]
+    #[serde(default, alias = "run")]
     pub run_commands: Vec<RunCommand>,
 }
 

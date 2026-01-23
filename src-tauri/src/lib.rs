@@ -1,6 +1,7 @@
 // Module declarations
 mod ai_workspace;
 mod config;
+mod docs;
 mod editor;
 mod kubectl;
 mod log_stream;
@@ -27,9 +28,19 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
+            // Initialize documentation module (sets up docs directory path)
+            if let Err(e) = docs::init(&app.handle()) {
+                eprintln!("Failed to initialize documentation: {}", e);
+            }
+
             // Create the "Open Config" menu item
             let open_config = MenuItemBuilder::with_id("open_config", "Open Config File")
                 .accelerator("CmdOrCtrl+,")
+                .build(app)?;
+
+            // Create the "Documentation" menu item
+            let open_docs = MenuItemBuilder::with_id("open_docs", "Documentation")
+                .accelerator("F1")
                 .build(app)?;
 
             // Create macOS app menu with standard items
@@ -57,9 +68,14 @@ pub fn run() {
                 .item(&PredefinedMenuItem::select_all(app, None)?)
                 .build()?;
 
+            // Create Help menu with Documentation
+            let help_menu = SubmenuBuilder::new(app, "Help")
+                .item(&open_docs)
+                .build()?;
+
             // Build the menu
             #[cfg(target_os = "macos")]
-            let menu = Menu::with_items(app, &[&app_menu, &edit_menu])?;
+            let menu = Menu::with_items(app, &[&app_menu, &edit_menu, &help_menu])?;
 
             #[cfg(not(target_os = "macos"))]
             let menu = {
@@ -69,7 +85,7 @@ pub fn run() {
                     .separator()
                     .item(&PredefinedMenuItem::close_window(app, Some("Close Window"))?)
                     .build()?;
-                Menu::with_items(app, &[&file_menu_with_config, &edit_menu])?
+                Menu::with_items(app, &[&file_menu_with_config, &edit_menu, &help_menu])?
             };
 
             // Set menu at the app level
@@ -77,7 +93,7 @@ pub fn run() {
 
             Ok(())
         })
-        .on_menu_event(|_app, event| {
+        .on_menu_event(|app, event| {
             if event.id() == "open_config" {
                 // Get config path and open it
                 match config::get_config_path() {
@@ -88,6 +104,11 @@ pub fn run() {
                         }
                     }
                     Err(e) => eprintln!("Failed to get config path: {}", e),
+                }
+            } else if event.id() == "open_docs" {
+                // Open documentation in a WebView window
+                if let Err(e) = docs::open_documentation(app) {
+                    eprintln!("Failed to open documentation: {}", e);
                 }
             }
         })

@@ -68,6 +68,7 @@ const SERVICE_SHORTCUTS: ShortcutConfig[] = [
 
 const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
   { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 

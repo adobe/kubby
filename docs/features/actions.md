@@ -97,6 +97,47 @@ Stream logs from pods or containers:
 2. Opens the Log Viewer
 3. Logs stream in real-time
 
+### Port Forward
+
+**Shortcut:** `F`
+
+Create a tunnel to access pods or services locally:
+
+1. Press `F` on a pod, container, or service
+2. Select the port to forward
+3. Enter a local port (or accept the default)
+4. Confirm to start the forward
+
+Press `F` again to see opened ports and remove them. 
+
+# Shell Access
+
+Shell Access lets you open interactive terminal sessions directly into containers running in your cluster.
+
+Access Shell by pressing `S` on a pod or container. 
+This opens an external terminal with a session inside the container, equivalent to `kubectl exec -it`.
+
+<!-- TODO: Add shell screenshot -->
+<!-- ![Shell Access](../public/images/shell.png) -->
+
+::: tip Minimal Images
+Many production containers use minimal base images without debugging tools. 
+Consider using [ephemeral debug containers](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container) 
+for advanced debugging.
+Kubby supports custom run command you can use them to launch any image, 
+see [Custom Run Commands](/configuration#custom-run-commands) in configuration for more details.
+:::
+
+### Jump
+
+**Shortcut:** `J`
+
+Navigate to related resources:
+
+1. Press `J` on a resource with related items
+2. Select from the dropdown (e.g., Pods for a Deployment)
+3. View opens filtered to related resources
+
 ### Run Custom Command
 
 **Shortcut:** `U` (when available)
@@ -109,19 +150,24 @@ Execute custom commands defined for specific resource types:
 
 The custom commands can be configured in [Kubby config](/configuration). 
 
+### AI Agent
+
+See [AI Assistant Command](/features/ai-assistant).
+
+
 ## Action Bar
 
 The action bar at the bottom of the screen shows available actions for the currently selected resource. 
 Actions vary by resource type:
 
-| Resource   | Available Actions                                             |
-|------------|---------------------------------------------------------------|
-| Deployment | Pods, Describe, Edit, Logs, Rolling Restart, Scale, Delete    |
-| Pod        | Containers, Describe, Edit, Logs, Port-Forward, Shell, Delete |
-| Service    | Pods, Describe, Edit, Port-Forward, Delete                    |
-| ConfigMap  | Describe, Edit, Delete                                        |
-| Secret     | Describe, Edit, Delete                                        |
-| Other      | Describe, Delete                                              |
+| Resource   | Available Actions                                                   |
+|------------|---------------------------------------------------------------------|
+| Deployment | Pods, Describe, Edit, Jump, Logs, Rolling Restart, Scale, Delete    |
+| Pod        | Containers, Describe, Edit, Jump, Logs, Port-Forward, Shell, Delete |
+| Service    | Pods, Describe, Edit, Jump, Port-Forward, Delete                    |
+| ConfigMap  | Describe, Edit, Jump, Delete                                        |
+| Secret     | Describe, Edit, Jump, Delete                                        |
+| Other      | Describe, Delete                                                    |
 
 ## Safety Features
 
@@ -131,7 +177,9 @@ Destructive actions require confirmation.
 
 ### Read-Only Mode
 
-When connected to production or sensitive clusters:
+Usefully for when connected to production or sensitive clusters:
 - Modifying actions can be disabled
 - Visual indicators show read-only state
 - Prevents accidental changes
+
+Can be configured in [Kubby config](/configuration).

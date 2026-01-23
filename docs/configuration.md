@@ -70,6 +70,7 @@ contexts:
 | `liveViewAutoRefresh` | boolean | `true` | Automatically refresh resource views |
 | `refreshRateSeconds` | number | `2` | Interval for refreshing resource lists |
 | `metricsRefreshRateSeconds` | number | `30` | Interval for refreshing metrics data |
+| `kubectlTimeoutSeconds` | number | `10` | Timeout for kubectl commands in seconds |
 | `ai` | object | - | AI assistant configuration (see [AI Assistant](/features/ai-assistant)) |
 
 ### Contexts Configuration
@@ -159,6 +160,10 @@ resources:
     - name: "Port Forward 8080"
       command: "kubectl port-forward --context $context --namespace $namespace $name 8080:80"
       # No resources filter = available for all resource types
+
+    - name: "Test Curl"
+      command: "kubectl run test-curl --context $context --namespace $namespace --image=curlimages/curl --labels=$labels --restart=Never --command -- sleep infinity"
+      resources: ["pod"]
 ```
 
 ### Command Placeholders
@@ -230,6 +235,8 @@ ai:
   name: Agent           # Custom button label (default: "AI")
   readOnly: true        # Restrict kubectl to safe commands (default: true)
 ```
+
+See more details in [AI Assistant][/features/ai-assistant].
 
 ### AI Options
 

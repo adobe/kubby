@@ -3,10 +3,10 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'Kubby',
   description: 'A fast, keyboard-driven desktop app for managing Kubernetes clusters',
-  base: '/kubby/',
+  base: '/',  // Use root-relative paths for local HTTP server
 
   head: [
-    ['link', { rel: 'icon', href: '/kubby/favicon.ico' }],
+    ['link', { rel: 'icon', href: '/favicon.ico' }],
   ],
 
   themeConfig: {
@@ -38,10 +38,8 @@ export default defineConfig({
           { text: 'Resource List', link: '/features/resource-list' },
           { text: 'Resource Detail', link: '/features/resource-detail' },
           { text: 'Log Viewer', link: '/features/log-viewer' },
-          { text: 'Port Forwarding', link: '/features/port-forwarding' },
-          { text: 'Shell Access', link: '/features/shell' },
-          { text: 'AI Assistant', link: '/features/ai-assistant' },
           { text: 'Actions', link: '/features/actions' },
+          { text: 'AI Assistant', link: '/features/ai-assistant' },
         ]
       },
       {
@@ -55,11 +53,11 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/OneAdobe/kubby' }
+      // { icon: 'github', link: 'https://github.com/OneAdobe/kubby' }
     ],
 
     footer: {
-      message: 'Built with VitePress',
+      // message: 'Built with VitePress',
     },
 
     search: {

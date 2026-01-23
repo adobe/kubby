@@ -1,11 +1,11 @@
 {
   "name": "kubby",
   "private": true,
-  "version": "0.29.3",
+  "version": "0.30.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && vitepress build docs",
     "preview": "vite preview",
     "tauri": "tauri",
     "docs:dev": "vitepress dev docs",

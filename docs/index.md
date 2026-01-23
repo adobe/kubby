@@ -55,13 +55,16 @@ Kubby is a desktop application for managing a flotilla Kubernetes clusters.
 It provides a fast, intuitive interface for common Kubernetes operations without requiring you to remember complex
 `kubectl` commands. Under the hoods it executed `kubectl` with your local configuration. 
 Kubby is heavily influenced by [k9s](https://k9scli.io/) with some enhancements that makes it easier to work in
-more restricted setups and richer UI for logs and resource details.
+more restricted setups and richer UI for resource details, logs, actions and multi-cluster management.
 
 ### Why Kubby?
 
-- **Visual & Keyboard**: See your cluster resources at a glance while preserving keyboard-first navigation
-- **Quick Actions**: Perform common operations like scaling, restarting, and editing with single keystrokes
+- **Fast & Native** - Native performance with view caching and instant startup
+- **Keyboard-First** - Comprehensive shortcuts; mouse optional
+- **Multi-Cluster** - Dashboard with 2D matrix of clusters and namespaces, quick switching
 - **Real-time Updates**: Watch resources update live as changes occur in your cluster
-- **Rich UI**: Compact view of resources with full details when needed
+- **Live Logs** - Real-time streaming with syntax highlighting and filtering
+- **Actions** - Scale, rolling restart, port-forward, shell, edit, delete, run configurable commands
+- **AI Assistant** - Launch Cursor, Claude Code, Augment, or Codex with pre-configured context
 
 [//]: # (![Kubby Screenshot]&#40;/images/hero-screenshot.png&#41;)

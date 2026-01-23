@@ -1,84 +1,76 @@
 # Kubby
 
-<img src="docs/public/images/light/kubby_banner.png" height="256" alt="Kubby Logo"/>
+<img src="docs/public/images/light/kubby_banner.png" height="320" alt="Kubby Logo"/>
 
-A fast, keyboard-driven desktop app for managing Kubernetes clusters.
+A fast, keyboard-driven desktop app for managing Kubernetes clusters. 
+Inspired by [k9s](https://k9scli.io/) with a richer UI for resource details, logs, actions and multi-cluster management.
 
-## User Documentation
+## Features
 
-User documentation is only available on dev for now. Run:
-```sh
-make docs && make docs-preview
-```
+- **Fast & Native** - Native performance with view caching and instant startup
+- **Keyboard-First** - Comprehensive shortcuts; mouse optional
+- **Multi-Cluster** - Dashboard with 2D matrix of clusters and namespaces, quick switching
+- **Real-time Updates**: Watch resources update live as changes occur in your cluster
+- **Live Logs** - Real-time streaming with syntax highlighting and filtering
+- **Actions** - Scale, rolling restart, port-forward, shell, edit, delete, run configurable commands
+- **AI Assistant** - Launch Cursor, Claude Code, Augment, or Codex with pre-configured context
 
-### External Dependencies
+## Installation
 
-Kubby requires `kubectl` to be installed on your system. The app searches for kubectl in common locations:
-- `/usr/local/bin/kubectl`
-- `/opt/homebrew/bin/kubectl` (Apple Silicon)
-- `/usr/bin/kubectl`
-- `~/.local/bin/kubectl`
-- User's shell `PATH`
+### Prerequisites
 
-**Credential Plugins:** If your cluster uses exec-based authentication, ensure the required plugin is in your `PATH`:
+- macOS 11 (Big Sur) or later
+- `kubectl` installed and configured
+- At least one cluster in your kubeconfig file
+
+### Credential Plugins
+
+If your cluster uses exec-based auth, ensure the plugin is in your `PATH`:
 - Azure AKS: `kubelogin`
 - AWS EKS: `aws-iam-authenticator` or `aws`
 - GCP GKE: `gke-gcloud-auth-plugin`
 
+### Download
+
+Download the latest `.dmg` from [GitHub Releases](https://github.com/OneAdobe/kubby/releases).
+
+On first launch you may need to right-click and select "Open" to bypass Gatekeeper (app is not notarized).
+
 ### Environment Variables
 
-The following environment variables are read from your shell configuration (`.bashrc`, `.zshrc`, etc.):
-
-| Variable | Description |
-|----------|-------------|
-| `KUBECONFIG` | Path to kubeconfig file(s). Supports non-standard locations and multiple configs. |
-| `KUBE_EDITOR` | Preferred editor for `kubectl edit` operations. |
-| `EDITOR` | Fallback editor if `KUBE_EDITOR` is not set. |
-| `TERMINAL` | Preferred terminal emulator (macOS/Linux). Falls back to iTerm/Terminal.app on macOS. |
-| `PATH` | Used to locate `kubectl` and editor executables. |
-
-**Note:** Packaged apps don't inherit shell environment by default. Kubby reads these from your login shell to ensure consistent behavior between development and installed versions.
+| Variable      | Description |
+|---------------|-------------|
+| `KUBECONFIG`  | Path to kubeconfig file(s) |
+| `KUBE_EDITOR` | Editor for `kubectl edit` |
+| `EDITOR`      | Fallback editor |
+| `TERMINAL`    | Preferred terminal emulator |
 
 ## Development
 
 ### Setup
 
-Follow up Tauri prerequisites docs: https://v2.tauri.app/start/prerequisites/#macos.
-
-After cloning, run the setup script to configure git hooks:
+Follow [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#macos), then:
 
 ```sh
-./scripts/setup-hooks.sh
+./scripts/setup-hooks.sh  # Configure git hooks for auto version bumping
 ```
 
-This enables automatic version bumping on each commit (semver).
-
-### Dev
+### Commands
 
 ```sh
+# Development
 pnpm tauri dev
-# or:
-make dev
-# for docs:
-make docs-dev
-```
+# or: make dev
 
-### Build 
-
-```sh
+# Build
 pnpm tauri build
-# or:
-make build
-# for docs:
-make docs
-make docs-preview
-# and clean build artifacts:
-make clean     
-```
+# or: make build
 
-### Release
+# Documentation
+make docs-dev      # Dev server
+make docs          # Build
+make docs-preview  # Preview build
 
-Build, tag, and publish to GitHub:
-```sh
-make release
+# Release
+make release       # Build, tag, and publish to GitHub
 ```
