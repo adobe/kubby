@@ -173,13 +173,14 @@ pub struct OpenAiToolParams {
 }
 
 /// ANSI color codes for terminal output
+/// Using octal escape \033 instead of \x1b for better compatibility across shells and AppleScript
 mod colors {
-    pub const RESET: &str = "\\x1b[0m";
-    pub const BLUE: &str = "\\x1b[34m";
-    pub const WHITE: &str = "\\x1b[97m";
-    pub const GRAY: &str = "\\x1b[90m";
-    pub const GRAY_BG_WHITE: &str = "\\x1b[100;97m";   // Gray background, white text
-    pub const YELLOW_BG_WHITE: &str = "\\x1b[43;1;90m"; // Yellow background, white text
+    pub const RESET: &str = "\\033[0m";
+    pub const BLUE: &str = "\\033[34m";
+    pub const WHITE: &str = "\\033[97m";
+    pub const GRAY: &str = "\\033[90m";
+    pub const GRAY_BG_WHITE: &str = "\\033[100;97m";   // Gray background, white text
+    pub const YELLOW_BG_WHITE: &str = "\\033[43;1;90m"; // Yellow background, white text
 }
 
 /// A row in the info box with a label and value
@@ -192,6 +193,8 @@ struct InfoRow {
 
 /// Format a nice ASCII box with a title and content rows
 /// Returns a shell command string that echoes the formatted box
+/// Uses printf for more reliable escape handling and ASCII box characters
+/// for better compatibility through AppleScript
 fn format_info_box(title: &str, rows: &[InfoRow]) -> String {
     // Calculate the maximum content width
     let label_width = rows.iter().map(|r| r.label.len()).max().unwrap_or(0);
@@ -202,30 +205,30 @@ fn format_info_box(title: &str, rows: &[InfoRow]) -> String {
     let title_with_padding = format!(" {} ", title);
     let min_box_width = title_with_padding.len() + 4; // At least 2 chars of border on each side
     
-    // Box inner width (content area, not including the │ borders)
+    // Box inner width (content area, not including the | borders)
     let inner_width = content_width.max(min_box_width) + 2; // +2 for padding on each side
     
-    // Build echo commands
-    let mut echos = Vec::new();
+    // Build printf commands (more reliable than echo -e through AppleScript)
+    let mut lines = Vec::new();
     
     // Empty line before
-    echos.push("echo ''".to_string());
+    lines.push("echo".to_string());
     
-    // Top border with title: ┌──── Title ────┐
+    // Top border with title: ----- Title -----
     let remaining = inner_width - title_with_padding.len();
     let left_dashes = remaining / 2;
     let right_dashes = remaining - left_dashes;
     let top_line = format!(
-        "echo -e '{}┌{}{}{}{}{}┐{}'",
+        "printf '{}-{}{}{}{}{}-{}\\n'",
         colors::BLUE,
-        "─".repeat(left_dashes),
+        "-".repeat(left_dashes),
         colors::WHITE,
         title_with_padding,
         colors::BLUE,
-        "─".repeat(right_dashes),
+        "-".repeat(right_dashes),
         colors::RESET
     );
-    echos.push(top_line);
+    lines.push(top_line);
     
     // Content rows
     for row in rows {
@@ -237,13 +240,13 @@ fn format_info_box(title: &str, rows: &[InfoRow]) -> String {
         };
         
         // Calculate padding needed after value (accounting for visible width only)
-        // Format is: │ {label}: {value}{padding}│
+        // Format is: | {label}: {value}{padding}|
         // Visible chars: 1 (space) + label + 2 (": ") + value + padding = inner_width
         let visible_content_len = label_width + 2 + row.value.len(); // "Label: Value" visible length
-        let padding_needed = inner_width - 1 - visible_content_len; // -1 for the leading space
+        let padding_needed = inner_width.saturating_sub(1 + visible_content_len); // saturating_sub to avoid underflow
         
         let content_line = format!(
-            "echo -e '{}│{} {}{}{}: {}{}{}│{}'",
+            "printf '{} {} {}{}{}: {}{}{} {}\\n'",
             colors::BLUE,
             colors::RESET,
             colors::GRAY,
@@ -254,22 +257,22 @@ fn format_info_box(title: &str, rows: &[InfoRow]) -> String {
             colors::BLUE,
             colors::RESET
         );
-        echos.push(content_line);
+        lines.push(content_line);
     }
     
-    // Bottom border: └────────────────┘
+    // Bottom border: ------------------
     let bottom_line = format!(
-        "echo -e '{}└{}┘{}'",
+        "printf '{}-{}-{}\\n'",
         colors::BLUE,
-        "─".repeat(inner_width),
+        "-".repeat(inner_width),
         colors::RESET
     );
-    echos.push(bottom_line);
+    lines.push(bottom_line);
     
     // Empty line after
-    echos.push("echo ''".to_string());
+    lines.push("echo".to_string());
     
-    echos.join("; ")
+    lines.join("; ")
 }
 
 /// Open an AI tool with the current Kubernetes context
