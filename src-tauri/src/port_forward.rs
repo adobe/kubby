@@ -438,6 +438,14 @@ pub async fn start_port_forward(
     match confirmation_result {
         Ok(Ok(())) => {
             // Success! Port forward is confirmed
+            // Spawn background tasks to drain stdout/stderr so the pipes stay open
+            // and kubectl doesn't get SIGPIPE when it tries to write
+            tokio::spawn(async move {
+                while let Ok(Some(_)) = stdout_reader.next_line().await {}
+            });
+            tokio::spawn(async move {
+                while let Ok(Some(_)) = stderr_reader.next_line().await {}
+            });
         }
         Ok(Err(e)) => {
             // kubectl reported an error - kill and wait to clean up resources
