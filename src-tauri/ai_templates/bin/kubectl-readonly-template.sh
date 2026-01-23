@@ -1,9 +1,6 @@
 #!/bin/bash
 # Kubby read-only kubectl wrapper
-# This script restricts kubectl to read-only operations and locks context/namespace
-
-ALLOWED_CONTEXT="{{CONTEXT}}"
-ALLOWED_NAMESPACE="{{NAMESPACE}}"
+# This script restricts kubectl to read-only operations
 
 # Find the real kubectl (skip this wrapper)
 REAL_KUBECTL=""
@@ -34,20 +31,20 @@ READONLY_COMMANDS=(
     "diff"
 )
 
-# Allowed config subcommands (read-only)
+# Allowed config subcommands
 READONLY_CONFIG_COMMANDS=(
     "view"
     "get-contexts"
     "current-context"
-)
-
-# Blocked config subcommands (would change context/namespace)
-BLOCKED_CONFIG_COMMANDS=(
     "use-context"
     "set-context"
     "set"
     "delete-context"
     "rename-context"
+)
+
+# Blocked config subcommands (would modify cluster/credentials config)
+BLOCKED_CONFIG_COMMANDS=(
     "set-cluster"
     "delete-cluster"
     "set-credentials"
@@ -97,20 +94,6 @@ for i in "${!ARGS[@]}"; do
             ;;
     esac
 done
-
-# Validate context flag if provided
-if [[ -n "$CONTEXT_FLAG" && "$CONTEXT_FLAG" != "$ALLOWED_CONTEXT" ]]; then
-    echo "BLOCKED: Context '$CONTEXT_FLAG' is not allowed." >&2
-    echo "This kubectl wrapper is locked to context: $ALLOWED_CONTEXT" >&2
-    exit 1
-fi
-
-# Validate namespace flag if provided
-if [[ -n "$NAMESPACE_FLAG" && "$NAMESPACE_FLAG" != "$ALLOWED_NAMESPACE" ]]; then
-    echo "BLOCKED: Namespace '$NAMESPACE_FLAG' is not allowed." >&2
-    echo "This kubectl wrapper is locked to namespace: $ALLOWED_NAMESPACE" >&2
-    exit 1
-fi
 
 # Handle config subcommands
 if [[ "$SUBCOMMAND" == "config" ]]; then

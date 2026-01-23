@@ -15,22 +15,10 @@ The `docs/` folder contains Kubby's user documentation. Use these files to answe
 
 When the user asks about Kubby features or configuration, read the relevant documentation files to provide accurate answers.
 
-## CRITICAL RULES - READ CAREFULLY
-
-### 1. NEVER modify context.md
-The `context.md` file is READ-ONLY. Do NOT edit, modify, or change it under any circumstances.
-If the user asks to switch context or namespace, politely decline and explain they should do this in Kubby.
-
-### 2. NEVER switch context or namespace
-Do NOT run any commands that would change the Kubernetes context or namespace:
-- NO `kubectl config use-context`
-- NO `kubectl config set-context`
-- NO commands with different `--context` or `--namespace` values than specified in context.md
-
 ## Context
 
 Read the `context.md` file for the current Kubernetes context, namespace, and selected resource.
-You MUST use EXACTLY the context and namespace specified there - no exceptions.
+You may switch context or namespace if the user requests it.
 
 ## Mode Restrictions
 
