@@ -1,4 +1,4 @@
-import {useState, useRef, useEffect, useCallback, useImperativeHandle} from 'preact/hooks'
+import {useState, useRef, useEffect, useCallback, useImperativeHandle, useLayoutEffect} from 'preact/hooks'
 import {forwardRef} from 'preact/compat'
 import type {Ref} from 'preact'
 import classes from './Button.module.scss'
@@ -13,6 +13,9 @@ export interface SubItem {
   /** Whether the sub-item is available (dimmed if false) */
   available?: boolean
 }
+
+/** Horizontal alignment for dropdown positioning */
+type DropdownAlign = 'left' | 'right'
 
 /** Handle for controlling Button externally */
 export interface ButtonHandle {
@@ -66,6 +69,7 @@ function ButtonComponent({
 }: ButtonProps, ref: Ref<ButtonHandle>) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [dropdownAlign, setDropdownAlign] = useState<DropdownAlign>('left')
   const containerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -89,6 +93,29 @@ function ButtonComponent({
       setFocusedIndex(availableIndices.length > 0 ? availableIndices[0] : -1)
     } else {
       setFocusedIndex(-1)
+    }
+  }, [isOpen])
+
+  // Calculate dropdown position to keep it within viewport bounds
+  useLayoutEffect(() => {
+    if (!isOpen || !dropdownRef.current || !containerRef.current) return
+
+    const dropdown = dropdownRef.current
+    const container = containerRef.current
+    const containerRect = container.getBoundingClientRect()
+    const dropdownRect = dropdown.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+
+    // Check if dropdown overflows on the right when left-aligned
+    const overflowsRight = containerRect.left + dropdownRect.width > viewportWidth
+    // Check if dropdown would overflow on the left when right-aligned
+    const overflowsLeft = containerRect.right - dropdownRect.width < 0
+
+    // Prefer left alignment, but switch to right if it overflows
+    if (overflowsRight && !overflowsLeft) {
+      setDropdownAlign('right')
+    } else {
+      setDropdownAlign('left')
     }
   }, [isOpen])
 
@@ -214,6 +241,7 @@ function ButtonComponent({
   const dropdownClasses = [
     classes.dropdown,
     dropDirection === 'up' ? classes.dropUp : classes.dropDown,
+    dropdownAlign === 'right' ? classes.alignRight : classes.alignLeft,
   ].join(' ')
 
   return (

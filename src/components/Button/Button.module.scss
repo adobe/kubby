@@ -101,7 +101,6 @@
 
 .dropdown {
   position: absolute;
-  left: 0;
   min-width: 100%;
   background: var(--bgColor-default);
   border: 1px solid var(--borderColor-default);
@@ -118,6 +117,16 @@
   &.dropUp {
     bottom: 100%;
     margin-bottom: 2px;
+  }
+
+  &.alignLeft {
+    left: 0;
+    right: auto;
+  }
+
+  &.alignRight {
+    left: auto;
+    right: 0;
   }
 }
 
