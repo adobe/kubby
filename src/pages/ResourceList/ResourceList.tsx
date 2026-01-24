@@ -223,6 +223,7 @@ export function ResourceList({
     isStale,
   } = useResourceLoader({context, namespace, resourceType, labelSelectors, parentResourceName, specFilters})
 
+  console.log(columns)
   // Filter resources by text filter (case-insensitive substring match on name)
   const resources = useMemo(() => {
     if (!filterText.trim()) {
@@ -865,7 +866,7 @@ export function ResourceList({
               <tr tabIndex={-1}>
                 <th class={classes.nameColumn}>NAME</th>
                 {columns.map((col) => (
-                  <th key={col.name}>
+                  <th key={col.name} class={col.align === 'end' ? classes.alignEnd : undefined}>
                     {col.name}
                   </th>
                 ))}
@@ -911,7 +912,7 @@ export function ResourceList({
                       const hasPortForwards = isPortsColumn && forwardedPorts && forwardedPorts.length > 0
 
                       return (
-                        <td key={col.name} class={cellClass}>
+                        <td key={col.name} class={`${cellClass}${col.align === 'end' ? ` ${classes.alignEnd}` : ''}`}>
                           {resource[col.name] ?? '<none>'}
                           {hasPortForwards && (
                             <span class={classes.portForwardIndicator}>

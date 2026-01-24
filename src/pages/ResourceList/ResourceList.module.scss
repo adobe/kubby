@@ -83,6 +83,19 @@
     th, td {
       padding: 0.2rem 0.25rem;
       text-align: left;
+
+      &.alignEnd {
+        text-align: right;
+      }
+
+      // bigger margin left right to align to header/footer
+      &:first-child {
+        padding-left: 0.5rem;
+      }
+
+      &:last-child {
+        padding-right: 0.5rem;
+      }
     }
 
     th {

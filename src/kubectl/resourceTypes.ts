@@ -2,6 +2,8 @@
 
 export type ColumnType = 'text' | 'number' | 'bool' | 'datetime' | 'duration' | 'podstatus';
 
+export type ColumnAlign = 'start' | 'end';
+
 export type ColorState = 
   | 'attention'
   | 'danger'
@@ -25,6 +27,7 @@ export interface ColumnConfig {
   format?: string;
   type?: ColumnType;
   colorRules?: ColorRule[];
+  align?: ColumnAlign;
 }
 
 export interface ResourceItem {

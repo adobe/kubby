@@ -38,6 +38,15 @@ impl Default for ColumnType {
     }
 }
 
+/// Column alignment for text display
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum ColumnAlign {
+    #[default]
+    Start,
+    End,
+}
+
 /// Color state for column highlighting (maps to theme CSS variables)
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -75,6 +84,7 @@ pub struct ColumnConfig {
     pub column_type: Option<ColumnType>,
     #[serde(rename = "colorRules", skip_serializing_if = "Option::is_none", default)]
     pub color_rules: Option<Vec<ColorRule>>,
+    pub align: ColumnAlign,
 }
 
 #[derive(Debug, Serialize)]

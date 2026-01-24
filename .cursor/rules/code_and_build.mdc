@@ -1,0 +1,18 @@
+---
+name: Code and Build
+description: Code and build rules
+---
+
+# Overview
+
+Rules for code and build.
+
+## Frontend
+
+- Use `pnpm` to run frontend build
+- Make components in src/components instead of in each file, especially the ones that make sense to be reused
+- Each component has its own folder and associated scss module styles 
+
+## Backend
+
+- Avoid writing code in mod/lib files, make separate modules for related code.
