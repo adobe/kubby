@@ -12,6 +12,7 @@ import {Alert} from '../../components/Alert/Alert.tsx'
 import {CodeView} from '../../components/CodeView/CodeView.tsx'
 import {TreeView} from '../../components/TreeView/TreeView.tsx'
 import {ShortcutsBar} from '../../components/ShortcutsBar/ShortcutsBar.tsx'
+import {HighlightInput} from '../../components/HighlightInput/HighlightInput.tsx'
 import {isControlModifierPressed} from '../../navigation/keyboardShortcuts.ts'
 
 type ViewMode = 'tree' | 'yaml' | 'json'
@@ -176,6 +177,18 @@ export function ResourceDetail({
   const [isEditing, setIsEditing] = useState(false)
   const [isDecoded, setIsDecoded] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
+  
+  // Highlight state
+  const [highlightText, setHighlightText] = useState('')
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
+  const [matchCount, setMatchCount] = useState(0)
+  const highlightInputRef = useRef<HTMLInputElement>(null)
+  
+  // Track highlighted elements for navigation
+  const matchedElementsRef = useRef<HTMLElement[]>([])
+  
+  // Track if we've scrolled for the current search to avoid continuous scrolling
+  const hasScrolledForSearchRef = useRef('')
 
   // Check if this is a secret resource
   const isSecretResource = isSecretResourceType(resourceType)
@@ -209,9 +222,14 @@ export function ResourceDetail({
     return () => clearInterval(intervalId)
   }, [liveViewAutoRefresh, refreshRateSeconds, isRefreshing, fetchDetail])
 
-  // Focus the body for keyboard scrolling when detail loads
+  // Focus the body for keyboard scrolling when detail first loads
+  // Don't steal focus if user is typing in an input
   useEffect(() => {
-    bodyRef.current?.focus()
+    const activeElement = document.activeElement as HTMLElement
+    const isInput = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA'
+    if (!isInput) {
+      bodyRef.current?.focus()
+    }
   }, [detail])
 
   // Helper to refocus body after actions
@@ -287,15 +305,125 @@ export function ResourceDetail({
     refocusBody()
   }, [refocusBody])
 
+// Highlight navigation functions
+  const CURRENT_MATCH_ATTR = 'data-current-match'
+  function clearCurrentMatchAttr(elements: HTMLElement[]) {
+    elements.forEach(el => el.removeAttribute(CURRENT_MATCH_ATTR))
+  }
+  function setCurrentMatchAttr(element: HTMLElement) {
+    element.setAttribute(CURRENT_MATCH_ATTR, 'true')
+  }
+
+  const scrollToMatch = useCallback((index: number) => {
+    const elements = matchedElementsRef.current
+    if (elements.length === 0) return
+    
+    const safeIndex = ((index % elements.length) + elements.length) % elements.length
+    const element = elements[safeIndex]
+
+    if (element) {
+      // Remove current match attr from all elements
+      clearCurrentMatchAttr(elements)
+      // Add current match attr to the new current element
+      setCurrentMatchAttr(element)
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setCurrentMatchIndex(safeIndex)
+    }
+  }, [])
+  
+  const handleHighlightNext = useCallback(() => {
+    if (matchCount > 0) {
+      scrollToMatch(currentMatchIndex + 1)
+    }
+  }, [matchCount, currentMatchIndex, scrollToMatch])
+  
+  const handleHighlightPrevious = useCallback(() => {
+    if (matchCount > 0) {
+      scrollToMatch(currentMatchIndex - 1)
+    }
+  }, [matchCount, currentMatchIndex, scrollToMatch])
+  
+  const handleHighlightClear = useCallback(() => {
+    // Remove current match attr from all elements before clearing
+    clearCurrentMatchAttr(matchedElementsRef.current)
+    setHighlightText('')
+    setCurrentMatchIndex(0)
+    setMatchCount(0)
+    matchedElementsRef.current = []
+    refocusBody()
+  }, [refocusBody])
+  
+  // Update match count and collect matched elements after render
+  useEffect(() => {
+    const trimmedHighlight = highlightText.trim()
+    
+    if (!trimmedHighlight) {
+      // Remove current match attr from all elements before clearing
+      clearCurrentMatchAttr(matchedElementsRef.current)
+      matchedElementsRef.current = []
+      setMatchCount(0)
+      setCurrentMatchIndex(0)
+      hasScrolledForSearchRef.current = ''
+      return
+    }
+    
+    // Use requestAnimationFrame to wait for DOM to update
+    const rafId = requestAnimationFrame(() => {
+      const container = bodyRef.current
+      if (!container) return
+      
+      // Remove current match attr from previous elements
+      clearCurrentMatchAttr(matchedElementsRef.current)
+      
+      const elements = container.querySelectorAll('[data-highlight-match="true"]')
+      const elementsArray = Array.from(elements) as HTMLElement[]
+      matchedElementsRef.current = elementsArray
+      setMatchCount(elements.length)
+      
+      // Auto-scroll to first match only once per unique search term
+      const shouldScroll = elements.length > 0 && hasScrolledForSearchRef.current !== trimmedHighlight
+      if (shouldScroll) {
+        hasScrolledForSearchRef.current = trimmedHighlight
+        setCurrentMatchIndex(0)
+        const firstMatch = elementsArray[0]
+        setCurrentMatchAttr(firstMatch)
+        firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else if (elementsArray.length > 0) {
+        // Re-apply current match attr after DOM re-render (elements may have been recreated)
+        const safeIndex = Math.min(currentMatchIndex, elementsArray.length - 1)
+        setCurrentMatchAttr(elementsArray[safeIndex])
+      }
+    })
+    
+    return () => cancelAnimationFrame(rafId)
+  }, [highlightText, viewMode, displayDetail, currentMatchIndex])
+
   // Global keyboard shortcuts
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
       // Ignore if typing in an input
       const target = e.target as HTMLElement
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+      
+      // "/" - Focus highlight input (when not in an input)
+      if (e.key === '/' && !isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        highlightInputRef.current?.focus()
+        return
+      }
 
-      // Escape - go back
+      // Escape - clear highlight first if active, then go back
       if (e.key === 'Escape') {
+        // If in highlight input, let it handle its own Escape
+        if (target === highlightInputRef.current) {
+          return
+        }
+        // If highlight is active, clear it first
+        if (highlightText) {
+          e.preventDefault()
+          handleHighlightClear()
+          return
+        }
         e.preventDefault()
         onBack()
         return
@@ -356,7 +484,7 @@ export function ResourceDetail({
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [onBack, handleRefresh, handleEdit, handleViewModeChange, handleCopy, isSecretResource, handleToggleDecode])
+  }, [onBack, handleRefresh, handleEdit, handleViewModeChange, handleCopy, isSecretResource, handleToggleDecode, highlightText, handleHighlightClear, handleHighlightNext, handleHighlightPrevious])
 
   const renderContent = useCallback(() => {
     if (!displayDetail) {
@@ -368,14 +496,14 @@ export function ResourceDetail({
 
     switch (viewMode) {
       case 'yaml':
-        return <CodeView code={yamlCode} language="yaml"/>
+        return <CodeView code={yamlCode} language="yaml" highlightText={highlightText}/>
       case 'json':
-        return <CodeView code={jsonCode} language="json"/>
+        return <CodeView code={jsonCode} language="json" highlightText={highlightText}/>
       case 'tree':
       default:
-        return <TreeView data={displayDetail} onJump={onJump}/>
+        return <TreeView data={displayDetail} onJump={onJump} highlightText={highlightText}/>
     }
-  }, [displayDetail, viewMode, isRefreshing, yamlCode, jsonCode])
+  }, [displayDetail, viewMode, isRefreshing, yamlCode, jsonCode, highlightText, onJump])
 
   return (
     <div class={classes.ResourceDetail}>
@@ -383,6 +511,19 @@ export function ResourceDetail({
         <div class={classes.headerInfo}>
           <span class={classes.resourceName}>{resourceName}</span>
           <span class={classes.resourceType}>{resourceType}</span>
+        </div>
+        <div class={classes.highlightSection}>
+          <HighlightInput
+            value={highlightText}
+            onChange={setHighlightText}
+            onClear={handleHighlightClear}
+            onNext={handleHighlightNext}
+            onPrevious={handleHighlightPrevious}
+            currentMatch={currentMatchIndex}
+            totalMatches={matchCount}
+            inputRef={highlightInputRef}
+            tabIndex={0}
+          />
         </div>
         <div class={classes.headerButtons}>
           <Button

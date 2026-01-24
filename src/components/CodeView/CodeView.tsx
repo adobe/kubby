@@ -1,16 +1,50 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useState, useMemo } from 'preact/hooks'
 import { codeToHtml } from 'shiki'
 import classes from './CodeView.module.scss'
 
 interface CodeViewProps {
   code: string
   language: 'yaml' | 'json'
+  highlightText?: string
 }
 
 /**
- * Syntax-highlighted code view using Shiki
+ * Process Shiki HTML output to add highlight/muted classes to lines
+ * Note: Uses global class names (lineHighlighted, lineMuted) defined in SCSS
  */
-export function CodeView({ code, language }: CodeViewProps) {
+function processHtmlWithHighlight(html: string, highlightText: string): string {
+  if (!highlightText.trim()) {
+    return html
+  }
+  
+  const lowerHighlight = highlightText.trim().toLowerCase()
+  
+  // Parse the HTML to find and modify .line spans
+  // Shiki outputs: <span class="line">...</span> for each line
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+  const lines = doc.querySelectorAll('.line')
+  
+  lines.forEach(line => {
+    const lineText = line.textContent?.toLowerCase() || ''
+    if (lineText.includes(lowerHighlight)) {
+      // Use global class names (not CSS module classes)
+      line.classList.add('lineHighlighted')
+      line.setAttribute('data-highlight-match', 'true')
+    } else {
+      line.classList.add('lineMuted')
+    }
+  })
+  
+  // Get the processed pre element (Shiki wraps everything in pre > code)
+  const pre = doc.querySelector('pre')
+  return pre?.outerHTML || html
+}
+
+/**
+ * Syntax-highlighted code view using Shiki with optional text highlighting
+ */
+export function CodeView({ code, language, highlightText }: CodeViewProps) {
   const [html, setHtml] = useState<string | null>(null)
 
   useEffect(() => {
@@ -30,15 +64,42 @@ export function CodeView({ code, language }: CodeViewProps) {
     }
   }, [code, language])
 
-  if (!html) {
-    // Show plain text while loading
+  // Process HTML to add highlight classes
+  const processedHtml = useMemo(() => {
+    if (!html) return null
+    if (!highlightText?.trim()) return html
+    return processHtmlWithHighlight(html, highlightText)
+  }, [html, highlightText])
+
+  if (!processedHtml) {
+    // Show plain text while loading, with highlight support
+    if (highlightText?.trim()) {
+      const lowerHighlight = highlightText.trim().toLowerCase()
+      const lines = code.split('\n')
+      return (
+        <pre class={classes.CodeView}>
+          {lines.map((line, i) => {
+            const isMatch = line.toLowerCase().includes(lowerHighlight)
+            return (
+              <span 
+                key={i} 
+                class={isMatch ? 'lineHighlighted' : 'lineMuted'}
+                data-highlight-match={isMatch ? 'true' : undefined}
+              >
+                {line}{'\n'}
+              </span>
+            )
+          })}
+        </pre>
+      )
+    }
     return <pre class={classes.CodeView}>{code}</pre>
   }
 
   return (
     <div 
       class={classes.codeViewHighlighted} 
-      dangerouslySetInnerHTML={{ __html: html }} 
+      dangerouslySetInnerHTML={{ __html: processedHtml }} 
     />
   )
 }

@@ -42,3 +42,24 @@
     color: rgba(115, 138, 148, 0.4);
   }
 }
+
+// Highlight styles for search matching
+// Uses :global because these classes are applied via DOM manipulation in processHtmlWithHighlight
+:global(.lineHighlighted) {
+  background: var(--bgColor-accent-muted);
+}
+
+:global(.lineMuted) {
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+// Current match style for CodeView
+// Uses :global because this attribute is applied via JS from ResourceDetail
+:global([data-current-match="true"]) {
+  background: var(--bgColor-attention-muted);
+}

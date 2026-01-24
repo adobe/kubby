@@ -300,3 +300,49 @@
     }
   }
 }
+
+// Highlight styles for search matching
+.highlighted {
+  background: var(--bgColor-accent-muted);
+  //background: var(--bgColor-accent-muted);
+  border-radius: 2px;
+  //margin: 0 -0.25rem;
+  //padding: 0 0.25rem;
+}
+
+// Current match - the actively selected match with attention style
+// Uses :global because this attribute is applied via JS from ResourceDetail
+:global([data-current-match="true"]) {
+  background: var(--bgColor-attention-muted);
+}
+
+// Muted style - only applied to leaf rows (rows without nested children)
+// This prevents opacity from cascading to nested content
+.muted {
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+// MutedKey style - for container rows (with nested children)
+// Only mutes the key label row, not the nested content
+// Structure: .mutedKey > div.keyRow + div.nestedValue
+.mutedKey {
+  // Target the first child div (keyRow) and mute it
+  > div:first-child {
+    opacity: 0.35;
+    transition: opacity 0.15s ease;
+  }
+  
+  // Second div (nestedValue) stays at full opacity
+  > div:nth-child(2) {
+    opacity: 1;
+  }
+
+  &:hover > div:first-child {
+    opacity: 0.7;
+  }
+}

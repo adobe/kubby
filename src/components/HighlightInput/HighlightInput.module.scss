@@ -1,0 +1,144 @@
+.HighlightInput {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.05rem 0.25rem;
+  background: var(--bgColor-muted);
+  border-left: 2px solid var(--borderColor-default);
+  border-right: 2px solid var(--borderColor-default);
+  border-radius: 5px;
+  font-size: 0.7rem;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--control-bgColor-hover);
+  }
+
+  &:focus-within {
+    background: var(--control-bgColor-hover);
+    border-color: var(--bgColor-accent-emphasis);
+  }
+
+  .input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font: inherit;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--fgColor-default);
+    min-width: 4rem;
+    width: 8rem;
+    padding: 0.1rem 0;
+
+    &::placeholder {
+      color: var(--fgColor-muted);
+      font-weight: 400;
+    }
+  }
+
+  .controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    margin-left: 0.2rem;
+  }
+
+  .matchCount {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--fgColor-accent);
+    padding: 0 0.25rem;
+    min-width: 2rem;
+    text-align: center;
+  }
+
+  .noMatches {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--fgColor-muted);
+    padding: 0 0.25rem;
+  }
+
+  .navButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.1rem 0.2rem;
+    background: transparent;
+    border: none;
+    border-radius: 2px;
+    color: var(--fgColor-muted);
+    font-size: 0.55rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--control-bgColor-active);
+      color: var(--fgColor-accent);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--bgColor-accent-emphasis);
+      outline-offset: 1px;
+    }
+
+    .navIcon {
+      font-size: 0.5rem;
+    }
+  }
+
+  .clearButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.05rem 0.15rem;
+    background: transparent;
+    border: none;
+    border-radius: 2px;
+    color: var(--fgColor-muted);
+    font-size: 0.65rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--control-bgColor-active);
+      color: var(--fgColor-danger);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--bgColor-accent-emphasis);
+      outline-offset: 1px;
+    }
+
+    .clearIcon {
+      font-size: 1rem;
+      font-weight: normal;
+    }
+
+    .shortcutKey {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.15rem;
+      background: var(--bgColor-muted);
+      border: 1px solid var(--borderColor-default);
+      border-radius: 2px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: var(--fgColor-muted);
+    }
+  }
+}

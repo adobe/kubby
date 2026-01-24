@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'preact/hooks'
+import { useState, useMemo, useContext } from 'preact/hooks'
+import { createContext, type ComponentChildren } from 'preact'
 import classes from './TreeView.module.scss'
 import { findLinearizer, defaultLinearizers, LinearizerConfig, LinearizedResult, LinearizedPart } from './linearizers.ts'
 import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
@@ -8,12 +9,112 @@ const MAX_VALUE_LENGTH = 100
 /** Callback for jumping to a related resource */
 export type OnJumpFn = (targetResourceType: string, filters: ResourceFilter[]) => void
 
+// Highlight context to pass highlight state down the tree
+interface HighlightContextValue {
+  highlightText: string
+  lowerHighlightText: string
+}
+
+const HighlightContext = createContext<HighlightContextValue | null>(null)
+
 interface TreeViewProps {
   data: unknown
   level?: number
   path?: string[]
   linearizers?: LinearizerConfig[]
   onJump?: OnJumpFn
+  highlightText?: string
+}
+
+/**
+ * Get text representation of linearized parts for matching
+ */
+function getLinearizedText(parts: LinearizedResult): string {
+  return parts.map(part => {
+    switch (part.type) {
+      case 'key': return part.value
+      case 'string': return part.value
+      case 'number': return String(part.value)
+      case 'boolean': return part.value ? 'true' : 'false'
+      case 'text': return part.value
+      case 'separator': return '|'
+      case 'secretRef': return part.secretName
+      case 'table': 
+        return part.headers.join(' ') + ' ' + 
+          part.rows.map(row => row.map(cell => getLinearizedText([cell])).join(' ')).join(' ')
+      default: return ''
+    }
+  }).join(' ')
+}
+
+// Keys to exclude from highlight matching (these contain redundant/noisy data)
+const HIGHLIGHT_EXCLUDE_KEYS = [
+  'kubectl.kubernetes.io/last-applied-configuration',
+]
+
+/**
+ * Check if text matches highlight (case-insensitive)
+ * Excludes certain keys that contain noisy data (like last-applied-configuration)
+ */
+function matchesHighlight(text: string, lowerHighlightText: string): boolean {
+  if (!lowerHighlightText) return false
+  
+  // Check if this is an excluded key
+  const lowerText = text.toLowerCase()
+  for (const excludeKey of HIGHLIGHT_EXCLUDE_KEYS) {
+    if (lowerText.startsWith(excludeKey + ':')) {
+      return false
+    }
+  }
+  
+  return lowerText.includes(lowerHighlightText)
+}
+
+/**
+ * Wrapper component that applies highlight/muted styles
+ * @param isLeaf - If true, this is a leaf row (no nested children) - full opacity muting applies
+ *                 If false, this is a container row - only the key is muted, not nested content
+ */
+function HighlightableRow({ 
+  children, 
+  textContent,
+  className,
+  isLeaf = true
+}: { 
+  children: ComponentChildren
+  textContent: string
+  className?: string
+  isLeaf?: boolean
+}) {
+  const highlightCtx = useContext(HighlightContext)
+  
+  if (!highlightCtx?.lowerHighlightText) {
+    return <div class={className}>{children}</div>
+  }
+  
+  const isMatch = matchesHighlight(textContent, highlightCtx.lowerHighlightText)
+  
+  // Apply different classes based on match status and whether this is a leaf
+  // - highlighted: matching rows get background highlight
+  // - muted: non-matching leaf rows get full opacity reduction
+  // - mutedKey: non-matching container rows get key-only opacity reduction (via CSS)
+  let highlightClass = ''
+  if (isMatch) {
+    highlightClass = classes.highlighted
+  } else if (isLeaf) {
+    highlightClass = classes.muted
+  } else {
+    highlightClass = classes.mutedKey
+  }
+  
+  return (
+    <div 
+      class={`${className || ''} ${highlightClass}`.trim()}
+      data-highlight-match={isMatch ? 'true' : undefined}
+    >
+      {children}
+    </div>
+  )
 }
 
 /**
@@ -124,6 +225,7 @@ function LinearizedValue({
   const secretRefPart = linearized.find(part => part.type === 'secretRef')
   const secretName = secretRefPart?.type === 'secretRef' ? secretRefPart.secretName : null
 
+  // Parent (objectEntry or arrayItem) handles highlighting, so we don't wrap in HighlightableRow here
   return (
     <div class={classes.linearizedContainer}>
       <div class={classes.linearizedRow}>
@@ -153,14 +255,17 @@ function LinearizedValue({
       </div>
       {expanded && (
         <div class={classes.expandedTree}>
-          <TreeViewInternal
-            data={data}
-            level={level + 1}
-            path={path}
-            linearizers={linearizers}
-            onJump={onJump}
-            skipLinearization
-          />
+          {/* Disable highlighting in expanded tree to avoid double highlighting */}
+          <HighlightContext.Provider value={null}>
+            <TreeViewInternal
+              data={data}
+              level={level + 1}
+              path={path}
+              linearizers={linearizers}
+              onJump={onJump}
+              skipLinearization
+            />
+          </HighlightContext.Provider>
         </div>
       )}
     </div>
@@ -169,6 +274,17 @@ function LinearizedValue({
 
 interface TreeViewInternalProps extends TreeViewProps {
   skipLinearization?: boolean
+}
+
+/**
+ * Get text representation of a primitive value
+ */
+function getPrimitiveText(data: unknown): string {
+  if (data === null || data === undefined) return 'null'
+  if (typeof data === 'boolean') return data ? 'true' : 'false'
+  if (typeof data === 'number') return String(data)
+  if (typeof data === 'string') return data
+  return String(data)
 }
 
 /**
@@ -239,18 +355,47 @@ function TreeViewInternal({
 
     return (
       <div class={classes.arrayContainer}>
-        {data.map((item, index) => (
-          <div key={index} class={classes.arrayItem}>
-            <span class={classes.arrayIndex}>[{index + 1}]</span>
-            <TreeViewInternal
-              data={item}
-              level={level + 1}
-              path={[...path, String(index)]}
-              linearizers={linearizers}
-              onJump={onJump}
-            />
-          </div>
-        ))}
+        {data.map((item, index) => {
+          const childPath = [...path, String(index)]
+          const childLinearizer = findLinearizer(childPath, linearizers)
+          const isComplex = typeof item === 'object' && item !== null
+          const childIsLinearizable = childLinearizer && isComplex
+          
+          // For linearizable items, wrap in HighlightableRow so highlighting is handled at this level
+          if (childIsLinearizable) {
+            const linearizedText = getLinearizedText(childLinearizer(item, String(index)) || [])
+            return (
+              <HighlightableRow key={index} textContent={`[${index + 1}] ${linearizedText}`} className={classes.arrayItem} isLeaf={true}>
+                <span class={classes.arrayIndex}>[{index + 1}]</span>
+                <TreeViewInternal
+                  data={item}
+                  level={level + 1}
+                  path={childPath}
+                  linearizers={linearizers}
+                  onJump={onJump}
+                />
+              </HighlightableRow>
+            )
+          }
+          
+          // Get text content for matching
+          const textContent = `[${index + 1}] ${getPrimitiveText(item)}`
+          // isLeaf is false if item is complex (has nested content)
+          const itemIsComplex = typeof item === 'object' && item !== null
+          
+          return (
+            <HighlightableRow key={index} textContent={textContent} className={classes.arrayItem} isLeaf={!itemIsComplex}>
+              <span class={classes.arrayIndex}>[{index + 1}]</span>
+              <TreeViewInternal
+                data={item}
+                level={level + 1}
+                path={childPath}
+                linearizers={linearizers}
+                onJump={onJump}
+              />
+            </HighlightableRow>
+          )
+        })}
       </div>
     )
   }
@@ -279,10 +424,36 @@ function TreeViewInternal({
           const childLinearizer = findLinearizer(childPath, linearizers)
           const childIsLinearizable = childLinearizer && isComplex
 
+          // Get text content for highlighting
+          const textContent = childIsLinearizable 
+            ? key // LinearizedValue handles its own text content
+            : `${key}: ${getPrimitiveText(value)}`
+
+          // For linearizable children, wrap in HighlightableRow so the key gets muted/highlighted
+          // The LinearizedValue inside will NOT apply its own muted styling to avoid double muting
+          if (childIsLinearizable) {
+            return (
+              <HighlightableRow key={key} textContent={`${key}: ${getLinearizedText(childLinearizer(value, key) || [])}`} className={classes.objectEntry} isLeaf={true}>
+                <div class={classes.keyRow}>
+                  <span class={classes.objectKey}>{key}:</span>
+                  <span class={classes.inlineValue}>
+                    <TreeViewInternal
+                      data={value}
+                      level={level + 1}
+                      path={childPath}
+                      linearizers={linearizers}
+                      onJump={onJump}
+                    />
+                  </span>
+                </div>
+              </HighlightableRow>
+            )
+          }
+
           return (
-            <div key={key} class={classes.objectEntry}>
+            <HighlightableRow key={key} textContent={textContent} className={classes.objectEntry} isLeaf={!isComplex}>
               <div class={classes.keyRow}>
-                {showCollapseToggle && !childIsLinearizable && (
+                {showCollapseToggle && (
                   <button
                     class={classes.collapseToggle}
                     onClick={() => toggleCollapse(key)}
@@ -291,7 +462,7 @@ function TreeViewInternal({
                   </button>
                 )}
                 <span class={classes.objectKey}>{key}:</span>
-                {(!isComplex || childIsLinearizable) && (
+                {!isComplex && (
                   <span class={classes.inlineValue}>
                     <TreeViewInternal
                       data={value}
@@ -302,13 +473,13 @@ function TreeViewInternal({
                     />
                   </span>
                 )}
-                {isComplex && !childIsLinearizable && isCollapsed && (
+                {isComplex && isCollapsed && (
                   <span class={classes.collapsedIndicator}>
-                      {Array.isArray(value) ? `[${value.length} items]` : `{${Object.keys(value as object).length} keys}`}
-                    </span>
+                    {Array.isArray(value) ? `[${value.length} items]` : `{${Object.keys(value as object).length} keys}`}
+                  </span>
                 )}
               </div>
-              {isComplex && !childIsLinearizable && !isCollapsed && (
+              {isComplex && !isCollapsed && (
                 <div class={classes.nestedValue}>
                   <TreeViewInternal
                     data={value}
@@ -319,7 +490,7 @@ function TreeViewInternal({
                   />
                 </div>
               )}
-            </div>
+            </HighlightableRow>
           )
         })}
       </div>
@@ -332,14 +503,25 @@ function TreeViewInternal({
 /**
  * Render a hierarchical tree view of JSON data with linearization support
  */
-export function TreeView({ data, level = 0, path = [], linearizers, onJump }: TreeViewProps) {
+export function TreeView({ data, level = 0, path = [], linearizers, onJump, highlightText }: TreeViewProps) {
+  // Memoize context value to avoid unnecessary re-renders
+  const contextValue = useMemo(() => {
+    if (!highlightText?.trim()) return null
+    return {
+      highlightText: highlightText.trim(),
+      lowerHighlightText: highlightText.trim().toLowerCase()
+    }
+  }, [highlightText])
+
   return (
-    <TreeViewInternal
-      data={data}
-      level={level}
-      path={path}
-      linearizers={linearizers}
-      onJump={onJump}
-    />
+    <HighlightContext.Provider value={contextValue}>
+      <TreeViewInternal
+        data={data}
+        level={level}
+        path={path}
+        linearizers={linearizers}
+        onJump={onJump}
+      />
+    </HighlightContext.Provider>
   )
 }
