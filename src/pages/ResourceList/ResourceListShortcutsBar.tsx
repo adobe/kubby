@@ -66,6 +66,14 @@ const SERVICE_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 
+const JOB_SHORTCUTS: ShortcutConfig[] = [
+  { label: 'Pods', shortcut: 'Enter', code: 'pods', tooltip: 'Show the pods for this job', isModifying: false },
+  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
+  { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this job', isModifying: false },
+  { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
+]
+
 const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
   { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
@@ -88,6 +96,8 @@ export function getShortcutsForResourceType(resourceType: string, hasSelection: 
     shortcuts = CONTAINER_SHORTCUTS
   } else if (normalizedType === 'services' || normalizedType === 'service') {
     shortcuts = SERVICE_SHORTCUTS
+  } else if (normalizedType === 'jobs' || normalizedType === 'job') {
+    shortcuts = JOB_SHORTCUTS
   } else {
     shortcuts = DEFAULT_SHORTCUTS
   }
