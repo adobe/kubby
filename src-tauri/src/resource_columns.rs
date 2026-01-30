@@ -1301,6 +1301,57 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 align: ColumnAlign::End,
             },
         ],
+        "vaultsecrets" => vec![
+            ColumnConfig {
+                name: "SUCCEEDED".to_string(),
+                json_paths: vec!["$.status.conditions[0].status".to_string()],
+                format: None,
+                column_type: None,
+                color_rules: Some(vec![
+                    ColorRule {
+                        expression: "{0} === true || {0} === 'true' || {0} === 'True'".to_string(),
+                        color: ColorState::Success,
+                    },
+                    ColorRule {
+                        expression: "{0} === false || {0} === 'false' || {0} === 'False'".to_string(),
+                        color: ColorState::Danger,
+                    },
+                ]),
+                align: ColumnAlign::Start,
+            },
+            ColumnConfig {
+                name: "REASON".to_string(),
+                json_paths: vec!["$.status.conditions[0].reason".to_string()],
+                format: None,
+                column_type: None,
+                color_rules: None,
+                align: ColumnAlign::Start,
+            },
+            ColumnConfig {
+                name: "MESSAGE".to_string(),
+                json_paths: vec!["$.status.conditions[0].message".to_string()],
+                format: None,
+                column_type: None,
+                color_rules: None,
+                align: ColumnAlign::Start,
+            },
+            ColumnConfig {
+                name: "LAST TRANSITION".to_string(),
+                json_paths: vec!["$.status.conditions[0].lastTransitionTime".to_string()],
+                format: None,
+                column_type: Some(ColumnType::Duration),
+                color_rules: None,
+                align: ColumnAlign::End,
+            },
+            ColumnConfig {
+                name: "AGE".to_string(),
+                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
+                format: None,
+                column_type: Some(ColumnType::Duration),
+                color_rules: None,
+                align: ColumnAlign::End,
+            },
+        ],
         _ => return None,
     };
 
