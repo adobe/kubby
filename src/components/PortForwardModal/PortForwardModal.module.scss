@@ -90,6 +90,11 @@
   }
 }
 
+.customRow {
+  background: var(--bgColor-muted);
+  border-top: 1px dashed var(--borderColor-muted);
+}
+
 .portCheckbox {
   display: flex;
   align-items: center;

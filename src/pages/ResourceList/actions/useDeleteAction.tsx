@@ -48,6 +48,13 @@ export function useDeleteAction({
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteConfirmation) return
 
+    console.log('[Delete] Starting delete:', {
+      context,
+      namespace,
+      resourceType,
+      resourceName: deleteConfirmation.resourceName,
+    })
+
     setIsDeleting(true)
     setDeleteError(null)
 
@@ -59,13 +66,17 @@ export function useDeleteAction({
         resourceName: deleteConfirmation.resourceName,
       })
 
+      console.log('[Delete] Result:', result)
+
       if (result.success) {
         setDeleteConfirmation(null)
         onSuccess()
       } else {
+        console.error('[Delete] Failed:', result.error)
         setDeleteError(result.error || 'Failed to delete resource')
       }
     } catch (e) {
+      console.error('[Delete] Exception:', e)
       setDeleteError(e instanceof Error ? e.message : String(e))
     } finally {
       setIsDeleting(false)

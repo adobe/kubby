@@ -252,11 +252,15 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 column_type: Some(ColumnType::PodStatus),
                 color_rules: Some(vec![
                     ColorRule {
+                        expression: "{0} === 'Terminating'".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
                         expression: "['Running', 'Succeeded'].some(status => {0}.includes(status))".to_string(),
                         color: ColorState::Success,
                     },
                     ColorRule {
-                        expression: "['Unknown', 'Pending', 'PodScheduled', 'PodReadyToStartContainers', 'ContainersReady', 'ContainersNotReady', 'ContainerCreating', 'ContainerStatusUnknown', 'Completed', 'Initialized', 'Ready', 'DisruptionTarget', 'PodResizePending', 'PodResizeInProgress'].some(status => {0}.includes(status))".to_string(),
+                        expression: "['Unknown', 'Pending', 'PodScheduled', 'PodReadyToStartContainers', 'ContainersReady', 'ContainersNotReady', 'ContainerCreating', 'ContainerStatusUnknown', 'Completed', 'Initialized', 'Ready', 'DisruptionTarget', 'PodResizePending', 'PodResizeInProgress', 'ImagePullBackOff', 'ErrImagePull'].some(status => {0}.includes(status))".to_string(),
                         color: ColorState::Attention,
                     },
                     ColorRule {

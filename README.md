@@ -34,7 +34,9 @@ If your cluster uses exec-based auth, ensure the plugin is in your `PATH`:
 
 Download the latest `.dmg` from [GitHub Releases](https://github.com/OneAdobe/kubby/releases).
 
-On first launch you may need to right-click and select "Open" to bypass Gatekeeper (app is not notarized).
+> [!IMPORTANT]
+> App is not notarized
+> On first launch you need to run `xattr -cr /Applications/Kubby.app` to bypass Gatekeeper.
 
 ### Environment Variables
 

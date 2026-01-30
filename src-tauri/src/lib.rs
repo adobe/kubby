@@ -143,6 +143,7 @@ pub fn run() {
             port_forward::start_port_forward,
             port_forward::stop_port_forward,
             port_forward::list_active_port_forwards,
+            port_forward::check_dead_port_forwards,
             ai_workspace::open_ai_tool,
         ])
         .run(tauri::generate_context!())

@@ -292,6 +292,16 @@ export function ResourceList({
   // Initialize from prop if provided, otherwise -1
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex ?? -1)
 
+  // Port forward error state (for silent failures)
+  const [portForwardError, setPortForwardError] = useState<string | null>(null)
+
+  // Handle port forward failure callback
+  const handlePortForwardFailed = useCallback((resourceName: string, localPort: number, targetPort: number) => {
+    setPortForwardError(`Port forward to ${resourceName}:${targetPort} (local ${localPort}) failed unexpectedly`)
+    // Auto-clear error after 10 seconds
+    setTimeout(() => setPortForwardError(null), 10000)
+  }, [])
+
   // Action hooks
   const deleteAction = useDeleteAction({
     context,
@@ -326,6 +336,7 @@ export function ResourceList({
     resourceType,
     parentResourceName,
     readOnly,
+    onPortForwardFailed: handlePortForwardFailed,
   })
 
   const runAction = useRunAction({
@@ -422,7 +433,12 @@ export function ResourceList({
         break
 
       case 'port_forward':
-        portForwardAction.openPortForward(resource.name)
+        // Extract ports from the resource's rawValues if available
+        const rawPorts = resource.rawValues?.PORTS
+        const initialPorts = rawPorts
+          ? rawPorts.map(p => typeof p === 'number' ? p : parseInt(String(p), 10)).filter(p => !isNaN(p) && p > 0)
+          : undefined
+        portForwardAction.openPortForward(resource.name, initialPorts)
         break
 
       case 'scale':
@@ -855,6 +871,7 @@ export function ResourceList({
 
       <div class={classes.body}>
         <Alert type="error" label="Edit Failed" message={editAction.editError}/>
+        <Alert type="error" label="Port Forward Failed" message={portForwardError}/>
         <Alert type="error" label="Loading Error" message={error}/>
         <Alert type="error" label="Column Evaluation Error" message={evaluationError}/>
 

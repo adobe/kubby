@@ -82,6 +82,11 @@ pub async fn delete_resource(
     context: String,
     namespace: String,
 ) -> Result<String, String> {
+    eprintln!(
+        "[Delete] Deleting {} {} in {}/{}",
+        resource_type, resource_name, context, namespace
+    );
+    
     // Use --wait=false to return immediately after delete is initiated
     // (otherwise kubectl waits for finalizers which can take a long time)
     let args = [
@@ -95,12 +100,20 @@ pub async fn delete_resource(
     
     let output = kubectl::run(&args).await?;
     
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    
+    eprintln!(
+        "[Delete] Exit code: {:?}, stdout: {}, stderr: {}",
+        output.status.code(),
+        stdout.trim(),
+        stderr.trim()
+    );
+    
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("Failed to delete resource: {}", stderr));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(stdout.trim().to_string())
 }
 

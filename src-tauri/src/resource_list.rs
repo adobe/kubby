@@ -260,6 +260,12 @@ fn format_value_by_type(value: &Value, column_type: &ColumnType) -> String {
 
 // Smart pod status evaluation with prioritized condition checking
 fn evaluate_pod_status(item: &Value) -> String {
+    // 0. Check if pod is being deleted (highest priority)
+    // When a pod is deleted, Kubernetes sets metadata.deletionTimestamp
+    if item.pointer("/metadata/deletionTimestamp").is_some() {
+        return "Terminating".to_string();
+    }
+    
     let phase = item
         .pointer("/status/phase")
         .and_then(|v| v.as_str())
@@ -510,6 +516,75 @@ fn evaluate_spec_aggregate(item: &Value, field: &str, column_type: &ColumnType, 
     Ok(formatted)
 }
 
+/// Convert traditional JSONPath syntax to RFC 9535 syntax used by serde_json_path.
+/// CRD additionalPrinterColumns use traditional syntax like:
+///   .status.conditions[?(@.type=="Ready")].status
+/// RFC 9535 expects:
+///   $.status.conditions[? @.type == 'Ready'].status
+fn normalize_jsonpath(path: &str) -> String {
+    let mut result = path.to_string();
+    
+    // Prepend $ if path starts with .
+    if result.starts_with('.') && !result.starts_with("$.") {
+        result = format!("${}", result);
+    }
+    
+    // Convert filter expressions from [?(@...)] to [? @...]
+    // Also convert double quotes to single quotes in filter expressions
+    let mut output = String::with_capacity(result.len());
+    let chars: Vec<char> = result.chars().collect();
+    let mut i = 0;
+    
+    while i < chars.len() {
+        // Look for [?( pattern
+        if i + 2 < chars.len() && chars[i] == '[' && chars[i + 1] == '?' && chars[i + 2] == '(' {
+            output.push('[');
+            output.push('?');
+            output.push(' ');
+            i += 3; // Skip [?(
+            
+            // Process filter content until we find )]
+            let mut paren_depth = 1;
+            while i < chars.len() && paren_depth > 0 {
+                if chars[i] == '(' {
+                    paren_depth += 1;
+                    output.push(chars[i]);
+                } else if chars[i] == ')' {
+                    paren_depth -= 1;
+                    if paren_depth == 0 {
+                        // Skip the closing ) - it will be followed by ]
+                        i += 1;
+                        continue;
+                    }
+                    output.push(chars[i]);
+                } else if chars[i] == '"' {
+                    // Convert double quotes to single quotes in filter
+                    output.push('\'');
+                } else if chars[i] == '=' && i + 1 < chars.len() && chars[i + 1] == '=' {
+                    // Add spaces around == if not already present
+                    if !output.ends_with(' ') {
+                        output.push(' ');
+                    }
+                    output.push('=');
+                    output.push('=');
+                    i += 1;
+                    if i + 1 < chars.len() && chars[i + 1] != ' ' {
+                        output.push(' ');
+                    }
+                } else {
+                    output.push(chars[i]);
+                }
+                i += 1;
+            }
+        } else {
+            output.push(chars[i]);
+            i += 1;
+        }
+    }
+    
+    output
+}
+
 // Evaluate a single JSONPath expression with optional metrics context
 fn evaluate_jsonpath_with_context(
     item: &Value,
@@ -578,8 +653,9 @@ fn evaluate_jsonpath_with_context(
         return Ok("-".to_string());
     }
     
-    // Parse the JSONPath expression
-    let path = JsonPath::parse(json_path)
+    // Normalize and parse the JSONPath expression
+    let normalized = normalize_jsonpath(json_path);
+    let path = JsonPath::parse(&normalized)
         .map_err(|e| format!("Invalid JSONPath '{}': {}", json_path, e))?;
     
     // Query the item
@@ -725,7 +801,8 @@ fn parse_kubectl_json(
             if json_path.starts_with("$metrics.") || json_path.starts_with("$spec.") {
                 continue;
             }
-            if let Err(e) = JsonPath::parse(json_path) {
+            let normalized = normalize_jsonpath(json_path);
+            if let Err(e) = JsonPath::parse(&normalized) {
                 validation_error = Some(format!("Column '{}': invalid JSONPath '{}': {}", col.name, json_path, e));
                 break;
             }
@@ -1044,4 +1121,63 @@ pub async fn get_pod_containers(
         items,
         evaluation_error,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_jsonpath_prepends_dollar() {
+        assert_eq!(normalize_jsonpath(".status.phase"), "$.status.phase");
+        assert_eq!(normalize_jsonpath("$.status.phase"), "$.status.phase");
+    }
+
+    #[test]
+    fn test_normalize_jsonpath_filter_expression() {
+        // Traditional syntax: [?(@.type=="Ready")]
+        // RFC 9535 syntax: [? @.type == 'Ready']
+        assert_eq!(
+            normalize_jsonpath(".status.conditions[?(@.type==\"Ready\")].status"),
+            "$.status.conditions[? @.type == 'Ready'].status"
+        );
+        assert_eq!(
+            normalize_jsonpath(".status.conditions[?(@.type==\"SecretCreated\")].status"),
+            "$.status.conditions[? @.type == 'SecretCreated'].status"
+        );
+    }
+
+    #[test]
+    fn test_normalize_jsonpath_no_filter() {
+        // Paths without filters should remain unchanged (except $ prefix)
+        assert_eq!(
+            normalize_jsonpath(".metadata.name"),
+            "$.metadata.name"
+        );
+        assert_eq!(
+            normalize_jsonpath("$.spec.containers[*].name"),
+            "$.spec.containers[*].name"
+        );
+    }
+
+    #[test]
+    fn test_normalize_jsonpath_parses_successfully() {
+        // The normalized path should parse with serde_json_path
+        let test_paths = [
+            ".status.conditions[?(@.type==\"Ready\")].status",
+            ".status.conditions[?(@.type==\"SecretCreated\")].status",
+            ".metadata.name",
+            "$.spec.replicas",
+        ];
+        
+        for path in test_paths {
+            let normalized = normalize_jsonpath(path);
+            assert!(
+                JsonPath::parse(&normalized).is_ok(),
+                "Failed to parse normalized path '{}' (from '{}')",
+                normalized,
+                path
+            );
+        }
+    }
 }

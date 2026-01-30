@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 use tokio::time::{timeout, Duration};
@@ -12,8 +13,30 @@ use crate::kubectl;
 /// Timeout in seconds for waiting for port-forward confirmation
 const PORT_FORWARD_CONFIRM_TIMEOUT_SECS: u64 = 10;
 
+/// How long to keep dead port forward info before expiring (in seconds)
+const DEAD_FORWARD_EXPIRY_SECS: u64 = 60;
+
 /// Global state for tracking active port forwards
 static PORT_FORWARDS: Mutex<Option<HashMap<String, PortForwardProcess>>> = Mutex::new(None);
+
+/// Information about a port forward that died unexpectedly
+#[derive(Debug, Serialize, Clone)]
+pub struct DeadPortForward {
+    pub info: ActivePortForward,
+    /// Exit code if available
+    #[serde(rename = "exitCode")]
+    pub exit_code: Option<i32>,
+}
+
+/// Dead port forward with timestamp for expiry
+struct DeadPortForwardWithTimestamp {
+    dead_forward: DeadPortForward,
+    timestamp: u64,
+}
+
+/// Global state for tracking port forwards that died unexpectedly
+/// These are stored temporarily so the frontend can retrieve them
+static DEAD_PORT_FORWARDS: Mutex<Vec<DeadPortForwardWithTimestamp>> = Mutex::new(Vec::new());
 
 /// Internal tracking of a port forward process
 struct PortForwardProcess {
@@ -560,25 +583,60 @@ pub async fn list_active_port_forwards(
     }
 }
 
-/// Clean up any dead processes from the map
-async fn cleanup_dead_processes() {
+/// Get current timestamp in seconds since UNIX epoch
+fn current_timestamp() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// Clean up any dead processes from the map and store them in the dead list
+fn cleanup_dead_processes_and_store() {
     let mut guard = PORT_FORWARDS.lock().unwrap();
+    let now = current_timestamp();
+    
     if let Some(ref mut map) = *guard {
         let mut dead_ids = Vec::new();
+        let mut new_dead_forwards = Vec::new();
 
         for (id, process) in map.iter_mut() {
             // Try to check if process is still running
             match process.child.try_wait() {
-                Ok(Some(_)) => {
-                    // Process has exited
+                Ok(Some(status)) => {
+                    // Process has exited - this is an unexpected failure
+                    eprintln!(
+                        "[PortForward] Process died: {} -> {} (exit code: {:?})",
+                        process.info.resource_name,
+                        process.info.target_port,
+                        status.code()
+                    );
                     dead_ids.push(id.clone());
+                    new_dead_forwards.push(DeadPortForwardWithTimestamp {
+                        dead_forward: DeadPortForward {
+                            info: process.info.clone(),
+                            exit_code: status.code(),
+                        },
+                        timestamp: now,
+                    });
                 }
                 Ok(None) => {
                     // Process is still running
                 }
-                Err(_) => {
+                Err(e) => {
                     // Error checking, assume dead
+                    eprintln!(
+                        "[PortForward] Error checking process for {}: {}",
+                        process.info.resource_name, e
+                    );
                     dead_ids.push(id.clone());
+                    new_dead_forwards.push(DeadPortForwardWithTimestamp {
+                        dead_forward: DeadPortForward {
+                            info: process.info.clone(),
+                            exit_code: None,
+                        },
+                        timestamp: now,
+                    });
                 }
             }
         }
@@ -586,5 +644,48 @@ async fn cleanup_dead_processes() {
         for id in dead_ids {
             map.remove(&id);
         }
+        
+        // Store the newly dead forwards in the global list
+        if !new_dead_forwards.is_empty() {
+            eprintln!("[PortForward] Stored {} dead forwards", new_dead_forwards.len());
+            let mut dead_guard = DEAD_PORT_FORWARDS.lock().unwrap();
+            dead_guard.extend(new_dead_forwards);
+        }
     }
+}
+
+/// Clean up any dead processes from the map (called by list_active_port_forwards)
+async fn cleanup_dead_processes() {
+    cleanup_dead_processes_and_store();
+}
+
+/// Check for port forwards that have died and return their info
+/// This retrieves and clears the stored dead forwards, also removing expired entries
+#[tauri::command]
+pub async fn check_dead_port_forwards() -> Result<Vec<DeadPortForward>, String> {
+    ensure_initialized();
+    
+    // First, do a cleanup to detect any newly dead processes
+    cleanup_dead_processes_and_store();
+    
+    // Then retrieve and clear the stored dead forwards
+    let now = current_timestamp();
+    let mut guard = DEAD_PORT_FORWARDS.lock().unwrap();
+    
+    // Filter out expired entries and collect the rest
+    let (valid, expired): (Vec<_>, Vec<_>) = guard
+        .drain(..)
+        .partition(|entry| now - entry.timestamp < DEAD_FORWARD_EXPIRY_SECS);
+    
+    if !valid.is_empty() || !expired.is_empty() {
+        eprintln!(
+            "[PortForward] check_dead_port_forwards: returning {} valid, {} expired",
+            valid.len(),
+            expired.len()
+        );
+    }
+    
+    // Return the dead forwards (the list is now empty)
+    let result: Vec<DeadPortForward> = valid.into_iter().map(|entry| entry.dead_forward).collect();
+    Ok(result)
 }

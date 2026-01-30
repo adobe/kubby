@@ -44,6 +44,8 @@ interface PortSelection {
   protocol: string
   localPort: number
   selected: boolean
+  /** Whether this is a custom/empty row for manual entry */
+  isCustom?: boolean
 }
 
 interface PortForwardModalProps {
@@ -63,6 +65,8 @@ interface PortForwardModalProps {
   parentResourceName?: string
   /** Whether in read-only mode */
   readOnly: boolean
+  /** Initial ports to display immediately (from list view) before fetching full data */
+  initialPorts?: number[]
 }
 
 /**
@@ -112,6 +116,7 @@ export function PortForwardModal({
   resourceName,
   parentResourceName,
   readOnly,
+  initialPorts,
 }: PortForwardModalProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [loadingError, setLoadingError] = useState<string | null>(null)
@@ -122,6 +127,33 @@ export function PortForwardModal({
   const [isAdding, setIsAdding] = useState(false)
   const firstInputRef = useRef<HTMLInputElement>(null)
   const stopAllButtonRef = useRef<ButtonHandle>(null)
+
+  // Build initial port selections from initialPorts prop (show immediately without loading)
+  useEffect(() => {
+    if (!isOpen || !initialPorts || initialPorts.length === 0) return
+    
+    // Only set initial selections if we haven't loaded targets yet
+    if (targets.length === 0 && portSelections.length === 0) {
+      const selections: PortSelection[] = initialPorts.map((port, idx) => ({
+        containerName: resourceName,
+        port,
+        protocol: 'TCP',
+        localPort: computeLocalPort(port),
+        selected: idx === 0,
+        isCustom: false,
+      }))
+      // Always add an empty row for custom port entry
+      selections.push({
+        containerName: resourceName,
+        port: 0,
+        protocol: 'TCP',
+        localPort: 0,
+        selected: false,
+        isCustom: true,
+      })
+      setPortSelections(selections)
+    }
+  }, [isOpen, initialPorts, resourceName, targets.length, portSelections.length])
 
   // Focus Stop All button if there are existing forwards, otherwise focus first input
   useEffect(() => {
@@ -147,12 +179,13 @@ export function PortForwardModal({
     let cancelled = false
 
     async function fetchData() {
-      setIsLoading(true)
+      // Only show loading if we don't have initial ports to display
+      const hasInitialPorts = initialPorts && initialPorts.length > 0
+      if (!hasInitialPorts) {
+        setIsLoading(true)
+      }
       setLoadingError(null)
       setAddError(null)
-      setTargets([])
-      setActiveForwards([])
-      setPortSelections([])
 
       try {
         // Fetch targets and active forwards in parallel
@@ -177,41 +210,54 @@ export function PortForwardModal({
         setTargets(targetsResponse.targets)
         setActiveForwards(forwards)
 
-        // Build initial port selections
+        // Build port selections from fetched targets
         const selections: PortSelection[] = []
         let isFirst = true
         for (const target of targetsResponse.targets) {
-          // If container has no exposed ports, add an empty row for manual entry
-          if (target.ports.length === 0) {
-            selections.push({
-              containerName: target.containerName,
-              port: 80, // Default port
-              protocol: 'TCP',
-              localPort: computeLocalPort(80),
-              selected: isFirst,
-            })
-            isFirst = false
-          } else {
-            for (const port of target.ports) {
-              // Check if this port is already forwarded
-              const isForwarded = forwards.some(
-                f => f.targetPort === port.port && 
-                     (f.containerName === target.containerName || f.containerName === null)
-              )
-              
-              if (!isForwarded) {
-                selections.push({
-                  containerName: target.containerName,
-                  port: port.port,
-                  protocol: port.protocol,
-                  localPort: computeLocalPort(port.port),
-                  selected: isFirst, // First port is selected by default
-                })
-                isFirst = false
-              }
+          // Add rows for exposed ports
+          for (const port of target.ports) {
+            // Check if this port is already forwarded
+            const isForwarded = forwards.some(
+              f => f.targetPort === port.port && 
+                   (f.containerName === target.containerName || f.containerName === null)
+            )
+            
+            if (!isForwarded) {
+              selections.push({
+                containerName: target.containerName,
+                port: port.port,
+                protocol: port.protocol,
+                localPort: computeLocalPort(port.port),
+                selected: isFirst, // First port is selected by default
+                isCustom: false,
+              })
+              isFirst = false
             }
           }
+          
+          // Always add an empty row for custom port entry per container
+          selections.push({
+            containerName: target.containerName,
+            port: 0,
+            protocol: 'TCP',
+            localPort: 0,
+            selected: false,
+            isCustom: true,
+          })
         }
+        
+        // If no targets found, still add an empty row for manual entry
+        if (targetsResponse.targets.length === 0) {
+          selections.push({
+            containerName: resourceName,
+            port: 0,
+            protocol: 'TCP',
+            localPort: 0,
+            selected: false,
+            isCustom: true,
+          })
+        }
+        
         setPortSelections(selections)
       } catch (e) {
         if (cancelled) return
@@ -228,50 +274,77 @@ export function PortForwardModal({
     return () => {
       cancelled = true
     }
-  }, [isOpen, context, namespace, resourceType, resourceName, parentResourceName])
+  }, [isOpen, context, namespace, resourceType, resourceName, parentResourceName, initialPorts])
 
-  // Handle checkbox toggle
-  const handleTogglePort = useCallback((containerName: string, port: number) => {
-    setPortSelections(prev =>
-      prev.map(sel =>
-        sel.containerName === containerName && sel.port === port
-          ? { ...sel, selected: !sel.selected }
-          : sel
-      )
-    )
+  // Handle checkbox toggle - uses index for custom rows
+  const handleTogglePort = useCallback((containerName: string, rowIndex: number) => {
+    setPortSelections(prev => {
+      let containerIdx = 0
+      return prev.map(sel => {
+        if (sel.containerName === containerName) {
+          const isMatch = containerIdx === rowIndex
+          containerIdx++
+          if (isMatch) {
+            return { ...sel, selected: !sel.selected }
+          }
+        }
+        return sel
+      })
+    })
   }, [])
 
-  // Handle local port change
-  const handleLocalPortChange = useCallback((containerName: string, port: number, localPort: string) => {
+  // Handle local port change - uses index for custom rows
+  const handleLocalPortChange = useCallback((containerName: string, rowIndex: number, localPort: string) => {
     const parsed = parseInt(localPort, 10)
-    if (!isNaN(parsed) && parsed > 0 && parsed <= 65535) {
-      setPortSelections(prev =>
-        prev.map(sel =>
-          sel.containerName === containerName && sel.port === port
-            ? { ...sel, localPort: parsed }
-            : sel
-        )
-      )
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 65535) {
+      setPortSelections(prev => {
+        let containerIdx = 0
+        return prev.map(sel => {
+          if (sel.containerName === containerName) {
+            const isMatch = containerIdx === rowIndex
+            containerIdx++
+            if (isMatch) {
+              return { ...sel, localPort: parsed }
+            }
+          }
+          return sel
+        })
+      })
     }
   }, [])
 
   // Handle container port change - also updates local port using computeLocalPort
-  const handleContainerPortChange = useCallback((containerName: string, oldPort: number, newPortStr: string) => {
+  // Uses index for custom rows since multiple can have port=0
+  const handleContainerPortChange = useCallback((containerName: string, newPortStr: string, rowIndex: number) => {
     const parsed = parseInt(newPortStr, 10)
-    if (!isNaN(parsed) && parsed > 0 && parsed <= 65535) {
-      setPortSelections(prev =>
-        prev.map(sel =>
-          sel.containerName === containerName && sel.port === oldPort
-            ? { ...sel, port: parsed, localPort: computeLocalPort(parsed) }
-            : sel
-        )
-      )
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 65535) {
+      setPortSelections(prev => {
+        // Find the selection by container and index to handle custom rows correctly
+        let containerIdx = 0
+        return prev.map(sel => {
+          if (sel.containerName === containerName) {
+            const isMatch = containerIdx === rowIndex
+            containerIdx++
+            if (isMatch) {
+              return { 
+                ...sel, 
+                port: parsed, 
+                localPort: parsed > 0 ? computeLocalPort(parsed) : 0,
+                // Auto-select custom rows when a valid port is entered
+                selected: sel.isCustom && parsed > 0 ? true : sel.selected,
+              }
+            }
+          }
+          return sel
+        })
+      })
     }
   }, [])
 
   // Handle adding port forwards
   const handleAdd = useCallback(async () => {
-    const selectedPorts = portSelections.filter(sel => sel.selected)
+    // Filter selected ports, excluding empty custom rows (port=0)
+    const selectedPorts = portSelections.filter(sel => sel.selected && sel.port > 0 && sel.localPort > 0)
 
     setIsAdding(true)
     setAddError(null)
@@ -369,7 +442,8 @@ export function PortForwardModal({
     return grouped
   }, [portSelections])
 
-  const hasSelectedPorts = portSelections.some(sel => sel.selected)
+  // Only count ports with valid port numbers as selected
+  const hasSelectedPorts = portSelections.some(sel => sel.selected && sel.port > 0 && sel.localPort > 0)
   const hasAvailablePorts = portSelections.length > 0
 
   return (
@@ -449,28 +523,29 @@ export function PortForwardModal({
                       </div>
                       <div class={classes.portList}>
                         {selections.map((sel, idx) => (
-                          <div key={`${sel.containerName}-${idx}`} class={classes.portRow}>
+                          <div key={`${sel.containerName}-${idx}`} class={`${classes.portRow} ${sel.isCustom ? classes.customRow : ''}`}>
                             <label class={classes.portCheckbox}>
                               <input
                                 type="checkbox"
                                 checked={sel.selected}
-                                onChange={() => handleTogglePort(sel.containerName, sel.port)}
-                                disabled={readOnly}
+                                onChange={() => handleTogglePort(sel.containerName, idx)}
+                                disabled={readOnly || (sel.isCustom && (sel.port === 0 || sel.localPort === 0))}
                                 tabIndex={0}
                               />
-                              <span class={classes.portLabel}>Container:</span>
+                              <span class={classes.portLabel}>{sel.isCustom ? 'Other:' : 'Exposed:'}</span>
                             </label>
                             <div class={classes.containerPortInput}>
                               <input
                                 ref={containerIdx === 0 && idx === 0 ? firstInputRef : undefined}
                                 type="number"
-                                value={sel.port}
+                                value={sel.port || ''}
+                                placeholder={sel.isCustom ? 'Port' : undefined}
                                 min={1}
                                 max={65535}
                                 onChange={(e) => handleContainerPortChange(
                                   sel.containerName,
-                                  sel.port,
-                                  (e.target as HTMLInputElement).value
+                                  (e.target as HTMLInputElement).value,
+                                  idx
                                 )}
                                 disabled={readOnly}
                                 class={classes.portField}
@@ -482,12 +557,13 @@ export function PortForwardModal({
                               <span class={classes.localPortLabel}>Local:</span>
                               <input
                                 type="number"
-                                value={sel.localPort}
+                                value={sel.localPort || ''}
+                                placeholder={sel.isCustom ? 'Local' : undefined}
                                 min={1}
                                 max={65535}
                                 onChange={(e) => handleLocalPortChange(
                                   sel.containerName,
-                                  sel.port,
+                                  idx,
                                   (e.target as HTMLInputElement).value
                                 )}
                                 disabled={readOnly}
