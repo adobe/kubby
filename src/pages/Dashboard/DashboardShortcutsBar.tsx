@@ -1,6 +1,9 @@
+import { invoke } from '@tauri-apps/api/core';
 import { ShortcutsBar } from '../../components/ShortcutsBar/ShortcutsBar.tsx';
 import { Button } from '../../components/Button/Button.tsx';
-import {BarLabel} from '../../components/ShortcutsBar/BarLabel.tsx'
+import { BarLabel } from '../../components/ShortcutsBar/BarLabel.tsx';
+import gearIcon from '../../assets/icons/gear.svg';
+import classes from './Dashboard.module.scss';
 
 interface DashboardShortcutsBarProps {
   onNextGroup: () => void;
@@ -13,6 +16,15 @@ export function DashboardShortcutsBar({
   onPreviousGroup, 
   onArrowNavigation 
 }: DashboardShortcutsBarProps) {
+  const handleOpenConfig = async () => {
+    try {
+      const configPath = await invoke<string>('get_kubby_config_path');
+      await invoke('open_file_in_editor', { path: configPath });
+    } catch (e) {
+      console.error('Failed to open config file:', e);
+    }
+  };
+
   return (
     <ShortcutsBar>
       <BarLabel>Groups:</BarLabel>
@@ -41,6 +53,7 @@ export function DashboardShortcutsBar({
         onClick={() => onArrowNavigation('right')}
         tooltip="Navigate right"
       />
+      <BarLabel>Namespaces:</BarLabel>
       <Button
         label="Up"
         shortcut="↑"
@@ -53,6 +66,14 @@ export function DashboardShortcutsBar({
         onClick={() => onArrowNavigation('down')}
         tooltip="Navigate down"
       />
+      <div style={{ flexGrow: 1 }} />
+      <button
+        class={classes.settingsButton}
+        onClick={handleOpenConfig}
+        title="Open configuration file"
+      >
+        <img src={gearIcon} alt="Settings" />
+      </button>
     </ShortcutsBar>
   );
 }

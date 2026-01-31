@@ -1,5 +1,5 @@
 // GitHub Primer Theme - Light and Dark modes
 // Supports automatic theme switching based on system preference
 
-@import './github_light.scss';
-@import './github_dark.scss';
+@use './github_light.scss';
+@use './github_dark.scss';
