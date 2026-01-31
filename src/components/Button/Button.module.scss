@@ -69,6 +69,8 @@
     background: var(--bgColor-accent-muted);
     border: 1px solid var(--borderColor-default);
     border-radius: 3px;
+    // Use system fonts that properly render Mac keyboard symbols (⌘⌥⌃⇧)
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.1rem;
