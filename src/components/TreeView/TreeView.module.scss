@@ -16,12 +16,8 @@
   .objectKey {
     font-size: 0.75rem;
     font-weight: 500;
-    color: #0066cc;
+    color: var(--data-blue-color-emphasis);
     flex-shrink: 0;
-
-    @media (prefers-color-scheme: dark) {
-      color: #6ab0f3;
-    }
   }
 
   .inlineValue {
@@ -86,33 +82,21 @@
     min-width: 1.4rem;
   }
 
-  // Value type colors
+  // Value type colors - using data visualization colors
   .valueString {
-    color: #22863a;
+    color: var(--data-green-color-emphasis);
     font-size: 0.75rem;
-
-    @media (prefers-color-scheme: dark) {
-      color: #98c379;
-    }
   }
 
   .valueNumber {
-    color: #005cc5;
+    color: var(--data-orange-color-emphasis);
     font-size: 0.75rem;
-
-    @media (prefers-color-scheme: dark) {
-      color: #d19a66;
-    }
   }
 
   .valueBoolean {
-    color: #d73a49;
+    color: var(--data-coral-color-emphasis);
     font-size: 0.75rem;
     font-weight: 500;
-
-    @media (prefers-color-scheme: dark) {
-      color: #cf747d;
-    }
   }
 
   .valueNull {
@@ -122,12 +106,8 @@
   }
 
   .valueTimestamp {
-    color: #6f42c1;
+    color: var(--data-purple-color-emphasis);
     font-size: 0.75rem;
-
-    @media (prefers-color-scheme: dark) {
-      color: #c9a0dc;
-    }
   }
 
   .valueEmpty {
@@ -159,11 +139,7 @@
     transition: background 0.15s ease;
     
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
-      
-      @media (prefers-color-scheme: dark) {
-        background: rgba(255, 255, 255, 0.08);
-      }
+      background: var(--control-transparent-bgColor-hover);
     }
     
     &.expanded {
@@ -226,19 +202,11 @@
     transition: background 0.15s ease;
     
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
-      
-      @media (prefers-color-scheme: dark) {
-        background: rgba(255, 255, 255, 0.08);
-      }
+      background: var(--control-transparent-bgColor-hover);
     }
     
     &.expanded {
-      background: rgba(0, 0, 0, 0.03);
-      
-      @media (prefers-color-scheme: dark) {
-        background: rgba(255, 255, 255, 0.05);
-      }
+      background: var(--control-transparent-bgColor-selected);
     }
   }
 
@@ -279,13 +247,8 @@
     
     th {
       font-weight: 500;
-      color: #0066cc;
-      background: rgba(0, 0, 0, 0.02);
-      
-      @media (prefers-color-scheme: dark) {
-        color: #6ab0f3;
-        background: rgba(255, 255, 255, 0.03);
-      }
+      color: var(--data-blue-color-emphasis);
+      background: var(--bgColor-neutral-muted);
     }
     
     td {
@@ -293,11 +256,7 @@
     }
     
     tr:hover td {
-      background: rgba(0, 0, 0, 0.02);
-      
-      @media (prefers-color-scheme: dark) {
-        background: rgba(255, 255, 255, 0.02);
-      }
+      background: var(--control-transparent-bgColor-hover);
     }
   }
 }

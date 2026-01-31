@@ -88,10 +88,11 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--bgColor-emphasis);
+    background: var(--bgColor-muted);
+    border: 1px solid var(--borderColor-muted);
     border-radius: 6px;
     padding: 0.25rem 0.5rem 0.15rem 0.5rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-floating-small);
     z-index: 10;
     backdrop-filter: blur(8px);
     font-size: 0.75rem;

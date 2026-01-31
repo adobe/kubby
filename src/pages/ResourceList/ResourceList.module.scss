@@ -231,18 +231,20 @@
     }
 
     &.resourceRowSelected {
-      background: var(--bgColor-accent-emphasis);
+      background: var(--bgColor-accent-muted);
 
-      td {
-        //color: var(--fgColor-onEmphasis);
+      // Add a left accent border to make selection more visible
+      td:first-child {
+        box-shadow: inset 3px 0 0 var(--bgColor-accent-emphasis);
       }
 
       .nameCell {
-        color: var(--fgColor-onEmphasis);
+        color: var(--fgColor-accent);
+        font-weight: 600;
       }
 
       &:hover {
-        background: var(--control-checked-bgColor-hover);
+        background: var(--selectMenu-bgColor-active);
       }
     }
   }
@@ -267,10 +269,11 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--bgColor-emphasis);
+    background: var(--bgColor-muted);
+    border: 1px solid var(--borderColor-muted);
     border-radius: 6px;
     padding: 0.25rem 0.5rem 0.15rem 0.5rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-floating-small);
     z-index: 10;
     backdrop-filter: blur(8px);
     font-size: 0.75rem;
@@ -313,7 +316,7 @@
     transition: background-color 0.15s ease;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.1);
+      background: var(--control-transparent-bgColor-hover);
     }
   }
 

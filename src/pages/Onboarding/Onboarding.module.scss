@@ -70,7 +70,7 @@
   margin-bottom: 1rem;
   
   code {
-    background: var(--bgColor-emphasis);
+    background: var(--bgColor-neutral-muted);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-family: 'Fira Code', monospace;
@@ -124,7 +124,7 @@
 .namespaceTag {
   font-size: 0.7rem;
   padding: 0.15rem 0.4rem;
-  background: var(--bgColor-emphasis);
+  background: var(--bgColor-neutral-muted);
   border: 1px solid var(--borderColor-muted);
   border-radius: 3px;
   color: var(--fgColor-muted);

@@ -163,17 +163,17 @@
 
   // App timestamp (from the log message itself)
   .appTimestamp {
-    color: #7c9cba;
+    color: var(--color-ansi-blue);
   }
 
   // Thread name in brackets
   .threadName {
-    color: #b08cce;
+    color: var(--fgColor-done);
   }
 
   // Package name (Java-style dot-separated)
   .packageName {
-    color: #6b8e8e;
+    color: var(--color-ansi-cyan);
     font-style: italic;
   }
 
@@ -198,11 +198,11 @@
   }
 
   .jsonMessage {
-    color: #c4b28a;
+    color: var(--fgColor-attention);
   }
 
   .jsonKey {
-    color: #7eb6a4;
+    color: var(--fgColor-success);
     font-weight: 500;
   }
 
@@ -211,7 +211,7 @@
     display: block;
     position: relative;
     padding-left: 1.25rem;
-    color: #b4a27a; // Slightly muted for continuation lines
+    color: var(--fgColor-attention); // Slightly muted for continuation lines
     
     &::before {
       content: '↪';
@@ -254,31 +254,31 @@
 
   // Log level styles - each level gets a distinct color
   .levelFatal {
-    color: #ff4d6a;
+    color: var(--fgColor-danger);
     font-weight: 700;
     text-transform: uppercase;
   }
 
   .levelError {
-    color: #f87171;
+    color: var(--fgColor-danger);
     font-weight: 600;
   }
 
   .levelWarn, .levelWarning {
-    color: #fbbf24;
+    color: var(--fgColor-attention);
     font-weight: 500;
   }
 
   .levelInfo {
-    color: #60a5fa;
+    color: var(--fgColor-accent);
   }
 
   .levelDebug {
-    color: #a3a3a3;
+    color: var(--fgColor-muted);
   }
 
   .levelTrace {
-    color: #737373;
+    color: var(--fgColor-disabled);
     font-style: italic;
   }
 
@@ -316,7 +316,7 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.35rem 0.5rem;
-    background: var(--bgColor-emphasis);
+    background: var(--bgColor-muted);
     border-top: 1px solid var(--borderColor-muted);
 
     .label {

@@ -32,14 +32,14 @@
 
   :global(code .line::before) {
     content: counter(step);
-    background-color: var(--bgColor-emphasis);
+    background-color: var(--bgColor-muted);
     counter-increment: step;
     width: 2rem;
     padding: 0 0.5rem;
     margin-right: 0.5rem;
     display: inline-block;
     text-align: right;
-    color: rgba(115, 138, 148, 0.4);
+    color: var(--fgColor-disabled);
   }
 }
 
