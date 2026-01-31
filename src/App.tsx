@@ -280,10 +280,10 @@ function App() {
       }
     }
     
-    const nodeToUpdate = stackToUpdate[stackToUpdate.length - 1];
+    const currentNode = stackToUpdate[stackToUpdate.length - 1];
     
     // Keep current namespace if available in new context, otherwise try saved namespace, then first available
-    let newNamespace = nodeToUpdate.namespace;
+    let newNamespace = currentNode.namespace;
     if (!availableNamespaces.includes(newNamespace)) {
       // Try saved namespace for this context first
       const savedNamespace = lastNamespaceByContext[newContext];
@@ -291,7 +291,7 @@ function App() {
         newNamespace = savedNamespace;
       } else {
         // Fall back to first available namespace
-        newNamespace = availableNamespaces[0] || nodeToUpdate.namespace;
+        newNamespace = availableNamespaces[0] || currentNode.namespace;
       }
     }
     
@@ -301,15 +301,17 @@ function App() {
       [newContext]: newNamespace
     }));
     
-    const updatedNode: NavigationNode = {
-      ...nodeToUpdate,
+    // Update ALL nodes in the stack with the new context/namespace
+    // This ensures pressing Escape goes back to previous resource in the CURRENT context/namespace
+    const updatedStack = stackToUpdate.map(node => ({
+      ...node,
       context: newContext,
       namespace: newNamespace,
       filters: undefined, // Clear filters - they're bound to namespace-specific resources
       selectedIndex: undefined, // Reset selection when changing context
       filterText: undefined, // Clear text filter when changing context
-    };
-    setNavigationStack([...stackToUpdate.slice(0, -1), updatedNode]);
+    }));
+    setNavigationStack(updatedStack);
   };
 
   const handleNamespaceChange = (newNamespace: string) => {
@@ -326,22 +328,24 @@ function App() {
       }
     }
     
-    const nodeToUpdate = stackToUpdate[stackToUpdate.length - 1];
+    const currentNode = stackToUpdate[stackToUpdate.length - 1];
     
     // Save the namespace for the current context
     setLastNamespaceByContext(prev => ({
       ...prev,
-      [nodeToUpdate.context]: newNamespace
+      [currentNode.context]: newNamespace
     }));
     
-    const updatedNode: NavigationNode = {
-      ...nodeToUpdate,
+    // Update ALL nodes in the stack with the new namespace
+    // This ensures pressing Escape goes back to previous resource in the CURRENT namespace
+    const updatedStack = stackToUpdate.map(node => ({
+      ...node,
       namespace: newNamespace,
       filters: undefined, // Clear filters - they're bound to namespace-specific resources
       selectedIndex: undefined, // Reset selection when changing namespace
       filterText: undefined, // Clear text filter when changing namespace
-    };
-    setNavigationStack([...stackToUpdate.slice(0, -1), updatedNode]);
+    }));
+    setNavigationStack(updatedStack);
   };
 
   const handleDescribe = (resourceType: string, resourceName: string) => {
