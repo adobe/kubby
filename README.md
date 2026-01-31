@@ -3,7 +3,8 @@
 <img src="docs/public/images/light/kubby_banner.png" height="320" alt="Kubby Logo"/>
 
 A fast, keyboard-driven desktop app for managing Kubernetes clusters. 
-Inspired by [k9s](https://k9scli.io/) with a richer UI for resource details, logs, actions and multi-cluster management.
+Inspired by [k9s](https://k9scli.io/) with a richer GUI for resource details, logs, actions 
+and multi-cluster management.
 
 ## Features
 
@@ -40,11 +41,11 @@ Download the latest `.dmg` from [GitHub Releases](https://github.com/OneAdobe/ku
 
 ### Environment Variables
 
-| Variable      | Description |
-|---------------|-------------|
-| `KUBECONFIG`  | Path to kubeconfig file(s) |
-| `KUBE_EDITOR` | Editor for `kubectl edit` |
-| `EDITOR`      | Fallback editor |
+| Variable      | Description                 |
+|---------------|-----------------------------|
+| `KUBECONFIG`  | Path to kubeconfig file(s)  |
+| `KUBE_EDITOR` | Editor for `kubectl edit`   |
+| `EDITOR`      | Fallback editor             |
 | `TERMINAL`    | Preferred terminal emulator |
 
 ## Development

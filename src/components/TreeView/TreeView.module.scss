@@ -111,7 +111,7 @@
     font-weight: 500;
 
     @media (prefers-color-scheme: dark) {
-      color: #c678dd;
+      color: #cf747d;
     }
   }
 
@@ -215,12 +215,12 @@
 
   .linearizedValue {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.25rem;
     font-size: 0.75rem;
     cursor: pointer;
     word-break: break-word;
-    padding: 0.1rem 0.25rem;
+    padding: 0.1rem 0.25rem 0 0.25rem;
     margin: -0.1rem -0.25rem;
     border-radius: 3px;
     transition: background 0.15s ease;
@@ -251,7 +251,8 @@
   }
 
   .expandIcon {
-    font-size: 0.55rem;
+    font-family: Inter, sans-serif;
+    font-size: 0.5rem;
     color: var(--fgColor-muted);
     flex-shrink: 0;
   }

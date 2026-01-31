@@ -160,6 +160,13 @@ function LinearizedPartView({ part, onJump }: { part: LinearizedPart; onJump?: O
       return <span class={classes.valueString}>{part.value}</span>
     case 'number':
       return <span class={classes.valueNumber}>{part.value}</span>
+    case 'range':
+      return <span class={classes.linearizedParts}>
+        <span class={classes.valueText}>Range</span>
+        <span class={classes.valueNumber}>{part.from}</span>
+        <span class={classes.valueText}>…</span>
+        <span class={classes.valueNumber}>{part.to}</span>
+      </span>
     case 'boolean':
       return <span class={classes.valueBoolean}>{part.value ? 'true' : 'false'}</span>
     case 'text':
@@ -283,7 +290,12 @@ function getPrimitiveText(data: unknown): string {
   if (data === null || data === undefined) return 'null'
   if (typeof data === 'boolean') return data ? 'true' : 'false'
   if (typeof data === 'number') return String(data)
-  if (typeof data === 'string') return data
+  if (typeof data === 'string') {
+    // Normalize boolean-like strings for consistent matching
+    const lower = data.toLowerCase()
+    if (lower === 'true' || lower === 'false') return lower
+    return data
+  }
   return String(data)
 }
 
@@ -344,6 +356,16 @@ function TreeViewInternal({
     // Detect and format timestamps
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(data)) {
       return <TruncatableValue value={data} className={classes.valueTimestamp} />
+    }
+    // Detect boolean-like strings (True/False from YAML)
+    const lowerData = data.toLowerCase()
+    if (lowerData === 'true' || lowerData === 'false') {
+      return <span class={classes.valueBoolean}>{lowerData}</span>
+    }
+    // Detect numeric strings
+    const numValue = parseFloat(data)
+    if (!isNaN(numValue) && String(numValue) === data.trim()) {
+      return <TruncatableValue value={data} className={classes.valueNumber} />
     }
     return <TruncatableValue value={data} className={classes.valueString} />
   }
