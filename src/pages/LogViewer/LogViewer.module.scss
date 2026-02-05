@@ -198,11 +198,17 @@
   }
 
   .jsonMessage {
-    color: var(--fgColor-attention);
+    color: var(--color-ansi-yellow-bright);
   }
 
   .jsonKey {
-    color: var(--fgColor-success);
+    color: var(--color-ansi-green-bright);
+    font-weight: 500;
+  }
+
+  // Message field value (message, msg) - highlighted with default fg color for readability
+  .jsonMessageFieldValue {
+    color: var(--fgColor-default);
     font-weight: 500;
   }
 

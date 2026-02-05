@@ -133,6 +133,7 @@ interface LogMessageClasses {
   jsonContainer: string
   jsonMessage: string
   jsonKey: string
+  jsonMessageFieldValue: string
   formatJsonBtn: string
   copyLineBtn: string
   levelFatal: string
@@ -144,6 +145,36 @@ interface LogMessageClasses {
   levelTrace: string
   logText: string
   stackTraceLine: string
+}
+
+// Keys that contain the main log message and should be highlighted with default fg color
+const MESSAGE_FIELD_KEYS = ['message', 'msg', 'Message', 'MSG']
+
+// Keys that contain log level and should be syntax highlighted by level
+const LEVEL_FIELD_KEYS = ['level', 'lvl', 'Level', 'severity', 'Severity', 'log.level']
+
+// Map level value to CSS class name suffix (matches LogLevel type)
+function getLevelClassName(levelValue: string, cls: LogMessageClasses): string | null {
+  const normalized = levelValue.toUpperCase().trim()
+  switch (normalized) {
+    case 'FATAL':
+      return cls.levelFatal
+    case 'ERROR':
+    case 'ERR':
+      return cls.levelError
+    case 'WARN':
+    case 'WARNING':
+      return cls.levelWarn
+    case 'INFO':
+      return cls.levelInfo
+    case 'DEBUG':
+    case 'DBG':
+      return cls.levelDebug
+    case 'TRACE':
+      return cls.levelTrace
+    default:
+      return null
+  }
 }
 
 // Options for rendering JSON segments
@@ -182,6 +213,8 @@ function renderSegmentHtml(segment: LogSegment, cls: LogMessageClasses, jsonOpti
       const isFormatted = jsonOptions?.isFormatted ?? false
       const lineIdx = jsonOptions?.lineIdx ?? -1
       let stackTraceKeys: string[] = [] // Track which keys have stack traces for post-processing
+      let messageFieldKeys: string[] = [] // Track which message field keys are present
+      let levelFields: { key: string; value: string }[] = [] // Track level fields with their values
       
       // Try to format JSON if requested
       if (isFormatted) {
@@ -196,9 +229,40 @@ function renderSegmentHtml(segment: LogSegment, cls: LogMessageClasses, jsonOpti
                 stackTraceKeys.push(key)
               }
             }
+            // Identify message field keys for special highlighting
+            for (const key of MESSAGE_FIELD_KEYS) {
+              if (key in parsed && typeof parsed[key] === 'string') {
+                messageFieldKeys.push(key)
+              }
+            }
+            // Identify level field keys for level-based highlighting
+            for (const key of LEVEL_FIELD_KEYS) {
+              if (key in parsed && typeof parsed[key] === 'string') {
+                levelFields.push({ key, value: parsed[key] })
+              }
+            }
           }
         } catch {
           // Keep original if parsing fails
+        }
+      } else {
+        // For non-formatted JSON, still check for special fields
+        try {
+          const parsed = JSON.parse(segment.value)
+          if (typeof parsed === 'object' && parsed !== null) {
+            for (const key of MESSAGE_FIELD_KEYS) {
+              if (key in parsed && typeof parsed[key] === 'string') {
+                messageFieldKeys.push(key)
+              }
+            }
+            for (const key of LEVEL_FIELD_KEYS) {
+              if (key in parsed && typeof parsed[key] === 'string') {
+                levelFields.push({ key, value: parsed[key] })
+              }
+            }
+          }
+        } catch {
+          // Ignore parse errors
         }
       }
       
@@ -207,6 +271,33 @@ function renderSegmentHtml(segment: LogSegment, cls: LogMessageClasses, jsonOpti
         /"([^"]+)":/g,
         `<span class="${cls.jsonKey}">"$1"</span>:`
       )
+      
+      // Post-process: highlight level field values with level-specific colors
+      // Pattern matches: <span class="...">"{key}"</span>: "value..."
+      for (const { key, value } of levelFields) {
+        const levelClass = getLevelClassName(value, cls)
+        if (levelClass) {
+          const pattern = new RegExp(
+            `(<span class="${cls.jsonKey}">"${key}"</span>:\\s*")([^"]*)(")`,
+            'g'
+          )
+          jsonContent = jsonContent.replace(pattern, (_, prefix, levelValue, suffix) => {
+            return `${prefix}<span class="${levelClass}">${levelValue}</span>${suffix}`
+          })
+        }
+      }
+      
+      // Post-process: highlight message field values with default fg color
+      // Pattern matches: <span class="...">"{key}"</span>: "value..."
+      for (const key of messageFieldKeys) {
+        const pattern = new RegExp(
+          `(<span class="${cls.jsonKey}">"${key}"</span>:\\s*")([^"]*)(")`,
+          'g'
+        )
+        jsonContent = jsonContent.replace(pattern, (_, prefix, value, suffix) => {
+          return `${prefix}<span class="${cls.jsonMessageFieldValue}">${value}</span>${suffix}`
+        })
+      }
       
       // Post-process: expand \n and \t in stack trace values (after HTML escaping)
       // Pattern matches: <span class="...">"{key}"</span>: "value..."

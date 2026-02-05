@@ -45,8 +45,9 @@
 
 // Highlight styles for search matching
 // Uses :global because these classes are applied via DOM manipulation in processHtmlWithHighlight
+// Uses borderColor-accent-muted (40% opacity blue) for readable highlighting in dark mode
 :global(.lineHighlighted) {
-  background: var(--bgColor-accent-muted);
+  background: var(--borderColor-accent-muted);
 }
 
 :global(.lineMuted) {
@@ -60,6 +61,9 @@
 
 // Current match style for CodeView
 // Uses :global because this attribute is applied via JS from ResourceDetail
+// Uses a subtle background with outline for visibility without obscuring text
 :global([data-current-match="true"]) {
-  background: var(--bgColor-attention-muted);
+  background: var(--borderColor-attention-muted);
+  outline: 1px solid var(--fgColor-attention);
+  outline-offset: -1px;
 }

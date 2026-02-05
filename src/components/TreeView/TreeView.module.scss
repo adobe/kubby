@@ -16,7 +16,7 @@
   .objectKey {
     font-size: 0.75rem;
     font-weight: 500;
-    color: var(--data-blue-color-emphasis);
+    color: var(--display-blue-fgColor);
     flex-shrink: 0;
   }
 
@@ -82,19 +82,19 @@
     min-width: 1.4rem;
   }
 
-  // Value type colors - using data visualization colors
+  // Value type colors - using display fgColor variants for better dark mode readability
   .valueString {
-    color: var(--data-green-color-emphasis);
+    color: var(--display-green-fgColor);
     font-size: 0.75rem;
   }
 
   .valueNumber {
-    color: var(--data-orange-color-emphasis);
+    color: var(--display-orange-fgColor);
     font-size: 0.75rem;
   }
 
   .valueBoolean {
-    color: var(--data-coral-color-emphasis);
+    color: var(--display-lemon-fgColor);
     font-size: 0.75rem;
     font-weight: 500;
   }
@@ -106,7 +106,7 @@
   }
 
   .valueTimestamp {
-    color: var(--data-purple-color-emphasis);
+    color: var(--display-purple-fgColor);
     font-size: 0.75rem;
   }
 
@@ -247,7 +247,7 @@
     
     th {
       font-weight: 500;
-      color: var(--data-blue-color-emphasis);
+      color: var(--display-blue-fgColor);
       background: var(--bgColor-neutral-muted);
     }
     
@@ -262,18 +262,19 @@
 }
 
 // Highlight styles for search matching
+// Uses borderColor-accent-muted (40% opacity blue) for readable highlighting in dark mode
 .highlighted {
-  background: var(--bgColor-accent-muted);
-  //background: var(--bgColor-accent-muted);
-  border-radius: 2px;
-  //margin: 0 -0.25rem;
-  //padding: 0 0.25rem;
+  background: var(--control-transparent-bgColor-selected);
+  outline-offset: 1px;
 }
 
 // Current match - the actively selected match with attention style
 // Uses :global because this attribute is applied via JS from ResourceDetail
+// Uses a subtle background with outline for visibility without obscuring text
 :global([data-current-match="true"]) {
-  background: var(--bgColor-attention-muted);
+  background: var(--bgColor-muted);
+  outline: 1px solid var(--fgColor-attention);
+  outline-offset: 1px;
 }
 
 // Muted style - only applied to leaf rows (rows without nested children)
