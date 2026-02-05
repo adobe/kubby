@@ -1,0 +1,71 @@
+# Default values for stellar-service
+replicaCount: 2
+
+image:
+  repository: busybox
+  tag: "1.36"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+  metricsPort: 9090
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 64Mi
+  requests:
+    cpu: 50m
+    memory: 32Mi
+
+# Log generation settings
+logInterval: 3
+
+# HTTPProxy settings
+httpProxy:
+  enabled: true
+  fqdn: ""
+  tlsSecretName: ""
+
+# Network policy settings
+networkPolicy:
+  enabled: true
+  allowedNamespaces:
+    - ingress-controllers
+    - monitoring
+
+# Secret values (dummy data for testing)
+secrets:
+  apiKey: "sk-test-stellar-api-key-12345"
+  dbPassword: "stellar-db-password-67890"
+  jwtSecret: "stellar-jwt-secret-abcdef"
+
+# ConfigMap values
+config:
+  logLevel: "info"
+  metricsEnabled: true
+  maxConnections: 100
+  timeoutSeconds: 30
+  featureFlags:
+    enableCache: true
+    enableRateLimiting: true
+    enableTracing: true
+
+# Horizontal Pod Autoscaler settings
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  scaleDownStabilizationSeconds: 300
+
+# Pod Disruption Budget settings
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1  # Use either minAvailable or maxUnavailable, not both

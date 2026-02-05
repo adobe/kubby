@@ -79,17 +79,23 @@ fn get_shell_env() -> &'static HashMap<String, String> {
 }
 
 /// Get an environment variable from the user's shell environment.
-/// Falls back to std::env::var if not found in shell env.
+/// Prioritizes current process environment (user exports) over cached shell env.
 pub fn get_env_var(key: &str) -> Option<String> {
-    // First try the shell environment (from login shell)
+    // First try the current process environment (respects user exports)
+    if let Ok(value) = std::env::var(key) {
+        if !value.is_empty() {
+            return Some(value);
+        }
+    }
+    
+    // Fall back to cached shell environment (from login shell)
     if let Some(value) = get_shell_env().get(key) {
         if !value.is_empty() {
             return Some(value.clone());
         }
     }
     
-    // Fall back to current process environment
-    std::env::var(key).ok().filter(|v| !v.is_empty())
+    None
 }
 
 /// Get the PATH from the user's shell environment.

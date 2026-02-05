@@ -31,12 +31,12 @@ If your cluster uses exec-based auth, ensure the plugin is in your `PATH`:
 - AWS EKS: `aws-iam-authenticator` or `aws`
 - GCP GKE: `gke-gcloud-auth-plugin`
 
-### Download
+### Download MacOS Installer
 
 Download the latest `.dmg` from [GitHub Releases](https://github.com/OneAdobe/kubby/releases).
 
 > [!IMPORTANT]
-> App is not notarized
+> App is not notarized.
 > On first launch you need to run `xattr -cr /Applications/Kubby.app` to bypass Gatekeeper.
 
 ### Environment Variables

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: stellar-service
+description: A sample Helm chart for local Kubernetes testing
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

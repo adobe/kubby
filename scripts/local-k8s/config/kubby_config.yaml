@@ -1,0 +1,92 @@
+# Kubby configuration for local Stellar testing environment
+# This mimics the structure of production kubby configurations
+
+# readOnly: true
+# liveViewAutoRefresh: true
+# refreshRateSeconds: 2
+# metricsRefreshRateSeconds: 30
+# kubectlTimeoutSeconds: 10
+
+contexts:
+  groups:
+    # Nebula Platform (Managed K8s #1)
+    - name: "Nebula"
+      contexts:
+        - group: live
+          contexts:
+            - name: live-alpha-nebula237-live-alpha
+            - name: live-beta-nebula12-live-beta
+            - name: live-gamma-nebula24-live-gamma
+            - name: live-delta-nebula08-live-delta
+            - name: live-epsilon-nebula14-live-epsilon
+            - name: live-zeta-nebula07-live-zeta
+            - name: live-eta-nebula15-live-eta
+            - name: live-theta-nebula10-live-theta
+        - group: preview
+          contexts:
+            - name: preview-alpha-nebula27-preview-alpha
+        - group: sandbox
+          contexts:
+            - name: sandbox-alpha-nebula24-sandbox-alpha
+      namespaces:
+        - name: "Core Services"
+          namespaces:
+            - name: ns-team-stellar-graph-api
+            - name: ns-team-stellar-operations
+            - name: ns-team-stellar-metadata-management
+            - name: ns-team-stellar-namespace-api
+            - name: ns-team-stellar-workflow-orchestrator
+        - name: "Observability"
+          namespaces:
+            - name: ns-team-tenant-stellar-observability-api
+            - name: monitoring
+        - name: "Infrastructure"
+          namespaces:
+            - name: ingress-controllers
+
+    # Cosmos Platform (Managed K8s #2)
+    - name: "Cosmos"
+      contexts:
+        - group: live
+          contexts:
+            - name: live-alpha-cosmos-0
+            - name: live-alpha-cosmos-1
+            - name: live-beta-cosmos-0
+            - name: live-beta-cosmos-1
+            - name: live-gamma-cosmos-0
+        - group: preview
+          contexts:
+            - name: preview-alpha-cosmos-0
+      namespaces:
+        - name: "Identity Services"
+          namespaces:
+            - name: stellar-identity-alpha-live
+              contexts:
+                - live-alpha-cosmos-0
+                - live-alpha-cosmos-1
+            - name: stellar-identity-beta-live
+              contexts:
+                - live-beta-cosmos-0
+                - live-beta-cosmos-1
+            - name: stellar-identity-alpha-preview
+              contexts:
+                - preview-alpha-cosmos-0
+
+# Resource commands configuration
+resources:
+  run:
+    - name: "Test Network Multitool"
+      command: "kubectl run test-network-multitool --context $context --namespace $namespace --image=praqma/network-multitool --labels=$labels --restart=Never --command -- sleep infinity"
+      resources: ["pod"]
+    - name: "Debug Selected Pod"
+      command: "kubectl debug --context $context --namespace $namespace $name -it --image=busybox -- sh"
+      resources: ["pod"]
+    - name: "Port Forward to Pod"
+      command: "kubectl port-forward --context $context --namespace $namespace $name 8080:8080"
+      resources: ["pod", "service"]
+
+# AI Assistant Configuration
+# ai:
+#   tool: cursor-agent
+#   name: Agent
+#   readOnly: true

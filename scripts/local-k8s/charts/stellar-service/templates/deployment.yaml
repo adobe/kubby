@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "stellar-service.fullname" . }}
+  labels:
+    {{- include "stellar-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "stellar-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "stellar-service.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.service.metricsPort }}"
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "[$(date -Iseconds)] INFO  Starting {{ include "stellar-service.fullname" . }} service..."
+              while true; do
+                REQ_ID=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 32)
+                LATENCY=$((RANDOM % 100 + 10))
+                STATUS_CODES="success success success success success success success success warning error"
+                STATUS=$(echo $STATUS_CODES | tr ' ' '\n' | shuf | head -n1)
+                METHOD="GET POST PUT DELETE"
+                SELECTED_METHOD=$(echo $METHOD | tr ' ' '\n' | shuf | head -n1)
+                ENDPOINTS="/api/v1/users /api/v1/sessions /api/v1/tokens /api/v1/profiles /api/v1/health"
+                ENDPOINT=$(echo $ENDPOINTS | tr ' ' '\n' | shuf | head -n1)
+                echo "[$(date -Iseconds)] INFO  $SELECTED_METHOD $ENDPOINT req_id=$REQ_ID status=$STATUS latency_ms=$LATENCY"
+                sleep {{ .Values.logInterval }}
+              done
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "stellar-service.fullname" . }}-secrets
+                  key: api-key
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "stellar-service.fullname" . }}-secrets
+                  key: db-password
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "stellar-service.fullname" . }}-config
+                  key: log-level
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "true"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "true"
+            initialDelaySeconds: 3
+            periodSeconds: 5
