@@ -31,6 +31,16 @@ If your cluster uses exec-based auth, ensure the plugin is in your `PATH`:
 - AWS EKS: `aws-iam-authenticator` or `aws`
 - GCP GKE: `gke-gcloud-auth-plugin`
 
+Kubby needs to be able to find these when executing in its context. 
+If you installed some of the tools with shell shims, symlink the actual binary (not the shim) 
+to a standard path that kubectl can always find. 
+
+By default, Kubby looks in these locations:
+- /usr/local/bin
+- /opt/homebrew/bin (Homebrew on Apple Silicon)
+- ~/.asdf/shims (asdf-managed tools like kubelogin)
+- ~/.local/bin, ~/.krew/bin
+
 ### Download MacOS Installer
 
 Download the latest `.dmg` from [GitHub Releases](https://github.com/OneAdobe/kubby/releases).

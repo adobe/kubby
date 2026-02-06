@@ -64,6 +64,48 @@ pub fn get_path() -> &'static std::path::PathBuf {
     get_kubectl_path()
 }
 
+/// Build a robust PATH for kubectl that includes credential plugin directories.
+/// This merges the user's shell PATH with well-known paths where tools like
+/// kubelogin, aws-iam-authenticator, etc. are commonly installed.
+fn build_kubectl_path() -> String {
+    let mut path_dirs: Vec<String> = Vec::new();
+    
+    // Start with the user's shell PATH
+    if let Some(shell_path) = shell_env::get_env_var("PATH") {
+        for dir in shell_path.split(':') {
+            if !dir.is_empty() && !path_dirs.contains(&dir.to_string()) {
+                path_dirs.push(dir.to_string());
+            }
+        }
+    }
+    
+    // Ensure well-known credential plugin directories are always present.
+    // These are where tools like kubelogin, aws-iam-authenticator, gke-gcloud-auth-plugin
+    // are commonly installed. Packaged macOS apps often have a minimal PATH that
+    // doesn't include these directories.
+    let home = std::env::var("HOME").unwrap_or_default();
+    let mut extra_dirs = vec![
+        "/usr/local/bin".to_string(),
+        "/opt/homebrew/bin".to_string(),
+        "/usr/bin".to_string(),
+        "/bin".to_string(),
+    ];
+    
+    if !home.is_empty() {
+        extra_dirs.push(format!("{}/.asdf/shims", home));
+        extra_dirs.push(format!("{}/.local/bin", home));
+        extra_dirs.push(format!("{}/.krew/bin", home));
+    }
+    
+    for dir in extra_dirs {
+        if !path_dirs.contains(&dir) && std::path::Path::new(&dir).is_dir() {
+            path_dirs.push(dir);
+        }
+    }
+    
+    path_dirs.join(":")
+}
+
 /// Apply kubectl-related environment variables from the user's shell.
 /// This ensures KUBECONFIG, PATH, and other settings are properly inherited.
 fn apply_kubectl_env(cmd: &mut std::process::Command) {
@@ -77,11 +119,9 @@ fn apply_kubectl_env(cmd: &mut std::process::Command) {
         cmd.env("HOME", home);
     }
     
-    // Pass through PATH - required for kubectl to find credential plugins
+    // Build a robust PATH that includes credential plugin directories
     // (e.g., kubelogin for Azure AD, aws-iam-authenticator for AWS EKS)
-    if let Some(path) = shell_env::get_env_var("PATH") {
-        cmd.env("PATH", path);
-    }
+    cmd.env("PATH", build_kubectl_path());
 }
 
 /// Apply kubectl-related environment variables to async command.
@@ -94,10 +134,8 @@ pub fn apply_env_async(cmd: &mut tokio::process::Command) {
         cmd.env("HOME", home);
     }
     
-    // Pass through PATH - required for kubectl to find credential plugins
-    if let Some(path) = shell_env::get_env_var("PATH") {
-        cmd.env("PATH", path);
-    }
+    // Build a robust PATH that includes credential plugin directories
+    cmd.env("PATH", build_kubectl_path());
 }
 
 /// Create a new async (tokio) kubectl command.
