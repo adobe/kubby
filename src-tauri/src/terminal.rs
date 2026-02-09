@@ -25,9 +25,30 @@ fn get_macos_terminal() -> String {
     "Terminal".to_string()
 }
 
+/// Build a command string with environment variable exports prepended.
+/// This ensures the external terminal inherits key env vars like KUBECONFIG
+/// that may have been set when launching the app.
+fn build_command_with_env(command: &str) -> String {
+    let mut exports = Vec::new();
+
+    if let Some(kubeconfig) = shell_env::get_env_var("KUBECONFIG") {
+        exports.push(format!("export KUBECONFIG=\"{}\"", kubeconfig));
+    }
+
+    if exports.is_empty() {
+        command.to_string()
+    } else {
+        exports.push(command.to_string());
+        exports.join("; ")
+    }
+}
+
 /// Open a new terminal window with the specified command
 #[tauri::command]
 pub async fn open_terminal_with_command(command: String) -> Result<(), String> {
+    // Prepend env exports so the external terminal uses the same config as the app
+    let command = build_command_with_env(&command);
+
     #[cfg(target_os = "macos")]
     {
         let terminal = get_macos_terminal();
