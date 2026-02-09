@@ -98,14 +98,74 @@ pub fn get_env_var(key: &str) -> Option<String> {
     None
 }
 
-/// Get the PATH from the user's shell environment.
-/// This is useful for finding executables that aren't in standard paths.
-pub fn get_shell_path() -> Option<String> {
-    get_env_var("PATH")
+/// Well-known directories where tools are commonly installed.
+/// Packaged macOS apps have a minimal PATH that doesn't include these.
+const WELL_KNOWN_DIRS: &[&str] = &[
+    "/usr/local/bin",
+    "/opt/homebrew/bin",   // Apple Silicon Homebrew
+    "/usr/bin",
+    "/bin",
+    "/opt/local/bin",      // MacPorts
+    "/snap/bin",           // Snap on Linux
+];
+
+/// Home-relative directories where tools are commonly installed.
+const HOME_RELATIVE_DIRS: &[&str] = &[
+    "bin",
+    ".local/bin",
+    ".krew/bin",
+    ".asdf/shims",
+];
+
+/// Build a robust PATH by merging the process PATH, shell PATH,
+/// and well-known directories. This ensures tools are found even when
+/// the app is launched from Dock/Spotlight with a minimal PATH.
+pub fn build_full_path() -> String {
+    let mut path_dirs: Vec<String> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    let add_dir = |dir: &str, dirs: &mut Vec<String>, seen: &mut std::collections::HashSet<String>| {
+        if !dir.is_empty() && seen.insert(dir.to_string()) {
+            dirs.push(dir.to_string());
+        }
+    };
+
+    // Start with the process PATH
+    if let Ok(path) = std::env::var("PATH") {
+        for dir in path.split(':') {
+            add_dir(dir, &mut path_dirs, &mut seen);
+        }
+    }
+
+    // Merge the shell PATH (may have more dirs from .zshrc/.bashrc)
+    if let Some(shell_path) = get_shell_env().get("PATH") {
+        for dir in shell_path.split(':') {
+            add_dir(dir, &mut path_dirs, &mut seen);
+        }
+    }
+
+    // Add well-known directories that exist on disk
+    for dir in WELL_KNOWN_DIRS {
+        if seen.insert(dir.to_string()) && std::path::Path::new(dir).is_dir() {
+            path_dirs.push(dir.to_string());
+        }
+    }
+
+    // Add home-relative directories
+    if let Ok(home) = std::env::var("HOME") {
+        for rel in HOME_RELATIVE_DIRS {
+            let dir = format!("{}/{}", home, rel);
+            if seen.insert(dir.clone()) && std::path::Path::new(&dir).is_dir() {
+                path_dirs.push(dir);
+            }
+        }
+    }
+
+    path_dirs.join(":")
 }
 
-/// Find an executable by name, searching the user's shell PATH.
-/// Returns the full path if found, or None if not found.
+/// Find an executable by name, searching the user's shell PATH
+/// and well-known directories. Returns the full path if found, or None.
 pub fn find_executable(name: &str) -> Option<String> {
     // If it's already an absolute path, check if it exists
     if name.starts_with('/') {
@@ -115,11 +175,8 @@ pub fn find_executable(name: &str) -> Option<String> {
         return None;
     }
     
-    // Get PATH from shell environment
-    let path = get_shell_path()?;
-    
-    // Search each directory in PATH
-    for dir in path.split(':') {
+    // Search the full merged PATH (process + shell + well-known dirs)
+    for dir in build_full_path().split(':') {
         let full_path = format!("{}/{}", dir, name);
         if std::path::Path::new(&full_path).exists() {
             return Some(full_path);
