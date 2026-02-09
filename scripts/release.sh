@@ -22,7 +22,7 @@ git rev-parse "$TAG" >/dev/null 2>&1 && echo -e "${RED}Error: Tag ${TAG} already
 echo "This will build, tag ${TAG}, and publish to GitHub."
 read -p "Continue? (Y/n) " -n 1 -r
 echo
-[[ ! $REPLY == ^[Nn]$ ]] && exit 1
+[[ $REPLY == ^[Nn]$ ]] && exit 1
 
 # Build
 echo -e "${YELLOW}🔨 Building...${NC}"
