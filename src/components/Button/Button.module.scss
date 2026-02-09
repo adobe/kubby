@@ -19,7 +19,7 @@
   
   &:hover:not(:disabled) {
     background: var(--control-bgColor-hover);
-    border-color: var(--borderColor-default);
+    border-color: var(--control-bgColor-hover);
   }
   
   &:focus-visible {
@@ -28,6 +28,8 @@
   
   &:active:not(:disabled) {
     background: var(--control-bgColor-active);
+    border-color: var(--control-bgColor-active);
+    transform: scale(0.95);
   }
   
   &:disabled {
