@@ -124,6 +124,98 @@ function getNamespacePrefixForGroup(namespaces: NamespaceItem[]): string {
   return findCommonPrefix(namespaces.map((ns) => ns.name));
 }
 
+/**
+ * Find the next button to navigate to with wrapping behavior.
+ * For left/right: tries same row first, then wraps to next/previous row.
+ * For up/down: tries same column first, then wraps to next/previous column.
+ */
+function findWrappingTarget(
+  allButtons: HTMLElement[],
+  currentRow: number,
+  currentCol: number,
+  direction: 'up' | 'down' | 'left' | 'right'
+): HTMLElement | null {
+  const getRow = (btn: HTMLElement) => parseInt(btn.dataset.row || "0", 10);
+  const getCol = (btn: HTMLElement) => parseInt(btn.dataset.col || "0", 10);
+
+  // Try exact adjacent position first
+  let targetRow = currentRow;
+  let targetCol = currentCol;
+  switch (direction) {
+    case 'up': targetRow--; break;
+    case 'down': targetRow++; break;
+    case 'left': targetCol--; break;
+    case 'right': targetCol++; break;
+  }
+
+  const exactMatch = allButtons.find(btn => getRow(btn) === targetRow && getCol(btn) === targetCol);
+  if (exactMatch) return exactMatch;
+
+  if (direction === 'left' || direction === 'right') {
+    // Try next/previous button in same row
+    const sameRowButtons = allButtons
+      .filter(btn => getRow(btn) === currentRow)
+      .sort((a, b) => getCol(a) - getCol(b));
+
+    if (direction === 'right') {
+      const next = sameRowButtons.find(btn => getCol(btn) > currentCol);
+      if (next) return next;
+    } else {
+      const prev = [...sameRowButtons].reverse().find(btn => getCol(btn) < currentCol);
+      if (prev) return prev;
+    }
+
+    // Wrap to next/previous row
+    const allRows = [...new Set(allButtons.map(getRow))].sort((a, b) => a - b);
+    const currentRowIdx = allRows.indexOf(currentRow);
+    if (currentRowIdx === -1) return null;
+
+    for (let i = 1; i <= allRows.length; i++) {
+      const idx = direction === 'right'
+        ? (currentRowIdx + i) % allRows.length
+        : (currentRowIdx - i + allRows.length) % allRows.length;
+      const rowButtons = allButtons
+        .filter(btn => getRow(btn) === allRows[idx])
+        .sort((a, b) => getCol(a) - getCol(b));
+      if (rowButtons.length > 0) {
+        return direction === 'right' ? rowButtons[0] : rowButtons[rowButtons.length - 1];
+      }
+    }
+  } else {
+    // Try next/previous button in same column
+    const sameColButtons = allButtons
+      .filter(btn => getCol(btn) === currentCol)
+      .sort((a, b) => getRow(a) - getRow(b));
+
+    if (direction === 'down') {
+      const next = sameColButtons.find(btn => getRow(btn) > currentRow);
+      if (next) return next;
+    } else {
+      const prev = [...sameColButtons].reverse().find(btn => getRow(btn) < currentRow);
+      if (prev) return prev;
+    }
+
+    // Wrap to next/previous column
+    const allCols = [...new Set(allButtons.map(getCol))].sort((a, b) => a - b);
+    const currentColIdx = allCols.indexOf(currentCol);
+    if (currentColIdx === -1) return null;
+
+    for (let i = 1; i <= allCols.length; i++) {
+      const idx = direction === 'down'
+        ? (currentColIdx + i) % allCols.length
+        : (currentColIdx - i + allCols.length) % allCols.length;
+      const colButtons = allButtons
+        .filter(btn => getCol(btn) === allCols[idx])
+        .sort((a, b) => getRow(a) - getRow(b));
+      if (colButtons.length > 0) {
+        return direction === 'down' ? colButtons[0] : colButtons[colButtons.length - 1];
+      }
+    }
+  }
+
+  return null;
+}
+
 function handleCellKeyDown(
   e: KeyboardEvent, 
   tableRef: HTMLTableElement | null,
@@ -138,82 +230,16 @@ function handleCellKeyDown(
   const currentRow = parseInt(target.dataset.row || "0", 10);
   const currentCol = parseInt(target.dataset.col || "0", 10);
   
-  let targetRow = currentRow;
-  let targetCol = currentCol;
-  let handled = false;
-  
-  switch (e.key) {
-    case "ArrowUp":
-      targetRow = currentRow - 1;
-      handled = true;
-      break;
-    case "ArrowDown":
-      targetRow = currentRow + 1;
-      handled = true;
-      break;
-    case "ArrowLeft":
-      targetCol = currentCol - 1;
-      handled = true;
-      break;
-    case "ArrowRight":
-      targetCol = currentCol + 1;
-      handled = true;
-      break;
-  }
-  
-  if (!handled) return;
+  const directionMap: Record<string, 'up' | 'down' | 'left' | 'right'> = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+  };
+  const direction = directionMap[e.key];
+  if (!direction) return;
   
   e.preventDefault();
   
-  let targetButton = tableRef.querySelector(
-    `.${classes.cellButton}[data-row="${targetRow}"][data-col="${targetCol}"]`
-  ) as HTMLElement | null;
-  
-  if (!targetButton) {
-    const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
-    
-    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-      const sameColButtons = allButtons.filter(btn => 
-        parseInt(btn.dataset.col || "0", 10) === currentCol
-      );
-      
-      if (e.key === "ArrowUp") {
-        const above = sameColButtons.filter(btn => 
-          parseInt(btn.dataset.row || "0", 10) < currentRow
-        );
-        if (above.length > 0) {
-          targetButton = above[above.length - 1];
-        }
-      } else {
-        const below = sameColButtons.filter(btn => 
-          parseInt(btn.dataset.row || "0", 10) > currentRow
-        );
-        if (below.length > 0) {
-          targetButton = below[0];
-        }
-      }
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-      const sameRowButtons = allButtons.filter(btn => 
-        parseInt(btn.dataset.row || "0", 10) === currentRow
-      );
-      
-      if (e.key === "ArrowLeft") {
-        const left = sameRowButtons.filter(btn => 
-          parseInt(btn.dataset.col || "0", 10) < currentCol
-        );
-        if (left.length > 0) {
-          targetButton = left[left.length - 1];
-        }
-      } else {
-        const right = sameRowButtons.filter(btn => 
-          parseInt(btn.dataset.col || "0", 10) > currentCol
-        );
-        if (right.length > 0) {
-          targetButton = right[0];
-        }
-      }
-    }
-  }
+  const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
+  const targetButton = findWrappingTarget(allButtons, currentRow, currentCol, direction);
   
   if (targetButton) {
     targetButton.focus();
@@ -500,73 +526,8 @@ export function Dashboard({
     const tableRef = currentSection.querySelector(`.${classes.matrix}`) as HTMLTableElement | null;
     if (!tableRef) return;
 
-    let targetRow = currentRow;
-    let targetCol = currentCol;
-
-    switch (direction) {
-      case 'up':
-        targetRow = currentRow - 1;
-        break;
-      case 'down':
-        targetRow = currentRow + 1;
-        break;
-      case 'left':
-        targetCol = currentCol - 1;
-        break;
-      case 'right':
-        targetCol = currentCol + 1;
-        break;
-    }
-
-    let targetButton = tableRef.querySelector(
-      `.${classes.cellButton}[data-row="${targetRow}"][data-col="${targetCol}"]`
-    ) as HTMLElement | null;
-
-    if (!targetButton) {
-      const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
-
-      if (direction === 'up' || direction === 'down') {
-        const sameColButtons = allButtons.filter(btn =>
-          parseInt(btn.dataset.col || "0", 10) === currentCol
-        );
-
-        if (direction === 'up') {
-          const above = sameColButtons.filter(btn =>
-            parseInt(btn.dataset.row || "0", 10) < currentRow
-          );
-          if (above.length > 0) {
-            targetButton = above[above.length - 1];
-          }
-        } else {
-          const below = sameColButtons.filter(btn =>
-            parseInt(btn.dataset.row || "0", 10) > currentRow
-          );
-          if (below.length > 0) {
-            targetButton = below[0];
-          }
-        }
-      } else {
-        const sameRowButtons = allButtons.filter(btn =>
-          parseInt(btn.dataset.row || "0", 10) === currentRow
-        );
-
-        if (direction === 'left') {
-          const left = sameRowButtons.filter(btn =>
-            parseInt(btn.dataset.col || "0", 10) < currentCol
-          );
-          if (left.length > 0) {
-            targetButton = left[left.length - 1];
-          }
-        } else {
-          const right = sameRowButtons.filter(btn =>
-            parseInt(btn.dataset.col || "0", 10) > currentCol
-          );
-          if (right.length > 0) {
-            targetButton = right[0];
-          }
-        }
-      }
-    }
+    const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
+    const targetButton = findWrappingTarget(allButtons, currentRow, currentCol, direction);
 
     if (targetButton) {
       targetButton.focus();
