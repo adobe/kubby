@@ -204,6 +204,17 @@ function App() {
       } else {
         console.warn(`No app.kubernetes.io/name or app label found on ${resourceType} ${resourceName}`);
       }
+    } else if (resourceType === 'jobs') {
+      // Jobs label their pods with job-name=<job-name>
+      const jobLabel: LabelSelector = { key: 'job-name', value: resourceName };
+      const newNode = createNavigationNodeWithLabels(
+        currentNode.context,
+        currentNode.namespace,
+        'pods',
+        resourceType,
+        [jobLabel]
+      );
+      setNavigationStack([...navigationStack, newNode]);
     } else if (resourceType === 'pods') {
       // Navigate to containers view for the selected pod
       const newNode = createNavigationNodeWithResourceName(

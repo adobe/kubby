@@ -222,10 +222,15 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 json_paths: vec![
                     "$.status.containerStatuses[?(@.ready==true)]".to_string(),
                     "$.status.containerStatuses[*]".to_string(),
+                    "$.status.phase".to_string(),
                 ],
                 format: Some("{0}/{1}".to_string()),
                 column_type: None,
                 color_rules: Some(vec![
+                    ColorRule {
+                        expression: "{2} === 'Succeeded'".to_string(),
+                        color: ColorState::Muted,
+                    },
                     ColorRule {
                         expression: "{0} === '<none>' && ({1} === 0 || {1} === '<none>')".to_string(),
                         color: ColorState::Muted,
@@ -940,9 +945,26 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                     "$.spec.completions".to_string(),
                 ],
                 format: Some("{0}/{1}".to_string()),
-                column_type: None,
-                color_rules: None,
-                align: ColumnAlign::Start,
+                column_type: Some(ColumnType::Number),
+                color_rules: Some(vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{0} === 0 && {1} > 0".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} === {1}".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]),
+                align: ColumnAlign::End,
             },
             ColumnConfig {
                 name: "DURATION".to_string(),
