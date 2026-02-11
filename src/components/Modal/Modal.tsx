@@ -39,8 +39,11 @@ export function Modal({ isOpen, onClose, title, children, onKeyDown }: ModalProp
       return
     }
 
-    // Handle Tab for focus trap
-    if (e.key === 'Tab' && modalRef.current) {
+    // Handle Tab / Arrow keys for focus trap & navigation
+    const isTab = e.key === 'Tab'
+    const isArrowNav = e.key === 'ArrowLeft' || e.key === 'ArrowRight'
+
+    if ((isTab || isArrowNav) && modalRef.current) {
       const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       )
@@ -54,15 +57,32 @@ export function Modal({ isOpen, onClose, title, children, onKeyDown }: ModalProp
         return
       }
 
-      if (e.shiftKey) {
-        if (document.activeElement === firstElement) {
-          e.preventDefault()
-          lastElement?.focus()
+      // ArrowLeft / Shift+Tab = previous, ArrowRight / Tab = next
+      const reverse = e.key === 'ArrowLeft' || (isTab && e.shiftKey)
+
+      if (isArrowNav) {
+        // Arrows always explicitly move focus (wrap around)
+        e.preventDefault()
+        const index = Array.from(focusableElements).indexOf(document.activeElement as HTMLElement)
+        if (reverse) {
+          const prev = index <= 0 ? lastElement : focusableElements[index - 1]
+          prev?.focus()
+        } else {
+          const next = index >= focusableElements.length - 1 ? firstElement : focusableElements[index + 1]
+          next?.focus()
         }
       } else {
-        if (document.activeElement === lastElement) {
-          e.preventDefault()
-          firstElement?.focus()
+        // Tab: only intercept at boundaries to keep trap
+        if (reverse) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault()
+            lastElement?.focus()
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault()
+            firstElement?.focus()
+          }
         }
       }
       return
