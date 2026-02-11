@@ -608,6 +608,13 @@ export function Dashboard({
         return;
       }
       
+      // Space on a focused cell button should activate it (same as Enter)
+      if (e.key === " " && target.classList.contains(classes.cellButton)) {
+        e.preventDefault();
+        target.click();
+        return;
+      }
+
       // Typing characters appends to filter
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
