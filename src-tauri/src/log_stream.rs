@@ -41,6 +41,7 @@ pub async fn start_log_stream(
     namespace: String,
     timestamps: bool,
     container_name: Option<String>,
+    previous: bool,
 ) -> Result<(), String> {
     // Stop any existing log stream first
     stop_log_stream_internal().await;
@@ -48,14 +49,25 @@ pub async fn start_log_stream(
     // Build kubectl logs command
     let mut args = vec![
         "logs".to_string(),
-        "-f".to_string(),
+    ];
+    
+    // Only follow (stream) for current logs; previous logs are finite
+    if !previous {
+        args.push("-f".to_string());
+    }
+    
+    args.extend([
         "--tail=100".to_string(),
         format!("{}/{}", resource_type, resource_name),
         "--context".to_string(),
         context,
         "-n".to_string(),
         namespace,
-    ];
+    ]);
+    
+    if previous {
+        args.push("--previous".to_string());
+    }
     
     // If a specific container is requested, use -c flag
     if let Some(container) = container_name {
@@ -204,6 +216,7 @@ pub async fn fetch_historical_logs(
     container_name: Option<String>,
     tail_lines: u32,
     before_timestamp: Option<String>,
+    previous: bool,
 ) -> Result<Vec<String>, String> {
     // Build kubectl logs command (non-streaming)
     let mut args = vec![
@@ -216,6 +229,10 @@ pub async fn fetch_historical_logs(
         "-n".to_string(),
         namespace,
     ];
+    
+    if previous {
+        args.push("--previous".to_string());
+    }
     
     // If a specific container is requested, use -c flag
     if let Some(container) = container_name {

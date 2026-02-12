@@ -438,6 +438,9 @@ export function LogViewer({
   const [autoscroll, setAutoscroll] = useState(true)
   const [formattedLines, setFormattedLines] = useState<Set<number>>(new Set())
   
+  // Log mode: 'current' shows live logs, 'previous' shows logs from the previously terminated container
+  const [logMode, setLogMode] = useState<'current' | 'previous'>('current')
+  
   // Text filter state for filtering log lines
   const [filterText, setFilterText] = useState('')
   const filterInputRef = useRef<HTMLInputElement>(null)
@@ -573,6 +576,7 @@ export function LogViewer({
         containerName: containerName || null,
         tailLines,
         beforeTimestamp: earliestTs,
+        previous: logMode === 'previous',
       })
 
       // Discard results if stream was restarted while we were fetching
@@ -618,6 +622,7 @@ export function LogViewer({
     context,
     namespace,
     containerName,
+    logMode,
   ])
 
   // Start log stream - always fetch with timestamps, visibility is controlled in the view
@@ -649,13 +654,14 @@ export function LogViewer({
         namespace,
         timestamps: true, // Always fetch timestamps, visibility controlled in view
         containerName: containerName || null,
+        previous: logMode === 'previous',
       })
       setIsStreaming(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setIsStreaming(false)
     }
-  }, [resourceType, resourceName, context, namespace, containerName])
+  }, [resourceType, resourceName, context, namespace, containerName, logMode])
 
   // Set up event listeners and start stream on mount
   useEffect(() => {
@@ -935,6 +941,11 @@ export function LogViewer({
     refocusLogs()
   }, [refocusLogs])
 
+  const handleToggleLogMode = useCallback(() => {
+    setLogMode((prev) => prev === 'current' ? 'previous' : 'current')
+    refocusLogs()
+  }, [refocusLogs])
+
   // Global keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -1002,6 +1013,13 @@ export function LogViewer({
         return
       }
 
+      // P - Toggle between current and previous logs
+      if (e.code === 'KeyP' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        handleToggleLogMode()
+        return
+      }
+
       // Log navigation shortcuts (only when logs exist)
       if (filteredLogs.length === 0 || !listRef.current) return
 
@@ -1056,7 +1074,7 @@ export function LogViewer({
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll, filteredLogs.length, filterText])
+  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll, handleToggleLogMode, filteredLogs.length, filterText])
 
   return (
     <div class={classes.LogViewer}>
@@ -1152,6 +1170,20 @@ export function LogViewer({
           onClick={handleToggleAutoscroll}
           tabIndex={0}
           className={autoscroll ? classes.activeButton : undefined}
+        />
+        <div class={classes.separator} />
+        <Button
+          label="Current"
+          onClick={() => { setLogMode('current'); refocusLogs() }}
+          tabIndex={0}
+          className={logMode === 'current' ? classes.activeButton : undefined}
+        />
+        <Button
+          label="Previous"
+          shortcut="P"
+          onClick={() => { setLogMode('previous'); refocusLogs() }}
+          tabIndex={0}
+          className={logMode === 'previous' ? classes.activeButton : undefined}
         />
         <div class={classes.separator} />
         <Button
