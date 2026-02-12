@@ -130,19 +130,30 @@ pub async fn edit_resource(
         return Err(format!("Editor exited with non-zero status"));
     }
     
-    // Step 4: Apply the edited resource
-    let apply_output = kubectl::run([
-        "apply", "-f", &temp_path_str,
+    // Step 4: Read back the edited content and check for changes
+    let edited_content = tokio::fs::read_to_string(&temp_file_path)
+        .await
+        .map_err(|e| format!("Failed to read edited file: {}", e))?;
+    
+    if edited_content.trim() == yaml_content.trim() {
+        // temp_dir will be cleaned up automatically when dropped
+        return Ok("Edit cancelled, no changes made.".to_string());
+    }
+    
+    // Step 5: Replace the resource (same mechanism as kubectl edit)
+    let replace_output = kubectl::run([
+        "replace", "-f", &temp_path_str,
         "--context", &context,
+        "-n", &namespace,
     ]).await?;
     
     // temp_dir will be cleaned up automatically when dropped
     
-    if !apply_output.status.success() {
-        let stderr = String::from_utf8_lossy(&apply_output.stderr);
-        return Err(format!("Failed to apply changes: {}", stderr));
+    if !replace_output.status.success() {
+        let stderr = String::from_utf8_lossy(&replace_output.stderr);
+        return Err(format!("Failed to replace resource: {}", stderr));
     }
     
-    let stdout = String::from_utf8_lossy(&apply_output.stdout);
+    let stdout = String::from_utf8_lossy(&replace_output.stdout);
     Ok(stdout.trim().to_string())
 }
