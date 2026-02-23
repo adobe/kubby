@@ -61,7 +61,7 @@ pub async fn start_log_stream(
         format!("{}/{}", resource_type, resource_name),
         "--context".to_string(),
         context,
-        "-n".to_string(),
+        "--namespace".to_string(),
         namespace,
     ]);
     
@@ -71,7 +71,7 @@ pub async fn start_log_stream(
     
     // If a specific container is requested, use -c flag
     if let Some(container) = container_name {
-        args.push("-c".to_string());
+        args.push("--context".to_string());
         args.push(container);
     } else {
         // Show logs from all containers when viewing a pod or higher-level resource (deployment, etc.)
@@ -226,7 +226,7 @@ pub async fn fetch_historical_logs(
         format!("{}/{}", resource_type, resource_name),
         "--context".to_string(),
         context,
-        "-n".to_string(),
+        "--namespace".to_string(),
         namespace,
     ];
     
@@ -245,15 +245,16 @@ pub async fn fetch_historical_logs(
     }
     
     let kubectl_path = kubectl::get_path();
+    let command_str = kubectl::format_command(&args);
     let output = Command::new(kubectl_path)
         .args(&args)
         .output()
         .await
-        .map_err(|e| format!("Failed to execute kubectl logs: {}", e))?;
+        .map_err(|e| format!("Failed to execute kubectl logs: {}\nCommand: {}", e, command_str))?;
     
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl logs failed: {}", stderr));
+        return Err(format!("kubectl logs failed: {}\nCommand: {}", stderr.trim(), command_str));
     }
     
     let stdout = String::from_utf8_lossy(&output.stdout);

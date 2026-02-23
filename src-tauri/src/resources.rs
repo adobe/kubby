@@ -5,17 +5,17 @@ pub async fn get_resource_types(context: String) -> Result<Vec<String>, String> 
     let args = [
         "api-resources",
         "--context", &context,
-        "-o", "name",
+        "--output", "name",
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl failed: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     
     // Parse output: kubectl api-resources -o name returns one resource type per line
     // Format is like: deployments.v1.apps, pods.v1.core, etc.
@@ -56,18 +56,18 @@ pub async fn get_resource_detail(
         &resource_type,
         &resource_name,
         "--context", &context,
-        "-n", &namespace,
-        "-o", "json",
+        "--namespace", &namespace,
+        "--output", "json",
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl failed: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     
     let detail: serde_json::Value = serde_json::from_str(&stdout)
         .map_err(|e| format!("Failed to parse kubectl JSON output: {}", e))?;
@@ -94,24 +94,24 @@ pub async fn delete_resource(
         &resource_type,
         &resource_name,
         "--context", &context,
-        "-n", &namespace,
+        "--namespace", &namespace,
         "--wait=false",
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
+    let stderr = String::from_utf8_lossy(&result.output.stderr);
     
     eprintln!(
         "[Delete] Exit code: {:?}, stdout: {}, stderr: {}",
-        output.status.code(),
+        result.output.status.code(),
         stdout.trim(),
         stderr.trim()
     );
     
-    if !output.status.success() {
-        return Err(format!("Failed to delete resource: {}", stderr));
+    if !result.output.status.success() {
+        return Err(format!("Failed to delete resource: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
     Ok(stdout.trim().to_string())
@@ -127,17 +127,17 @@ pub async fn rolling_restart_deployment(
         "rollout", "restart", "deployment",
         &deployment_name,
         "--context", &context,
-        "-n", &namespace,
+        "--namespace", &namespace,
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to restart deployment: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("Failed to restart deployment: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     Ok(stdout.trim().to_string())
 }
 
@@ -151,18 +151,18 @@ pub async fn get_hpa_for_target(
     let args = [
         "get", "hpa",
         "--context", &context,
-        "-n", &namespace,
-        "-o", "json",
+        "--namespace", &namespace,
+        "--output", "json",
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
     // If no HPAs exist, kubectl returns an error - treat as empty
-    if !output.status.success() {
+    if !result.output.status.success() {
         return Ok(None);
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let hpa_list: serde_json::Value = serde_json::from_str(&stdout)
         .map_err(|e| format!("Failed to parse HPA JSON: {}", e))?;
     
@@ -220,18 +220,18 @@ pub async fn get_pdb_for_deployment(
     let args = [
         "get", "pdb",
         "--context", &context,
-        "-n", &namespace,
-        "-o", "json",
+        "--namespace", &namespace,
+        "--output", "json",
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
     // If no PDBs exist, kubectl returns an error - treat as empty
-    if !output.status.success() {
+    if !result.output.status.success() {
         return Ok(None);
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let pdb_list: serde_json::Value = serde_json::from_str(&stdout)
         .map_err(|e| format!("Failed to parse PDB JSON: {}", e))?;
     
@@ -272,17 +272,17 @@ pub async fn scale_deployment(
         &deployment_name,
         &replicas_arg,
         "--context", &context,
-        "-n", &namespace,
+        "--namespace", &namespace,
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to scale deployment: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("Failed to scale deployment: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     Ok(stdout.trim().to_string())
 }
 
@@ -304,17 +304,17 @@ pub async fn patch_hpa(
         &hpa_name,
         "-p", &patch,
         "--context", &context,
-        "-n", &namespace,
+        "--namespace", &namespace,
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to patch HPA: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("Failed to patch HPA: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     Ok(stdout.trim().to_string())
 }
 
@@ -361,16 +361,16 @@ pub async fn patch_pdb(
         &pdb_name,
         "-p", &patch,
         "--context", &context,
-        "-n", &namespace,
+        "--namespace", &namespace,
     ];
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to patch PDB: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("Failed to patch PDB: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     Ok(stdout.trim().to_string())
 }

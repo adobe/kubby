@@ -936,7 +936,7 @@ pub async fn get_resources(
         resource_type.clone(),
         "--context".to_string(),
         context.clone(),
-        "-n".to_string(),
+        "--namespace".to_string(),
         namespace.clone(),
     ];
     
@@ -947,7 +947,7 @@ pub async fn get_resources(
             .map(|ls| format!("{}={}", ls.key, ls.value))
             .collect::<Vec<String>>()
             .join(",");
-        args.push("-l".to_string());
+        args.push("--selector".to_string());
         args.push(selector_string);
     }
     
@@ -962,17 +962,17 @@ pub async fn get_resources(
         args.push(selector_string);
     }
     
-    args.push("-o".to_string());
+    args.push("--output".to_string());
     args.push("json".to_string());
     
-    let output = kubectl::run(&args).await?;
+    let result = kubectl::run(&args).await?;
     
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl failed: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     
     // Parse and process resources
     let (mut items, evaluation_error) = parse_kubectl_json(&stdout, &column_config, &resource_type, &context, &namespace)?;
@@ -1019,19 +1019,19 @@ pub async fn get_pod_containers(
     namespace: String,
     pod_name: String,
 ) -> Result<ResourceListResponse, String> {
-    let output = kubectl::run([
+    let result = kubectl::run([
         "get", "pod", &pod_name,
         "--context", &context,
-        "-n", &namespace,
-        "-o", "json",
+        "--namespace", &namespace,
+        "--output", "json",
     ]).await?;
     
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl failed: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let pod: Value = serde_json::from_str(&stdout)
         .map_err(|e| format!("Failed to parse kubectl JSON output: {}", e))?;
     

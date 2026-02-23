@@ -131,19 +131,19 @@ async fn get_service_targets(
     namespace: &str,
     service_name: &str,
 ) -> Result<PortForwardTargetsResponse, String> {
-    let output = kubectl::run([
+    let result = kubectl::run([
         "get", "service", service_name,
         "--context", context,
-        "-n", namespace,
-        "-o", "json",
+        "--namespace", namespace,
+        "--output", "json",
     ]).await?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl failed: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let service: serde_json::Value = serde_json::from_str(&stdout)
         .map_err(|e| format!("Failed to parse service JSON: {}", e))?;
 
@@ -194,19 +194,19 @@ async fn get_pod_targets(
     namespace: &str,
     pod_name: &str,
 ) -> Result<PortForwardTargetsResponse, String> {
-    let output = kubectl::run([
+    let result = kubectl::run([
         "get", "pod", pod_name,
         "--context", context,
-        "-n", namespace,
-        "-o", "json",
+        "--namespace", namespace,
+        "--output", "json",
     ]).await?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl failed: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let pod: serde_json::Value =
         serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse pod JSON: {}", e))?;
 
@@ -227,19 +227,19 @@ async fn get_container_targets(
     pod_name: &str,
     container_name: &str,
 ) -> Result<PortForwardTargetsResponse, String> {
-    let output = kubectl::run([
+    let result = kubectl::run([
         "get", "pod", pod_name,
         "--context", context,
-        "-n", namespace,
-        "-o", "json",
+        "--namespace", namespace,
+        "--output", "json",
     ]).await?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl failed: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let pod: serde_json::Value =
         serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse pod JSON: {}", e))?;
 
@@ -360,7 +360,7 @@ pub async fn start_port_forward(
         port_mapping,
         "--context".to_string(),
         context.clone(),
-        "-n".to_string(),
+        "--namespace".to_string(),
         namespace.clone(),
     ];
 

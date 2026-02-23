@@ -43,14 +43,14 @@ pub async fn refresh_metrics_cache(
 ) -> Result<MetricsCacheStatus, String> {
     let api_path = format!("/apis/metrics.k8s.io/v1beta1/namespaces/{}/pods", namespace);
     
-    let output = kubectl::run([
+    let result = kubectl::run([
         "get", "--raw", &api_path,
         "--context", &context,
     ]).await?;
     
     // Check if metrics server is available
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
         
         // Clear cache for this namespace on error
         if let Ok(mut cache) = get_cache().write() {
@@ -67,7 +67,7 @@ pub async fn refresh_metrics_cache(
         });
     }
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let metrics_response: Value = serde_json::from_str(&stdout)
         .map_err(|e| format!("Failed to parse metrics JSON: {}", e))?;
     

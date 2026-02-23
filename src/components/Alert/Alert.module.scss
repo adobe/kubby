@@ -9,6 +9,18 @@
     margin-bottom: 0.5rem;
   }
 
+  .command {
+    display: block;
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.15);
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+    font-size: 0.8rem;
+    word-break: break-all;
+    user-select: all;
+  }
+
   p {
     margin: 0 0 0.25rem 0;
 

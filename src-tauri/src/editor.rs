@@ -81,19 +81,19 @@ pub async fn edit_resource(
     namespace: String,
 ) -> Result<String, String> {
     // Step 1: Fetch the resource as YAML
-    let get_output = kubectl::run([
+    let get_result = kubectl::run([
         "get", &resource_type, &resource_name,
         "--context", &context,
-        "-n", &namespace,
-        "-o", "yaml",
+        "--namespace", &namespace,
+        "--output", "yaml",
     ]).await?;
     
-    if !get_output.status.success() {
-        let stderr = String::from_utf8_lossy(&get_output.stderr);
-        return Err(format!("Failed to get resource: {}", stderr));
+    if !get_result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&get_result.output.stderr);
+        return Err(format!("Failed to get resource: {}\nCommand: {}", stderr.trim(), get_result.command));
     }
     
-    let yaml_content = String::from_utf8_lossy(&get_output.stdout);
+    let yaml_content = String::from_utf8_lossy(&get_result.output.stdout);
     
     // Step 2: Write to a temporary file with .yaml extension
     let temp_dir = tempfile::tempdir()
@@ -141,19 +141,19 @@ pub async fn edit_resource(
     }
     
     // Step 5: Replace the resource (same mechanism as kubectl edit)
-    let replace_output = kubectl::run([
+    let replace_result = kubectl::run([
         "replace", "-f", &temp_path_str,
         "--context", &context,
-        "-n", &namespace,
+        "--namespace", &namespace,
     ]).await?;
     
     // temp_dir will be cleaned up automatically when dropped
     
-    if !replace_output.status.success() {
-        let stderr = String::from_utf8_lossy(&replace_output.stderr);
-        return Err(format!("Failed to replace resource: {}", stderr));
+    if !replace_result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&replace_result.output.stderr);
+        return Err(format!("Failed to replace resource: {}\nCommand: {}", stderr.trim(), replace_result.command));
     }
     
-    let stdout = String::from_utf8_lossy(&replace_output.stdout);
+    let stdout = String::from_utf8_lossy(&replace_result.output.stdout);
     Ok(stdout.trim().to_string())
 }

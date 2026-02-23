@@ -12,6 +12,27 @@ interface ErrorProps {
   message: ReactElement | string | null | undefined
 }
 
+const COMMAND_PREFIX = '\nCommand: '
+
+function renderMessage(message: ReactElement | string) {
+  if (typeof message !== 'string') return message
+
+  const cmdIndex = message.indexOf(COMMAND_PREFIX)
+  if (cmdIndex === -1) return message
+
+  const errorText = message.slice(0, cmdIndex)
+  const command = message.slice(cmdIndex + COMMAND_PREFIX.length)
+
+  return (
+    <>
+      <p>{errorText}</p>
+      <br/>
+      <small>Executed command:</small>
+      <code class={classes.command}>{command}</code>
+    </>
+  )
+}
+
 /**
  * Displays an alert message with a styled container.
  * Renders nothing if message is null or undefined.
@@ -33,7 +54,7 @@ export function Alert({ type, label, message }: ErrorProps) {
   return (
     <div class={`${classes.Alert} ${alertClass}`}>
       <div class={classes.title}>{icon} <strong>{label}</strong></div>
-      <div>{message ?? 'Unknown error'}</div>
+      <div>{renderMessage(message ?? 'Unknown error')}</div>
     </div>
   )
 }

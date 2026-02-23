@@ -329,14 +329,14 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
             format!("{}/.kube/config", home)
         });
 
-    let output = kubectl::run(["config", "get-contexts", "-o", "name"]).await?;
+    let result = kubectl::run(["config", "get-contexts", "--output", "name"]).await?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl failed: {}", stderr));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let context_names: Vec<String> = stdout
         .lines()
         .filter(|line| !line.trim().is_empty())
@@ -344,10 +344,10 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
         .collect();
 
     // Get the current context
-    let current_output = kubectl::run(["config", "current-context"]).await?;
+    let current_result = kubectl::run(["config", "current-context"]).await?;
 
-    let current_context = if current_output.status.success() {
-        String::from_utf8_lossy(&current_output.stdout).trim().to_string()
+    let current_context = if current_result.output.status.success() {
+        String::from_utf8_lossy(&current_result.output.stdout).trim().to_string()
     } else {
         String::new()
     };
@@ -372,18 +372,18 @@ pub async fn get_kube_contexts() -> Result<KubeContextsResult, String> {
 /// Get namespaces for a specific context
 #[tauri::command]
 pub async fn get_namespaces_for_context(context: String) -> Result<Vec<String>, String> {
-    let output = kubectl::run([
+    let result = kubectl::run([
         "get", "namespaces",
         "--context", &context,
-        "-o", "jsonpath={.items[*].metadata.name}"
+        "--output", "jsonpath={.items[*].metadata.name}"
     ]).await?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to get namespaces: {}", stderr.trim()));
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("Failed to get namespaces: {}\nCommand: {}", stderr.trim(), result.command));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let namespaces: Vec<String> = stdout
         .split_whitespace()
         .filter(|s| !s.is_empty())

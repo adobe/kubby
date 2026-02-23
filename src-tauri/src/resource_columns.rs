@@ -1403,7 +1403,7 @@ fn get_crd_columns(resource_type: &str, context: &str) -> Result<ResourceColumnC
         "crd".to_string(),
         "--context".to_string(),
         context.to_string(),
-        "-o".to_string(),
+        "--output".to_string(),
         "json".to_string(),
     ];
 
@@ -1475,7 +1475,7 @@ fn get_crd_definition(crd_name: &str, context: &str) -> Result<ResourceColumnCon
         crd_name.to_string(),
         "--context".to_string(),
         context.to_string(),
-        "-o".to_string(),
+        "--output".to_string(),
         "json".to_string(),
     ];
 
