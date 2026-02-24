@@ -69,9 +69,9 @@ pub async fn start_log_stream(
         args.push("--previous".to_string());
     }
     
-    // If a specific container is requested, use -c flag
+    // If a specific container is requested, use --container flag
     if let Some(container) = container_name {
-        args.push("--context".to_string());
+        args.push("--container".to_string());
         args.push(container);
     } else {
         // Show logs from all containers when viewing a pod or higher-level resource (deployment, etc.)
