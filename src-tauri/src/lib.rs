@@ -99,9 +99,11 @@ pub fn run() {
                 match config::get_config_path() {
                     Ok(path) => {
                         let path_str = path.to_string_lossy().to_string();
-                        if let Err(e) = editor::open_file_in_editor(path_str) {
-                            eprintln!("Failed to open config: {}", e);
-                        }
+                        tauri::async_runtime::spawn(async move {
+                            if let Err(e) = editor::open_file_in_editor(path_str).await {
+                                eprintln!("Failed to open config: {}", e);
+                            }
+                        });
                     }
                     Err(e) => eprintln!("Failed to get config path: {}", e),
                 }

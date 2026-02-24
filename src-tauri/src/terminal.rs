@@ -174,3 +174,97 @@ pub async fn open_terminal_with_command(command: String) -> Result<(), String> {
         Err("Unsupported platform".to_string())
     }
 }
+
+/// Run a shell command in a new terminal window and wait for it to complete.
+/// Returns when the command finishes or the terminal window is closed.
+/// Used by the editor module to launch terminal-based editors (vi, vim, nano, etc.).
+pub async fn run_in_terminal_and_wait(command: String) -> Result<(), String> {
+    let command = build_command_with_env(&command);
+
+    #[cfg(target_os = "macos")]
+    {
+        let terminal = get_macos_terminal();
+        let escaped_command = command
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"");
+
+        let script = if terminal == "iTerm" {
+            format!(
+                r#"tell application "iTerm"
+    activate
+    set newWindow to (create window with default profile)
+    tell current session of newWindow
+        write text "{escaped_command}"
+        delay 1
+        try
+            repeat while is processing
+                delay 0.5
+            end repeat
+        on error
+            -- session or window was closed
+        end try
+    end tell
+end tell"#
+            )
+        } else {
+            format!(
+                r#"tell application "{terminal}"
+    activate
+    set currentTab to do script "{escaped_command}"
+    delay 1
+    try
+        repeat while busy of currentTab
+            delay 0.5
+        end repeat
+    on error
+        -- tab or window was closed
+    end try
+end tell"#
+            )
+        };
+
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg(&script)
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute osascript: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Terminal process failed: {}", stderr));
+        }
+
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(terminal) = shell_env::get_env_var("TERMINAL") {
+            if let Some(terminal_path) = shell_env::find_executable(&terminal) {
+                let status = Command::new(&terminal_path)
+                    .args(["-e", "bash", "-c", &command])
+                    .status()
+                    .await
+                    .map_err(|e| format!("Failed to launch terminal: {}", e))?;
+
+                if !status.success() {
+                    return Err("Editor process exited with an error".to_string());
+                }
+                return Ok(());
+            }
+        }
+
+        Err("No terminal found. Set TERMINAL or KUBE_EDITOR env var.".to_string())
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        Err("Terminal editor not supported on Windows. Set KUBE_EDITOR to a GUI editor.".to_string())
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        Err("Unsupported platform".to_string())
+    }
+}
