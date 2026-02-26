@@ -571,7 +571,7 @@ function truncateImage(image: string): string {
   const lastSlash = image.lastIndexOf('/')
   const shortImage = lastSlash >= 0 ? image.slice(lastSlash + 1) : image
   // Truncate if still too long
-  return shortImage.length > 30 ? shortImage.slice(0, 27) + '...' : shortImage
+  return shortImage.length > 40 ? shortImage.slice(0, 37) + '...' : shortImage
 }
 
 /**

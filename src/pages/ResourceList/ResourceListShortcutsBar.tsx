@@ -38,7 +38,7 @@ const DEPLOYMENT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
   { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this deployment', isModifying: false },
   { label: 'Rolling Restart...', shortcut: 'R', code: 'rolling_restart', tooltip: 'Perform a rolling restart of the deployment', isModifying: true },
-  { label: 'Scale', shortcut: 'S', code: 'scale', tooltip: 'Scale the number of replicas', isModifying: true },
+  { label: 'Scale...', shortcut: 'S', code: 'scale', tooltip: 'Scale the number of replicas', isModifying: true },
   { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 

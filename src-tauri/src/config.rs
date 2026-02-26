@@ -516,7 +516,6 @@ pub fn create_kubby_config(
     yaml.push_str("#   # Custom button name (default: \"AI\")\n");
     yaml.push_str("#   name: Agent\n");
     yaml.push_str("#   # Read-only mode restricts kubectl to safe commands (get, describe, logs, etc.)\n");
-    yaml.push_str("#   # and locks the context/namespace to prevent escaping to other clusters.\n");
     yaml.push_str("#   # Default is true for safety.\n");
     yaml.push_str("#   readOnly: true\n");
 
