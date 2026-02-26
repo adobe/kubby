@@ -12,6 +12,7 @@ export interface ShortcutConfig {
   code: ActionCode
   tooltip: string
   isModifying?: boolean
+  external?: boolean
 }
 
 interface ResourceListShortcutsBarProps {
@@ -35,7 +36,7 @@ interface ResourceListShortcutsBarProps {
 const DEPLOYMENT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Pods', shortcut: 'Enter', code: 'pods', tooltip: 'Show the pods for this deployment', isModifying: false },
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
-  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true, external: true },
   { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this deployment', isModifying: false },
   { label: 'Rolling Restart...', shortcut: 'R', code: 'rolling_restart', tooltip: 'Perform a rolling restart of the deployment', isModifying: true },
   { label: 'Scale...', shortcut: 'S', code: 'scale', tooltip: 'Scale the number of replicas', isModifying: true },
@@ -45,17 +46,17 @@ const DEPLOYMENT_SHORTCUTS: ShortcutConfig[] = [
 const POD_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Containers', shortcut: 'Enter', code: 'containers', tooltip: 'Show containers in this pod', isModifying: false },
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
-  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true, external: true },
   { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this pod', isModifying: false },
   { label: 'Port-Forward...', shortcut: 'F', code: 'port_forward', tooltip: 'Configure port-forwards for this pod', isModifying: true },
   { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this pod', isModifying: true },
-  { label: 'Delete', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
+  { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 
 const CONTAINER_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this container', isModifying: false },
   { label: 'Port-Forward...', shortcut: 'F', code: 'port_forward', tooltip: 'Configure port-forwards for this container', isModifying: true },
-  { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this container', isModifying: true },
+  { label: 'Shell', shortcut: 'S', code: 'shell', tooltip: 'Open a shell session in this container', isModifying: true, external: true },
 ]
 
 const SERVICE_SHORTCUTS: ShortcutConfig[] = [
@@ -69,7 +70,7 @@ const SERVICE_SHORTCUTS: ShortcutConfig[] = [
 const JOB_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Pods', shortcut: 'Enter', code: 'pods', tooltip: 'Show the pods for this job', isModifying: false },
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
-  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true, external: true },
   { label: 'Logs', shortcut: 'L', code: 'logs', tooltip: 'View logs for this job', isModifying: false },
   { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
@@ -167,6 +168,7 @@ export function ResourceListShortcutsBar({
             tabIndex={0}
             disabled={isDisabled}
             tooltip={tooltip}
+            external={shortcut.external}
           />
         )
       })}
