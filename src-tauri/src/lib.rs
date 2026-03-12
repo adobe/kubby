@@ -14,7 +14,9 @@ mod shell_env;
 mod terminal;
 mod types;
 
+use std::sync::Mutex;
 use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
+use tauri::Manager;
 
 // Re-export types for use by other modules
 pub use types::{
@@ -22,9 +24,26 @@ pub use types::{
     ResourceListResponse,
 };
 
+#[tauri::command]
+fn zoom_webview(
+    direction: String,
+    window: tauri::WebviewWindow,
+    zoom_state: tauri::State<'_, Mutex<f64>>,
+) -> Result<(), String> {
+    let mut zoom = zoom_state.lock().map_err(|e| e.to_string())?;
+    match direction.as_str() {
+        "in" => *zoom = (*zoom + 0.1).min(3.0),
+        "out" => *zoom = (*zoom - 0.1).max(0.5),
+        "reset" => *zoom = 1.0,
+        _ => return Err("invalid direction".to_string()),
+    }
+    window.set_zoom(*zoom).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(Mutex::new(1.0_f64))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
@@ -68,6 +87,23 @@ pub fn run() {
                 .item(&PredefinedMenuItem::select_all(app, None)?)
                 .build()?;
 
+            // Create View menu with zoom controls
+            let zoom_in = MenuItemBuilder::with_id("zoom_in", "Zoom In")
+                .accelerator("CmdOrCtrl+Shift+=")
+                .build(app)?;
+            let zoom_out = MenuItemBuilder::with_id("zoom_out", "Zoom Out")
+                .accelerator("CmdOrCtrl+-")
+                .build(app)?;
+            let zoom_reset = MenuItemBuilder::with_id("zoom_reset", "Actual Size")
+                .accelerator("CmdOrCtrl+0")
+                .build(app)?;
+
+            let view_menu = SubmenuBuilder::new(app, "View")
+                .item(&zoom_in)
+                .item(&zoom_out)
+                .item(&zoom_reset)
+                .build()?;
+
             // Create Help menu with Documentation
             let help_menu = SubmenuBuilder::new(app, "Help")
                 .item(&open_docs)
@@ -75,7 +111,7 @@ pub fn run() {
 
             // Build the menu
             #[cfg(target_os = "macos")]
-            let menu = Menu::with_items(app, &[&app_menu, &edit_menu, &help_menu])?;
+            let menu = Menu::with_items(app, &[&app_menu, &edit_menu, &view_menu, &help_menu])?;
 
             #[cfg(not(target_os = "macos"))]
             let menu = {
@@ -85,11 +121,25 @@ pub fn run() {
                     .separator()
                     .item(&PredefinedMenuItem::close_window(app, Some("Close Window"))?)
                     .build()?;
-                Menu::with_items(app, &[&file_menu_with_config, &edit_menu, &help_menu])?
+                Menu::with_items(app, &[&file_menu_with_config, &edit_menu, &view_menu, &help_menu])?
             };
 
             // Set menu at the app level
             app.set_menu(menu)?;
+
+            // Bind Cmd+= as secondary zoom-in shortcut (menu shows Cmd++ via Shift+=)
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.eval(r#"
+                    document.addEventListener('keydown', (e) => {
+                        const isZoomIn = (e.metaKey || e.ctrlKey) &&
+                            (e.code === 'NumpadAdd' || (e.key === '=' && !e.shiftKey));
+                        if (isZoomIn) {
+                            e.preventDefault();
+                            window.__TAURI_INTERNALS__.invoke('zoom_webview', { direction: 'in' });
+                        }
+                    });
+                "#);
+            }
 
             Ok(())
         })
@@ -112,9 +162,23 @@ pub fn run() {
                 if let Err(e) = docs::open_documentation(app) {
                     eprintln!("Failed to open documentation: {}", e);
                 }
+            } else if event.id() == "zoom_in" || event.id() == "zoom_out" || event.id() == "zoom_reset" {
+                if let Some(window) = app.get_webview_window("main") {
+                    let zoom_state = app.state::<Mutex<f64>>();
+                    let mut zoom = zoom_state.lock().unwrap();
+                    if event.id() == "zoom_reset" {
+                        *zoom = 1.0;
+                    } else if event.id() == "zoom_in" {
+                        *zoom = (*zoom + 0.1).min(3.0);
+                    } else {
+                        *zoom = (*zoom - 0.1).max(0.5);
+                    }
+                    let _ = window.set_zoom(*zoom);
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
+            zoom_webview,
             kubectl::kubectl,
             config::get_dashboard_config,
             config::check_config_exists,
