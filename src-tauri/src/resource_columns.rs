@@ -1027,6 +1027,14 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
         ],
         "events" => vec![
             ColumnConfig {
+                name: "LAST SEEN".to_string(),
+                json_paths: vec!["$.lastTimestamp".to_string()],
+                format: None,
+                column_type: Some(ColumnType::Duration),
+                color_rules: None,
+                align: ColumnAlign::Start,
+            },
+            ColumnConfig {
                 name: "TYPE".to_string(),
                 json_paths: vec!["$.type".to_string()],
                 format: None,
@@ -1044,8 +1052,11 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
             },
             ColumnConfig {
                 name: "OBJECT".to_string(),
-                json_paths: vec!["$.involvedObject.name".to_string()],
-                format: None,
+                json_paths: vec![
+                    "$.involvedObject.kind".to_string(),
+                    "$.involvedObject.name".to_string(),
+                ],
+                format: Some("{0}/{1}".to_string()),
                 column_type: None,
                 color_rules: None,
                 align: ColumnAlign::Start,

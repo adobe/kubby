@@ -881,7 +881,7 @@ export function ResourceList({
             <table class={classes.table}>
               <thead>
               <tr tabIndex={-1}>
-                <th class={classes.nameColumn}>NAME</th>
+                {resourceType !== 'events' && <th class={classes.nameColumn}>NAME</th>}
                 {columns.map((col) => (
                   <th key={col.name} class={col.align === 'end' ? classes.alignEnd : undefined}>
                     {col.name}
@@ -892,7 +892,7 @@ export function ResourceList({
               <tbody ref={tableBodyRef}>
               {resources.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + 1} class={classes.emptyRow}>
+                  <td colSpan={columns.length + (resourceType !== 'events' ? 1 : 0)} class={classes.emptyRow}>
                     {isRefreshing ? '...' : 'No resources found'}
                   </td>
                 </tr>
@@ -905,14 +905,16 @@ export function ResourceList({
                     onDblClick={() => handleRowActivate(index)}
                     data-index={index}
                   >
-                    <td class={classes.nameCell}>
-                      <div class={classes.nameContent}>
-                        <span>{resource.name}</span>
-                        {editAction.editingResourceName === resource.name && (
-                          <span class={classes.editingChip}>Editing</span>
-                        )}
-                      </div>
-                    </td>
+                    {resourceType !== 'events' && (
+                      <td class={classes.nameCell}>
+                        <div class={classes.nameContent}>
+                          <span>{resource.name}</span>
+                          {editAction.editingResourceName === resource.name && (
+                            <span class={classes.editingChip}>Editing</span>
+                          )}
+                        </div>
+                      </td>
+                    )}
                     {columns.map((col) => {
                       // Evaluate color for this column
                       const rawValues = resource.rawValues?.[col.name] || []
