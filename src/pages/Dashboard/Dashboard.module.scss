@@ -182,7 +182,7 @@
 }
 
 .contextCluster {
-  font-size: 0.5rem;
+  font-size: 0.65rem;
   font-weight: 400;
   color: var(--fgColor-default);
   overflow: hidden;
@@ -288,7 +288,7 @@
     transform: scale(1.1);
 
     .bullet {
-      color: var(--label-cyan-fgColor-active);
+      color: var(--kubby-accent-fgColor-active);
     }
   }
   
@@ -300,11 +300,11 @@
 
 .bullet {
   font-size: 8px;
-  color: var(--label-cyan-bgColor-active);
+  color: var(--kubby-accent-bgColor-active);
   line-height: 1;
   
   .cellButton:hover & {
-    color: var(--label-cyan-fgColor-hover);
+    color: var(--kubby-accent-fgColor-hover);
   }
 }
 

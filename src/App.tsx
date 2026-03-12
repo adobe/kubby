@@ -108,6 +108,17 @@ function App() {
     }
   }, [lastNamespaceByContext]);
 
+  // Apply accent color CSS custom properties from config
+  useEffect(() => {
+    if (!config) return;
+    const c = config.accentColor;
+    const s = document.documentElement.style;
+    s.setProperty('--kubby-accent-fgColor-rest', `var(--label-${c}-fgColor-rest)`);
+    s.setProperty('--kubby-accent-fgColor-hover', `var(--label-${c}-fgColor-hover)`);
+    s.setProperty('--kubby-accent-fgColor-active', `var(--label-${c}-fgColor-active)`);
+    s.setProperty('--kubby-accent-bgColor-active', `var(--label-${c}-bgColor-active)`);
+  }, [config?.accentColor]);
+
   // Function to load the config
   const loadConfig = useCallback(async () => {
     setLoading(true);

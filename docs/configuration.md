@@ -71,6 +71,7 @@ contexts:
 | `refreshRateSeconds` | number | `2` | Interval for refreshing resource lists |
 | `metricsRefreshRateSeconds` | number | `30` | Interval for refreshing metrics data |
 | `kubectlTimeoutSeconds` | number | `10` | Timeout for kubectl commands in seconds |
+| `accentColor` | string | `"orange"` | Accent color for shortcut badges and dashboard bullets. Options: `auburn`, `blue`, `brown`, `coral`, `cyan`, `gray`, `green`, `indigo`, `lemon`, `lime`, `olive`, `orange`, `pine`, `pink`, `plum`, `purple`, `red`, `teal`, `yellow` |
 | `ai` | object | - | AI assistant configuration (see [AI Assistant](/features/ai-assistant)) |
 
 ### Contexts Configuration

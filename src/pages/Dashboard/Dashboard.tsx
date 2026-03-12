@@ -62,6 +62,7 @@ export interface DashboardConfig {
   liveViewAutoRefresh: boolean;
   refreshRateSeconds: number;
   metricsRefreshRateSeconds: number;
+  accentColor: string;
 }
 
 interface ParsedContext {

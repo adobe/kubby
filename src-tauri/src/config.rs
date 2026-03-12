@@ -103,6 +103,11 @@ pub struct DashboardConfig {
     pub metrics_refresh_rate_seconds: Option<u32>,
     #[serde(default)]
     pub kubectl_timeout_seconds: Option<u64>,
+    /// Accent color for shortcut badges and dashboard bullets.
+    /// Options: auburn, blue, brown, coral, cyan, gray, green, indigo, lemon, lime,
+    /// olive, orange, pine, pink, plum, purple, red, teal, yellow
+    #[serde(default)]
+    pub accent_color: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -162,6 +167,7 @@ pub struct NormalizedDashboardConfig {
     pub refresh_rate_seconds: u32,
     pub metrics_refresh_rate_seconds: u32,
     pub kubectl_timeout_seconds: u64,
+    pub accent_color: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -259,6 +265,7 @@ impl DashboardConfig {
             refresh_rate_seconds: self.refresh_rate_seconds.unwrap_or(2),
             metrics_refresh_rate_seconds: self.metrics_refresh_rate_seconds.unwrap_or(30),
             kubectl_timeout_seconds: self.kubectl_timeout_seconds.unwrap_or(DEFAULT_KUBECTL_TIMEOUT_SECS),
+            accent_color: self.accent_color.clone().unwrap_or_else(|| "orange".to_string()),
         }
     }
 }
@@ -442,6 +449,8 @@ pub fn create_kubby_config(
     yaml.push_str("# refreshRateSeconds: 5 # default is 2\n");
     yaml.push_str("# metricsRefreshRateSeconds: 60 # default is 30\n");
     yaml.push_str("# kubectlTimeoutSeconds: 30 # default is 10\n");
+    yaml.push_str("# accentColor: orange # Accent color for shortcut badges. Default is orange.\n");
+    yaml.push_str("#   Options: auburn, blue, brown, coral, cyan, gray, green, indigo, lemon, lime, olive, orange, pine, pink, plum, purple, red, teal, yellow\n");
     yaml.push_str("contexts:\n");
     yaml.push_str("  # Groups organize contexts and namespaces into logical sections on the dashboard.\n");
     yaml.push_str("  # You can have multiple groups (e.g., \"Production\", \"Staging\", \"Development\").\n");
