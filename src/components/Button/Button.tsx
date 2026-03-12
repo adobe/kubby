@@ -12,6 +12,8 @@ export interface SubItem {
   label: string
   /** Whether the sub-item is available (dimmed if false) */
   available?: boolean
+  /** Single letter keyboard shortcut (displayed and activatable when dropdown is open) */
+  shortcut?: string
 }
 
 /** Horizontal alignment for dropdown positioning */
@@ -52,6 +54,10 @@ interface ButtonProps {
   dropDirection?: 'up' | 'down'
   /** Whether to show external icon */
   external?: boolean
+  /** Whether to dim the shortcut badge (used when another dropdown captures keyboard) */
+  shortcutMuted?: boolean
+  /** Called when dropdown open state changes */
+  onOpenChange?: (isOpen: boolean) => void
 }
 
 function ButtonComponent({
@@ -66,6 +72,8 @@ function ButtonComponent({
   onSubItemClick,
   dropDirection = 'down',
   external = false,
+  shortcutMuted = false,
+  onOpenChange,
 }: ButtonProps, ref: Ref<ButtonHandle>) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -89,11 +97,11 @@ function ButtonComponent({
   // Reset focused index when dropdown opens/closes
   useEffect(() => {
     if (isOpen) {
-      // Focus first available item when opening
       setFocusedIndex(availableIndices.length > 0 ? availableIndices[0] : -1)
     } else {
       setFocusedIndex(-1)
     }
+    onOpenChange?.(isOpen)
   }, [isOpen])
 
   // Calculate dropdown position to keep it within viewport bounds
@@ -176,7 +184,6 @@ function ButtonComponent({
           setIsOpen(false)
           break
 
-        // Prevent other keys from propagating to global handlers
         case 'ArrowLeft':
         case 'ArrowRight':
         case 'Home':
@@ -186,6 +193,24 @@ function ButtonComponent({
           e.preventDefault()
           e.stopPropagation()
           break
+
+        default: {
+          if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            const letter = e.key.toUpperCase()
+            const match = subItems?.find(
+              item => item.shortcut === letter && item.available !== false
+            )
+            if (match) {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsOpen(false)
+              onSubItemClick?.(match.code)
+              break
+            }
+          }
+          e.stopPropagation()
+          break
+        }
       }
     }
 
@@ -231,7 +256,7 @@ function ButtonComponent({
         title={tooltip}
       >
         <span class={classes.label}>{label}</span>
-        {shortcut && (<span class={classes.shortcutKey}>{formatShortcut(shortcut)}</span>)}
+        {shortcut && (<span class={`${classes.shortcutKey} ${shortcutMuted ? classes.shortcutMuted : ''}`}>{formatShortcut(shortcut)}</span>)}
         {external && (<span class={classes.external} />)}
       </button>
     )
@@ -257,7 +282,7 @@ function ButtonComponent({
         aria-expanded={isOpen}
       >
         <span class={classes.label}>{label}</span>
-        {shortcut && (<span class={classes.shortcutKey}>{formatShortcut(shortcut)}</span>)}
+        {shortcut && (<span class={`${classes.shortcutKey} ${shortcutMuted ? classes.shortcutMuted : ''}`}>{formatShortcut(shortcut)}</span>)}
         {dropDirection === 'up'
           ? (<span className={classes.dropdownArrow}>▾</span>)
           : (<span className={classes.dropdownArrow}>▾</span>)
@@ -279,6 +304,9 @@ function ButtonComponent({
                 onMouseEnter={() => isAvailable && setFocusedIndex(index)}
               >
                 {item.label}
+                {item.shortcut && (
+                  <span class={classes.dropdownItemShortcut}>{item.shortcut}</span>
+                )}
               </button>
             )
           })}

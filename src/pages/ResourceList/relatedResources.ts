@@ -500,7 +500,8 @@ const RELATED_RESOURCES: Record<string, RelatedResource[]> = {
  */
 export function getRelatedResources(resourceType: string): RelatedResource[] {
   const normalized = resourceType.toLowerCase()
-  return RELATED_RESOURCES[normalized] || []
+  const resources = RELATED_RESOURCES[normalized] || []
+  return [...resources].sort((a, b) => a.label.localeCompare(b.label))
 }
 
 /**

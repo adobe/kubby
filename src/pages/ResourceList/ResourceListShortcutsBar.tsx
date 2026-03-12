@@ -1,4 +1,4 @@
-import { useMemo } from 'preact/hooks'
+import { useMemo, useState } from 'preact/hooks'
 import type { Ref } from 'preact'
 import { ShortcutsBar } from '../../components/ShortcutsBar/ShortcutsBar.tsx'
 import { Button, type SubItem, type ButtonHandle } from '../../components/Button/Button.tsx'
@@ -111,6 +111,21 @@ export function getShortcutsForResourceType(resourceType: string, hasSelection: 
   return shortcuts
 }
 
+const JUMP_SHORTCUTS: Record<string, string> = {
+  replicasets: 'R',
+  hpa: 'H',
+  pdb: 'B',
+  secrets: 'C',
+  httpproxies: 'T',
+  services: 'S',
+  events: 'E',
+  deployments: 'D',
+  endpoints: 'N',
+  pods: 'P',
+  pvc: 'V',
+  jobs: 'J',
+}
+
 export function ResourceListShortcutsBar({ 
   resourceType, 
   hasSelection, 
@@ -123,6 +138,7 @@ export function ResourceListShortcutsBar({
   onJump,
   jumpButtonRef,
 }: ResourceListShortcutsBarProps) {
+  const [isJumpOpen, setIsJumpOpen] = useState(false)
   const shortcuts = getShortcutsForResourceType(resourceType, hasSelection, hasRunCommands)
   
   // Get related resources for the current resource type
@@ -145,6 +161,7 @@ export function ResourceListShortcutsBar({
         code: relation.code,
         label: relation.label,
         available,
+        shortcut: JUMP_SHORTCUTS[relation.code],
       }
     })
   }, [hasSelection, relatedResources, availableResourceTypes])
@@ -169,6 +186,7 @@ export function ResourceListShortcutsBar({
             disabled={isDisabled}
             tooltip={tooltip}
             external={shortcut.external}
+            shortcutMuted={isJumpOpen}
           />
         )
       })}
@@ -184,6 +202,7 @@ export function ResourceListShortcutsBar({
           shortcut="J"
           subItems={jumpSubItems}
           onSubItemClick={onJump}
+          onOpenChange={setIsJumpOpen}
           dropDirection="up"
           tabIndex={0}
           disabled={disabled || !hasSelection}
@@ -201,6 +220,7 @@ export function ResourceListShortcutsBar({
           disabled={disabled}
           tooltip={`Open ${aiConfig.toolDisplayName} with current context`}
           external={true}
+          shortcutMuted={isJumpOpen}
         />
       )}
     </ShortcutsBar>

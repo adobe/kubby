@@ -79,6 +79,13 @@
     line-height: 1.2;
     color: var(--label-cyan-fgColor-rest);
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+
+    &.shortcutMuted {
+      color: var(--fgColor-muted);
+      background: var(--bgColor-muted);
+      border-color: var(--borderColor-muted);
+    }
   }
 
   .dropdownArrow {
@@ -135,7 +142,10 @@
 }
 
 .dropdownItem {
-  display: block;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
   width: 100%;
   padding: 0.4rem 0.6rem;
   background: transparent;
@@ -165,4 +175,21 @@
     opacity: 0.4;
     cursor: not-allowed;
   }
+}
+
+.dropdownItemShortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.2em;
+  padding: 0.05rem 0.2rem;
+  background: var(--bgColor-accent-muted);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 3px;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--label-cyan-fgColor-rest);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
 }
