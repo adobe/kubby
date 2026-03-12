@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "preact/hooks";
-import { getVersion } from "@tauri-apps/api/app";
+import {useEffect, useRef, useState} from "preact/hooks";
+import {getVersion} from "@tauri-apps/api/app";
 import classes from "./Dashboard.module.scss";
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 import {DashboardShortcutsBar} from './DashboardShortcutsBar.tsx'
@@ -29,6 +29,8 @@ export interface DashboardGroup {
   name: string;
   contextGroups: ContextGroup[];
   namespaceGroups: NamespaceGroup[];
+  /** Regex with named groups (?<env>...), (?<region>...), (?<cluster>...) for parsing context names */
+  contextNamePattern: string;
 }
 
 export interface RunCommand {
@@ -71,15 +73,20 @@ interface ParsedContext {
   cluster: string;
 }
 
-function parseContextName(contextName: string): ParsedContext {
-  const parts = contextName.split("-");
-  if (parts.length >= 3) {
-    return {
-      env: parts[0],
-      region: parts[1],
-      cluster: parts.slice(2).join("-"),
-    };
+function parseContextName(contextName: string, pattern: string): ParsedContext {
+  try {
+    const match = new RegExp(pattern).exec(contextName);
+    if (match?.groups) {
+      return {
+        env: match.groups.env ?? "",
+        region: match.groups.region ?? "",
+        cluster: match.groups.cluster ?? "",
+      };
+    }
+  } catch {
+    // invalid regex — fall through to default
   }
+  const parts = contextName.split("-");
   return {
     env: parts[0] || "",
     region: parts[1] || "",
@@ -921,7 +928,7 @@ function DashboardTable({ group, groupIndex, filterWords, groupPositionsRef, onC
                   isFirstVisibleGroup = false;
                   
                   return cg.contexts.map((ctx, ctxIndex) => {
-                    const parsed = parseContextName(ctx);
+                    const parsed = parseContextName(ctx, group.contextNamePattern);
                     const showEnv = !ctx.toLowerCase().startsWith(cg.name.toLowerCase());
                     const isFirstInGroup = ctxIndex === 0 && hasVisibleGroupBefore;
                     const showRegion = parsed.region !== prevRegion;

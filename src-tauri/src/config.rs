@@ -9,6 +9,10 @@ use crate::kubectl;
 /// Default timeout for kubectl commands in seconds
 const DEFAULT_KUBECTL_TIMEOUT_SECS: u64 = 10;
 
+/// Default regex pattern for parsing context names into (env, region, cluster) parts.
+/// Matches the `<env>-<region>-<cluster...>` format, e.g. `prod-va7-ethos320-prod-va7`.
+const DEFAULT_CONTEXT_NAME_PATTERN: &str = r"^(?<env>[^-]+)-(?<region>[^-]+)-(?<cluster>.+)$";
+
 /// Global storage for kubectl timeout from config
 static KUBECTL_TIMEOUT: OnceLock<u64> = OnceLock::new();
 
@@ -108,6 +112,10 @@ pub struct DashboardConfig {
     /// olive, orange, pine, pink, plum, purple, red, teal, yellow
     #[serde(default)]
     pub accent_color: Option<String>,
+    /// Default regex pattern for parsing context names, overrides the built-in default.
+    /// Can be overridden per group with `contextNamePattern`.
+    #[serde(default)]
+    pub context_name_pattern: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -116,10 +124,15 @@ pub struct Dashboard {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DashboardGroup {
     pub name: String,
     pub contexts: Vec<ContextGroup>,
     pub namespaces: Namespaces,
+    /// Regex pattern with JS named capture groups (`(?<env>...)`, `(?<region>...)`, `(?<cluster>...)`)
+    /// for parsing context names. If omitted, defaults to `^(?<env>[^-]+)-(?<region>[^-]+)-(?<cluster>.+)$`.
+    #[serde(default)]
+    pub context_name_pattern: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -176,6 +189,7 @@ pub struct NormalizedDashboardGroup {
     pub name: String,
     pub context_groups: Vec<NormalizedContextGroup>,
     pub namespace_groups: Vec<NormalizedNamespaceGroup>,
+    pub context_name_pattern: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -216,6 +230,9 @@ impl DashboardConfig {
                 .iter()
                 .map(|g| NormalizedDashboardGroup {
                     name: g.name.clone(),
+                    context_name_pattern: g.context_name_pattern.clone()
+                        .or_else(|| self.context_name_pattern.clone())
+                        .unwrap_or_else(|| DEFAULT_CONTEXT_NAME_PATTERN.to_string()),
                     context_groups: g
                         .contexts
                         .iter()

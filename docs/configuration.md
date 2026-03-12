@@ -64,15 +64,16 @@ contexts:
 
 ### Global Settings
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `readOnly` | boolean | `false` | Disable all modifying actions (edit, delete, scale, etc.) |
-| `liveViewAutoRefresh` | boolean | `true` | Automatically refresh resource views |
-| `refreshRateSeconds` | number | `2` | Interval for refreshing resource lists |
-| `metricsRefreshRateSeconds` | number | `30` | Interval for refreshing metrics data |
-| `kubectlTimeoutSeconds` | number | `10` | Timeout for kubectl commands in seconds |
-| `accentColor` | string | `"orange"` | Accent color for shortcut badges and dashboard bullets. Options: `auburn`, `blue`, `brown`, `coral`, `cyan`, `gray`, `green`, `indigo`, `lemon`, `lime`, `olive`, `orange`, `pine`, `pink`, `plum`, `purple`, `red`, `teal`, `yellow` |
-| `ai` | object | - | AI assistant configuration (see [AI Assistant](/features/ai-assistant)) |
+| Option                      | Type    | Default    | Description                                                                                                                                                                                                                           |
+|-----------------------------|---------|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `readOnly`                  | boolean | `false`    | Disable all modifying actions (edit, delete, scale, etc.)                                                                                                                                                                             |
+| `liveViewAutoRefresh`       | boolean | `true`     | Automatically refresh resource views                                                                                                                                                                                                  |
+| `refreshRateSeconds`        | number  | `2`        | Interval for refreshing resource lists                                                                                                                                                                                                |
+| `metricsRefreshRateSeconds` | number  | `30`       | Interval for refreshing metrics data                                                                                                                                                                                                  |
+| `kubectlTimeoutSeconds`     | number  | `10`       | Timeout for kubectl commands in seconds                                                                                                                                                                                               |
+| `accentColor`               | string  | `"orange"` | Accent color for shortcut badges and dashboard bullets. Options: `auburn`, `blue`, `brown`, `coral`, `cyan`, `gray`, `green`, `indigo`, `lemon`, `lime`, `olive`, `orange`, `pine`, `pink`, `plum`, `purple`, `red`, `teal`, `yellow` |
+| `contextNamePattern`        | string  | see below  | Default regex for parsing context names into `env`, `region`, `cluster` parts. Can be overridden per group.                                                                                                                           |
+| `ai`                        | object  | -          | AI assistant configuration (see [AI Assistant](/features/ai-assistant))                                                                                                                                                               |
 
 ### Contexts Configuration
 
@@ -89,6 +90,9 @@ contexts:
       contexts: [...]       # Context definitions
       namespaces: [...]     # Namespace definitions
 ```
+
+Each group also accepts an optional `contextNamePattern` to override how context names are parsed for display (
+see [Context Name Parsing](#context-name-parsing) below).
 
 #### Context Groups
 
@@ -142,6 +146,60 @@ namespaces:
   - name: "prod-monitoring"
     contexts: ["prod-us-east", "prod-us-west"]  # Only for these contexts
 ```
+
+## Context Name Parsing
+
+Kubby parses context names into three display parts — **env**, **region**, and **cluster** — shown in the dashboard
+column headers. The parsing is driven by a regex
+with [named capture groups](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Named_capturing_group).
+
+The built-in default pattern matches the `<env>-<region>-<cluster>` format:
+
+```
+^(?<env>[^-]+)-(?<region>[^-]+)-(?<cluster>.+)$
+```
+
+For example, `prod-va7-ethos320-prod-va7` → `env=prod`, `region=va7`, `cluster=ethos320-prod-va7`.
+
+### Custom Patterns
+
+If your context names follow a different format, configure a custom pattern at the root level (applies to all groups) or
+per group (overrides the root):
+
+```yaml
+# Root-level default — applies to all groups unless overridden
+contextNamePattern: "^(?<env>[^-]+)-(?<region>[^-]+)-(?<cluster>.+)$"
+
+contexts:
+  groups:
+    - name: "Ethos Clusters"
+      # Group-level override — takes priority over root
+      contextNamePattern: "^(?<cluster>ethos[^-]+)-(?<env>[^-]+)-(?<region>.+)$"
+      contexts: [...]
+      namespaces: [...]
+
+    - name: "AKS Clusters"
+      # No contextNamePattern — uses root-level pattern
+      contexts: [...]
+      namespaces: [...]
+```
+
+**Priority order:** group-level → root-level → built-in default.
+
+### Named Capture Groups
+
+The pattern must define these three named groups (all are required for a match to apply):
+
+| Group             | Description               | Example                |
+|-------------------|---------------------------|------------------------|
+| `(?<env>...)`     | Environment identifier    | `prod`, `stage`, `dev` |
+| `(?<region>...)`  | Region or location        | `va7`, `us-east-1`     |
+| `(?<cluster>...)` | Cluster name or remainder | `ethos11`, `aks-0`     |
+
+::: tip Unmatched patterns
+If the pattern doesn't match a context name, Kubby falls back to splitting on `-` and assigning the first part as `env`,
+second as `region`, and the rest as `cluster`.
+:::
 
 ## Custom Run Commands
 
@@ -272,6 +330,7 @@ readOnly: false
 liveViewAutoRefresh: true
 refreshRateSeconds: 2
 metricsRefreshRateSeconds: 30
+contextNamePattern: "^(?<env>[^-]+)-(?<region>[^-]+)-(?<cluster>.+)$"  # optional, shown for clarity
 
 contexts:
   groups:
