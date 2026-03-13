@@ -73,6 +73,48 @@ interface ParsedContext {
   cluster: string;
 }
 
+/**
+ * Scroll a cell button into the visible (non-occluded) area of the scroll
+ * container, accounting for sticky headers and sticky columns whose sizes
+ * are measured at call-time so they don't need to be known in advance.
+ *
+ * WebKit's scrollIntoView ignores scroll-margin, so we compute the
+ * correction manually.
+ */
+function scrollCellButtonIntoView(button: HTMLElement, behavior: ScrollBehavior = 'smooth') {
+  const scrollContainer = button.closest(`.${classes.body}`) as HTMLElement | null
+    ?? document.querySelector(`.${classes.body}`) as HTMLElement | null;
+  if (!scrollContainer) return;
+
+  const table = button.closest('table');
+  // The <th> cells are sticky (not the <thead>), so measure an actual sticky <th>
+  // from the last header row (contextRow) to find the true occluded boundary.
+  const lastHeaderTh = table?.querySelector(`.${classes.contextRow} th`) as HTMLElement | null;
+  const stickyCol = table?.querySelector(`.${classes.stickyCol}`) as HTMLElement | null;
+
+  const cell = button.closest('td') ?? button;
+  const cellRect = cell.getBoundingClientRect();
+  const containerRect = scrollContainer.getBoundingClientRect();
+
+  const visibleLeft = stickyCol ? stickyCol.getBoundingClientRect().right : containerRect.left;
+  const visibleTop = lastHeaderTh ? lastHeaderTh.getBoundingClientRect().bottom : containerRect.top;
+  const visibleRight = containerRect.right;
+  const visibleBottom = containerRect.bottom;
+
+  let dx = 0;
+  let dy = 0;
+
+  if (cellRect.left < visibleLeft) dx = cellRect.left - visibleLeft;
+  else if (cellRect.right > visibleRight) dx = cellRect.right - visibleRight;
+
+  if (cellRect.top < visibleTop) dy = cellRect.top - visibleTop;
+  else if (cellRect.bottom > visibleBottom) dy = cellRect.bottom - visibleBottom;
+
+  if (dx !== 0 || dy !== 0) {
+    scrollContainer.scrollBy({ left: dx, top: dy, behavior });
+  }
+}
+
 function parseContextName(contextName: string, pattern: string): ParsedContext {
   try {
     const match = new RegExp(pattern).exec(contextName);
@@ -250,8 +292,8 @@ function handleCellKeyDown(
   const targetButton = findWrappingTarget(allButtons, currentRow, currentCol, direction);
   
   if (targetButton) {
-    targetButton.focus();
-    targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    targetButton.focus({ preventScroll: true });
+    scrollCellButtonIntoView(targetButton);
     
     // Update the stored position for this group
     const row = parseInt(targetButton.dataset.row || "0", 10);
@@ -497,8 +539,8 @@ export function Dashboard({
       }
 
       if (targetButton) {
-        targetButton.focus();
-        targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        targetButton.focus({ preventScroll: true });
+        scrollCellButtonIntoView(targetButton);
         lastFocusedRef.current = { groupIndex: targetSectionIndex, element: targetButton };
       }
     }
@@ -538,8 +580,8 @@ export function Dashboard({
     const targetButton = findWrappingTarget(allButtons, currentRow, currentCol, direction);
 
     if (targetButton) {
-      targetButton.focus();
-      targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      targetButton.focus({ preventScroll: true });
+      scrollCellButtonIntoView(targetButton);
 
       const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
       const groupIndex = sections.indexOf(currentSection);
@@ -568,8 +610,8 @@ export function Dashboard({
       }
       
       if (targetButton) {
-        targetButton.focus();
-        targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        targetButton.focus({ preventScroll: true });
+        scrollCellButtonIntoView(targetButton);
         
         // Set initial lastFocusedRef
         const section = targetButton.closest(`.${classes.dashboardSection}`);
@@ -749,8 +791,8 @@ export function Dashboard({
         }
         
         if (targetButton) {
-          targetButton.focus();
-          targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          targetButton.focus({ preventScroll: true });
+          scrollCellButtonIntoView(targetButton);
         }
       }
     }

@@ -316,7 +316,7 @@
 
 // Highlight for row/column headers when a cell is focused
 .headerHighlight {
-  background: var(--bgColor-accent-muted) !important;
+  background: var(--bgColor-muted) !important;
   .contextRegion, .namespaceSuffix {
     color: var(--fgColor-accent) !important;
   }
