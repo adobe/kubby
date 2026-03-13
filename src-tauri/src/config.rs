@@ -116,6 +116,10 @@ pub struct DashboardConfig {
     /// Can be overridden per group with `contextNamePattern`.
     #[serde(default)]
     pub context_name_pattern: Option<String>,
+    /// Default regex pattern for parsing namespace names into `lowlight`/`highlight` parts.
+    /// Can be overridden per group or namespace group.
+    #[serde(default)]
+    pub namespace_name_pattern: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -133,6 +137,10 @@ pub struct DashboardGroup {
     /// for parsing context names. If omitted, defaults to `^(?<env>[^-]+)-(?<region>[^-]+)-(?<cluster>.+)$`.
     #[serde(default)]
     pub context_name_pattern: Option<String>,
+    /// Regex pattern with JS named capture groups (`(?<lowlight>...)`, `(?<highlight>...)`)
+    /// for parsing namespace names. If omitted, falls back to auto-detect common prefix.
+    #[serde(default)]
+    pub namespace_name_pattern: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -162,10 +170,15 @@ pub struct NamespaceItem {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NamespaceGroup {
     #[serde(alias = "group", default)]
     pub name: Option<String>,
     pub namespaces: Vec<NamespaceItem>,
+    /// Regex pattern for parsing namespace names in this group.
+    /// Overrides dashboard-group and root-level patterns.
+    #[serde(default)]
+    pub namespace_name_pattern: Option<String>,
 }
 
 // Normalized types for frontend consumption
@@ -190,6 +203,7 @@ pub struct NormalizedDashboardGroup {
     pub context_groups: Vec<NormalizedContextGroup>,
     pub namespace_groups: Vec<NormalizedNamespaceGroup>,
     pub context_name_pattern: String,
+    pub namespace_name_pattern: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -199,9 +213,11 @@ pub struct NormalizedContextGroup {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NormalizedNamespaceGroup {
     pub name: Option<String>,
     pub namespaces: Vec<NormalizedNamespaceItem>,
+    pub namespace_name_pattern: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -233,6 +249,8 @@ impl DashboardConfig {
                     context_name_pattern: g.context_name_pattern.clone()
                         .or_else(|| self.context_name_pattern.clone())
                         .unwrap_or_else(|| DEFAULT_CONTEXT_NAME_PATTERN.to_string()),
+                    namespace_name_pattern: g.namespace_name_pattern.clone()
+                        .or_else(|| self.namespace_name_pattern.clone()),
                     context_groups: g
                         .contexts
                         .iter()
@@ -245,6 +263,8 @@ impl DashboardConfig {
                         Namespaces::Simple(list) => {
                             vec![NormalizedNamespaceGroup {
                                 name: None,
+                                namespace_name_pattern: g.namespace_name_pattern.clone()
+                                    .or_else(|| self.namespace_name_pattern.clone()),
                                 namespaces: list
                                     .iter()
                                     .map(|n| NormalizedNamespaceItem {
@@ -258,6 +278,9 @@ impl DashboardConfig {
                             .iter()
                             .map(|ng| NormalizedNamespaceGroup {
                                 name: ng.name.clone(),
+                                namespace_name_pattern: ng.namespace_name_pattern.clone()
+                                    .or_else(|| g.namespace_name_pattern.clone())
+                                    .or_else(|| self.namespace_name_pattern.clone()),
                                 namespaces: ng
                                     .namespaces
                                     .iter()

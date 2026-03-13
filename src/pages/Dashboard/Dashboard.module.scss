@@ -237,13 +237,13 @@
   white-space: nowrap;
 }
 
-.namespacePrefix {
+.namespaceLowlight {
   font-size: 0.55rem;
   font-weight: 400;
   color: var(--fgColor-muted);
 }
 
-.namespaceSuffix {
+.namespaceHighlight {
   font-size: 0.7rem;
   font-weight: 500;
   color: var(--fgColor-default);
@@ -317,7 +317,8 @@
 // Highlight for row/column headers when a cell is focused
 .headerHighlight {
   background: var(--bgColor-muted) !important;
-  .contextRegion, .namespaceSuffix {
+
+  .contextRegion, .namespaceHighlight {
     color: var(--fgColor-accent) !important;
   }
 }

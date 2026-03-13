@@ -73,6 +73,7 @@ contexts:
 | `kubectlTimeoutSeconds`     | number  | `10`       | Timeout for kubectl commands in seconds                                                                                                                                                                                               |
 | `accentColor`               | string  | `"orange"` | Accent color for shortcut badges and dashboard bullets. Options: `auburn`, `blue`, `brown`, `coral`, `cyan`, `gray`, `green`, `indigo`, `lemon`, `lime`, `olive`, `orange`, `pine`, `pink`, `plum`, `purple`, `red`, `teal`, `yellow` |
 | `contextNamePattern`        | string  | see below  | Default regex for parsing context names into `env`, `region`, `cluster` parts. Can be overridden per group.                                                                                                                           |
+| `namespaceNamePattern`      | string  | -          | Default regex for parsing namespace names for dashboards into `lowlight`/`highlight` display parts. Can be overridden per group or namespace group. If omitted, auto-detects a common prefix.                                         |
 | `ai`                        | object  | -          | AI assistant configuration (see [AI Assistant](/features/ai-assistant))                                                                                                                                                               |
 
 ### Contexts Configuration
@@ -92,7 +93,8 @@ contexts:
 ```
 
 Each group also accepts an optional `contextNamePattern` to override how context names are parsed for display (
-see [Context Name Parsing](#context-name-parsing) below).
+see [Context Name Parsing](#context-name-parsing) below), and an optional `namespaceNamePattern` to override how
+namespace names are parsed for display (see [Namespace Name Parsing](#namespace-name-parsing) below).
 
 #### Context Groups
 
@@ -199,6 +201,63 @@ The pattern must define these three named groups (all are required for a match t
 ::: tip Unmatched patterns
 If the pattern doesn't match a context name, Kubby falls back to splitting on `-` and assigning the first part as `env`,
 second as `region`, and the rest as `cluster`.
+:::
+
+## Namespace Name Parsing
+
+Kubby can parse namespace names into two display parts — **lowlight** (dimmed, small) and **highlight** (bold, larger) —
+shown in the dashboard row labels.
+
+By default, if no pattern is configured, Kubby **auto-detects** a common prefix shared by all namespaces in the group
+and renders it as the lowlight part.
+
+### Custom Namespace Pattern
+
+Configure a regex with named capture groups `(?<lowlight>...)` and `(?<highlight>...)` at any of three levels:
+
+**Priority order:** namespace-group → dashboard group → root → auto-detect.
+
+```yaml
+# Root-level — applies to all namespace groups unless overridden
+namespaceNamePattern: "^(?<lowlight>ns-team-[^-]+-)(?<highlight>.+)$"
+
+contexts:
+  groups:
+    - name: "Services"
+      # Group-level override — takes priority over root
+      namespaceNamePattern: "^(?<lowlight>ns-team-ups-)(?<highlight>.+)$"
+      namespaces:
+        - group: "Lookup"
+          # Namespace-group-level override — takes priority over group and root
+          namespaceNamePattern: "^(?<lowlight>ns-team-ups-lookup-)(?<highlight>.+)$"
+          namespaces:
+            - name: ns-team-ups-lookup-prod
+            - name: ns-team-ups-lookup-stage
+```
+
+### Named Capture Groups
+
+| Group               | Description                      | Example                        |
+|---------------------|----------------------------------|--------------------------------|
+| `(?<lowlight>...)`  | Dimmed prefix part (optional)    | `ns-team-ups-`, `ns-team-`     |
+| `(?<highlight>...)` | Bold main part (always rendered) | `lookup-prod`, `accessx-stage` |
+
+- Both groups are optional in the match — if `lowlight` is absent, only `highlight` is shown.
+- The render order follows the order they appear in the namespace string (left to right).
+- Any extra named groups in the pattern are silently ignored.
+
+::: tip Preserving separators
+To keep a trailing dash as part of `lowlight`, include it in the group:
+
+```
+^(?<lowlight>ns-team-ups-)(?<highlight>.+)$
+```
+
+This renders `ns-team-ups-` dimmed and `lookup-prod` bold.
+:::
+
+::: tip Unmatched patterns
+If the pattern doesn't match a namespace name, the full name is shown as `highlight` with no `lowlight`.
 :::
 
 ## Custom Run Commands

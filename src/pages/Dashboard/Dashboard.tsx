@@ -23,6 +23,7 @@ export interface NamespaceItem {
 export interface NamespaceGroup {
   name: string | null;
   namespaces: NamespaceItem[];
+  namespaceNamePattern: string | null;
 }
 
 export interface DashboardGroup {
@@ -172,6 +173,32 @@ function findCommonPrefix(strings: string[]): string {
 
 function getNamespacePrefixForGroup(namespaces: NamespaceItem[]): string {
   return findCommonPrefix(namespaces.map((ns) => ns.name))
+}
+
+interface ParsedNamespace {
+  lowlight: string;
+  highlight: string;
+  lowlightFirst: boolean;
+}
+
+function parseNamespaceName(namespaceName: string, pattern: string): ParsedNamespace {
+  try {
+    const regex = new RegExp(pattern, 'd')
+    const match = regex.exec(namespaceName)
+    if (match?.groups) {
+      const indices = (match as any).indices?.groups
+      const lowlightStart = indices?.lowlight?.[0] ?? Infinity
+      const highlightStart = indices?.highlight?.[0] ?? Infinity
+      return {
+        lowlight: match.groups.lowlight ?? '',
+        highlight: match.groups.highlight ?? namespaceName,
+        lowlightFirst: lowlightStart <= highlightStart,
+      }
+    }
+  } catch {
+    // invalid regex or no indices support — fall through
+  }
+  return {lowlight: '', highlight: namespaceName, lowlightFirst: true}
 }
 
 /**
@@ -1026,14 +1053,15 @@ function DashboardTable({group, groupIndex, filterWords, groupPositionsRef, onCe
             if (ng.namespaces.length === 0) return null
             const startRowIndex = runningRowIndex
             runningRowIndex += ng.namespaces.length
-            const namespacePrefix = getNamespacePrefixForGroup(ng.namespaces)
+            const namespaceLowlight = ng.namespaceNamePattern ? '' : getNamespacePrefixForGroup(ng.namespaces)
             return (
               <NamespaceGroupRows
                 key={ng.name ?? ngIndex}
                 namespaceGroup={ng}
                 filteredContextGroups={filteredContextGroups}
                 showGroupHeader={hasNamespaceGroups}
-                namespacePrefix={namespacePrefix}
+                namespaceNamePattern={ng.namespaceNamePattern}
+                namespaceLowlight={namespaceLowlight}
                 startRowIndex={startRowIndex}
                 groupIndex={groupIndex}
                 groupPositionsRef={groupPositionsRef}
@@ -1054,7 +1082,8 @@ interface NamespaceGroupRowsProps {
   namespaceGroup: NamespaceGroup;
   filteredContextGroups: FilteredContextGroup[];
   showGroupHeader: boolean;
-  namespacePrefix: string;
+  namespaceNamePattern: string | null;
+  namespaceLowlight: string;
   startRowIndex: number;
   groupIndex: number;
   groupPositionsRef: { current: Map<number, { row: number; col: number }> };
@@ -1067,7 +1096,8 @@ function NamespaceGroupRows({
                               namespaceGroup,
                               filteredContextGroups,
                               showGroupHeader,
-                              namespacePrefix,
+                              namespaceNamePattern,
+                              namespaceLowlight,
                               startRowIndex,
                               groupIndex,
                               groupPositionsRef,
@@ -1104,9 +1134,13 @@ function NamespaceGroupRows({
         </tr>
       )}
       {namespaceGroup.namespaces.map((ns, nsIndex) => {
-        const hasPrefix = namespacePrefix && ns.name.startsWith(namespacePrefix)
-        const prefix = hasPrefix ? namespacePrefix : ''
-        const suffix = hasPrefix ? ns.name.slice(namespacePrefix.length) : ns.name
+        const {lowlight, highlight, lowlightFirst} = namespaceNamePattern
+          ? parseNamespaceName(ns.name, namespaceNamePattern)
+          : {
+            lowlight: namespaceLowlight && ns.name.startsWith(namespaceLowlight) ? namespaceLowlight : '',
+            highlight: namespaceLowlight && ns.name.startsWith(namespaceLowlight) ? ns.name.slice(namespaceLowlight.length) : ns.name,
+            lowlightFirst: true,
+          }
         const rowIndex = startRowIndex + nsIndex
         const isRowHighlighted = focusedCell?.row === rowIndex
 
@@ -1114,8 +1148,13 @@ function NamespaceGroupRows({
           <tr key={ns.name} class={classes.namespaceRow}>
             <td class={`${classes.stickyCol} ${isRowHighlighted ? classes.headerHighlight : ''}`} title={ns.name}>
               <span class={classes.namespaceLabel}>
-                {prefix && <span class={classes.namespacePrefix}>{prefix}</span>}
-                <span class={classes.namespaceSuffix}>{suffix}</span>
+                {lowlightFirst ? (
+                  <>{lowlight && <span class={classes.namespaceLowlight}>{lowlight}</span>}<span
+                    class={classes.namespaceHighlight}>{highlight}</span></>
+                ) : (
+                  <><span class={classes.namespaceHighlight}>{highlight}</span>{lowlight &&
+                      <span class={classes.namespaceLowlight}>{lowlight}</span>}</>
+                )}
               </span>
             </td>
             {contextsWithBoundary.map(({ctx, isFirstInGroup, colIndex: col}) => {
