@@ -1,6 +1,6 @@
-import {useEffect, useRef, useState} from "preact/hooks";
-import {getVersion} from "@tauri-apps/api/app";
-import classes from "./Dashboard.module.scss";
+import {useEffect, useRef, useState} from 'preact/hooks'
+import {getVersion} from '@tauri-apps/api/app'
+import classes from './Dashboard.module.scss'
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 import {DashboardShortcutsBar} from './DashboardShortcutsBar.tsx'
 
@@ -83,95 +83,95 @@ interface ParsedContext {
  */
 function scrollCellButtonIntoView(button: HTMLElement, behavior: ScrollBehavior = 'smooth') {
   const scrollContainer = button.closest(`.${classes.body}`) as HTMLElement | null
-    ?? document.querySelector(`.${classes.body}`) as HTMLElement | null;
-  if (!scrollContainer) return;
+    ?? document.querySelector(`.${classes.body}`) as HTMLElement | null
+  if (!scrollContainer) return
 
-  const table = button.closest('table');
+  const table = button.closest('table')
   // The <th> cells are sticky (not the <thead>), so measure an actual sticky <th>
   // from the last header row (contextRow) to find the true occluded boundary.
-  const lastHeaderTh = table?.querySelector(`.${classes.contextRow} th`) as HTMLElement | null;
-  const stickyCol = table?.querySelector(`.${classes.stickyCol}`) as HTMLElement | null;
+  const lastHeaderTh = table?.querySelector(`.${classes.contextRow} th`) as HTMLElement | null
+  const stickyCol = table?.querySelector(`.${classes.stickyCol}`) as HTMLElement | null
 
-  const cell = button.closest('td') ?? button;
-  const cellRect = cell.getBoundingClientRect();
-  const containerRect = scrollContainer.getBoundingClientRect();
+  const cell = button.closest('td') ?? button
+  const cellRect = cell.getBoundingClientRect()
+  const containerRect = scrollContainer.getBoundingClientRect()
 
-  const visibleLeft = stickyCol ? stickyCol.getBoundingClientRect().right : containerRect.left;
-  const visibleTop = lastHeaderTh ? lastHeaderTh.getBoundingClientRect().bottom : containerRect.top;
-  const visibleRight = containerRect.right;
-  const visibleBottom = containerRect.bottom;
+  const visibleLeft = stickyCol ? stickyCol.getBoundingClientRect().right : containerRect.left
+  const visibleTop = lastHeaderTh ? lastHeaderTh.getBoundingClientRect().bottom : containerRect.top
+  const visibleRight = containerRect.right
+  const visibleBottom = containerRect.bottom
 
-  let dx = 0;
-  let dy = 0;
+  let dx = 0
+  let dy = 0
 
-  if (cellRect.left < visibleLeft) dx = cellRect.left - visibleLeft;
-  else if (cellRect.right > visibleRight) dx = cellRect.right - visibleRight;
+  if (cellRect.left < visibleLeft) dx = cellRect.left - visibleLeft
+  else if (cellRect.right > visibleRight) dx = cellRect.right - visibleRight
 
-  if (cellRect.top < visibleTop) dy = cellRect.top - visibleTop;
-  else if (cellRect.bottom > visibleBottom) dy = cellRect.bottom - visibleBottom;
+  if (cellRect.top < visibleTop) dy = cellRect.top - visibleTop
+  else if (cellRect.bottom > visibleBottom) dy = cellRect.bottom - visibleBottom
 
   if (dx !== 0 || dy !== 0) {
-    scrollContainer.scrollBy({ left: dx, top: dy, behavior });
+    scrollContainer.scrollBy({left: dx, top: dy, behavior})
   }
 }
 
 function parseContextName(contextName: string, pattern: string): ParsedContext {
   try {
-    const match = new RegExp(pattern).exec(contextName);
+    const match = new RegExp(pattern).exec(contextName)
     if (match?.groups) {
       return {
-        env: match.groups.env ?? "",
-        region: match.groups.region ?? "",
-        cluster: match.groups.cluster ?? "",
-      };
+        env: match.groups.env ?? '',
+        region: match.groups.region ?? '',
+        cluster: match.groups.cluster ?? '',
+      }
     }
   } catch {
     // invalid regex — fall through to default
   }
-  const parts = contextName.split("-");
+  const parts = contextName.split('-')
   return {
-    env: parts[0] || "",
-    region: parts[1] || "",
-    cluster: parts.slice(2).join("-") || contextName,
-  };
+    env: parts[0] || '',
+    region: parts[1] || '',
+    cluster: parts.slice(2).join('-') || contextName,
+  }
 }
 
 function findCommonPrefix(strings: string[]): string {
-  if (strings.length < 2) return "";
-  
+  if (strings.length < 2) return ''
+
   // Build a map of all prefixes (at separator boundaries) and their occurrence counts
-  const prefixCounts = new Map<string, number>();
-  
+  const prefixCounts = new Map<string, number>()
+
   for (const str of strings) {
-    const separators = ["-", "_"];
-    
+    const separators = ['-', '_']
+
     for (let i = 0; i < str.length; i++) {
       if (separators.includes(str[i])) {
-        const prefix = str.substring(0, i + 1);
-        prefixCounts.set(prefix, (prefixCounts.get(prefix) || 0) + 1);
+        const prefix = str.substring(0, i + 1)
+        prefixCounts.set(prefix, (prefixCounts.get(prefix) || 0) + 1)
       }
     }
   }
-  
+
   // Try to find the longest common prefix, starting with one shared by all strings,
   // then progressively lowering the threshold until we find something
   for (let threshold = strings.length; threshold >= 2; threshold--) {
-    let bestPrefix = "";
+    let bestPrefix = ''
     for (const [prefix, count] of prefixCounts) {
       if (count >= threshold && prefix.length > bestPrefix.length) {
-        bestPrefix = prefix;
+        bestPrefix = prefix
       }
     }
     if (bestPrefix) {
-      return bestPrefix;
+      return bestPrefix
     }
   }
-  
-  return "";
+
+  return ''
 }
 
 function getNamespacePrefixForGroup(namespaces: NamespaceItem[]): string {
-  return findCommonPrefix(namespaces.map((ns) => ns.name));
+  return findCommonPrefix(namespaces.map((ns) => ns.name))
 }
 
 /**
@@ -183,137 +183,145 @@ function findWrappingTarget(
   allButtons: HTMLElement[],
   currentRow: number,
   currentCol: number,
-  direction: 'up' | 'down' | 'left' | 'right'
+  direction: 'up' | 'down' | 'left' | 'right',
 ): HTMLElement | null {
-  const getRow = (btn: HTMLElement) => parseInt(btn.dataset.row || "0", 10);
-  const getCol = (btn: HTMLElement) => parseInt(btn.dataset.col || "0", 10);
+  const getRow = (btn: HTMLElement) => parseInt(btn.dataset.row || '0', 10)
+  const getCol = (btn: HTMLElement) => parseInt(btn.dataset.col || '0', 10)
 
   // Try exact adjacent position first
-  let targetRow = currentRow;
-  let targetCol = currentCol;
+  let targetRow = currentRow
+  let targetCol = currentCol
   switch (direction) {
-    case 'up': targetRow--; break;
-    case 'down': targetRow++; break;
-    case 'left': targetCol--; break;
-    case 'right': targetCol++; break;
+    case 'up':
+      targetRow--
+      break
+    case 'down':
+      targetRow++
+      break
+    case 'left':
+      targetCol--
+      break
+    case 'right':
+      targetCol++
+      break
   }
 
-  const exactMatch = allButtons.find(btn => getRow(btn) === targetRow && getCol(btn) === targetCol);
-  if (exactMatch) return exactMatch;
+  const exactMatch = allButtons.find(btn => getRow(btn) === targetRow && getCol(btn) === targetCol)
+  if (exactMatch) return exactMatch
 
   if (direction === 'left' || direction === 'right') {
     // Try next/previous button in same row
     const sameRowButtons = allButtons
       .filter(btn => getRow(btn) === currentRow)
-      .sort((a, b) => getCol(a) - getCol(b));
+      .sort((a, b) => getCol(a) - getCol(b))
 
     if (direction === 'right') {
-      const next = sameRowButtons.find(btn => getCol(btn) > currentCol);
-      if (next) return next;
+      const next = sameRowButtons.find(btn => getCol(btn) > currentCol)
+      if (next) return next
     } else {
-      const prev = [...sameRowButtons].reverse().find(btn => getCol(btn) < currentCol);
-      if (prev) return prev;
+      const prev = [...sameRowButtons].reverse().find(btn => getCol(btn) < currentCol)
+      if (prev) return prev
     }
 
     // Wrap to next/previous row
-    const allRows = [...new Set(allButtons.map(getRow))].sort((a, b) => a - b);
-    const currentRowIdx = allRows.indexOf(currentRow);
-    if (currentRowIdx === -1) return null;
+    const allRows = [...new Set(allButtons.map(getRow))].sort((a, b) => a - b)
+    const currentRowIdx = allRows.indexOf(currentRow)
+    if (currentRowIdx === -1) return null
 
     for (let i = 1; i <= allRows.length; i++) {
       const idx = direction === 'right'
         ? (currentRowIdx + i) % allRows.length
-        : (currentRowIdx - i + allRows.length) % allRows.length;
+        : (currentRowIdx - i + allRows.length) % allRows.length
       const rowButtons = allButtons
         .filter(btn => getRow(btn) === allRows[idx])
-        .sort((a, b) => getCol(a) - getCol(b));
+        .sort((a, b) => getCol(a) - getCol(b))
       if (rowButtons.length > 0) {
-        return direction === 'right' ? rowButtons[0] : rowButtons[rowButtons.length - 1];
+        return direction === 'right' ? rowButtons[0] : rowButtons[rowButtons.length - 1]
       }
     }
   } else {
     // Try next/previous button in same column
     const sameColButtons = allButtons
       .filter(btn => getCol(btn) === currentCol)
-      .sort((a, b) => getRow(a) - getRow(b));
+      .sort((a, b) => getRow(a) - getRow(b))
 
     if (direction === 'down') {
-      const next = sameColButtons.find(btn => getRow(btn) > currentRow);
-      if (next) return next;
+      const next = sameColButtons.find(btn => getRow(btn) > currentRow)
+      if (next) return next
     } else {
-      const prev = [...sameColButtons].reverse().find(btn => getRow(btn) < currentRow);
-      if (prev) return prev;
+      const prev = [...sameColButtons].reverse().find(btn => getRow(btn) < currentRow)
+      if (prev) return prev
     }
 
     // Wrap to next/previous column
-    const allCols = [...new Set(allButtons.map(getCol))].sort((a, b) => a - b);
-    const currentColIdx = allCols.indexOf(currentCol);
-    if (currentColIdx === -1) return null;
+    const allCols = [...new Set(allButtons.map(getCol))].sort((a, b) => a - b)
+    const currentColIdx = allCols.indexOf(currentCol)
+    if (currentColIdx === -1) return null
 
     for (let i = 1; i <= allCols.length; i++) {
       const idx = direction === 'down'
         ? (currentColIdx + i) % allCols.length
-        : (currentColIdx - i + allCols.length) % allCols.length;
+        : (currentColIdx - i + allCols.length) % allCols.length
       const colButtons = allButtons
         .filter(btn => getCol(btn) === allCols[idx])
-        .sort((a, b) => getRow(a) - getRow(b));
+        .sort((a, b) => getRow(a) - getRow(b))
       if (colButtons.length > 0) {
-        return direction === 'down' ? colButtons[0] : colButtons[colButtons.length - 1];
+        return direction === 'down' ? colButtons[0] : colButtons[colButtons.length - 1]
       }
     }
   }
 
-  return null;
+  return null
 }
 
 function handleCellKeyDown(
-  e: KeyboardEvent, 
+  e: KeyboardEvent,
   tableRef: HTMLTableElement | null,
   groupIndex: number,
-  groupPositionsRef: { current: Map<number, { row: number; col: number }> }
+  groupPositionsRef: { current: Map<number, { row: number; col: number }> },
 ) {
-  if (!tableRef) return;
-  
-  const target = e.target as HTMLElement;
-  if (!target.classList.contains(classes.cellButton)) return;
-  
-  const currentRow = parseInt(target.dataset.row || "0", 10);
-  const currentCol = parseInt(target.dataset.col || "0", 10);
-  
+  if (!tableRef) return
+
+  const target = e.target as HTMLElement
+  if (!target.classList.contains(classes.cellButton)) return
+
+  const currentRow = parseInt(target.dataset.row || '0', 10)
+  const currentCol = parseInt(target.dataset.col || '0', 10)
+
   const directionMap: Record<string, 'up' | 'down' | 'left' | 'right'> = {
     ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-  };
-  const direction = directionMap[e.key];
-  if (!direction) return;
-  
-  e.preventDefault();
-  
-  const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
-  const targetButton = findWrappingTarget(allButtons, currentRow, currentCol, direction);
-  
+  }
+  const direction = directionMap[e.key]
+  if (!direction) return
+
+  e.preventDefault()
+
+  const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[]
+  const targetButton = findWrappingTarget(allButtons, currentRow, currentCol, direction)
+
   if (targetButton) {
-    targetButton.focus({ preventScroll: true });
-    scrollCellButtonIntoView(targetButton);
-    
+    targetButton.focus({preventScroll: true})
+    scrollCellButtonIntoView(targetButton)
+
     // Update the stored position for this group
-    const row = parseInt(targetButton.dataset.row || "0", 10);
-    const col = parseInt(targetButton.dataset.col || "0", 10);
-    groupPositionsRef.current.set(groupIndex, { row, col });
+    const row = parseInt(targetButton.dataset.row || '0', 10)
+    const col = parseInt(targetButton.dataset.col || '0', 10)
+    groupPositionsRef.current.set(groupIndex, {row, col})
   }
 }
 
 function matchesFilter(text: string, filterWords: string[]): boolean {
-  const lowerText = text.toLowerCase();
-  return filterWords.every(word => lowerText.includes(word));
+  const lowerText = text.toLowerCase()
+  return filterWords.every(word => lowerText.includes(word))
 }
 
 function textContainsWord(text: string, word: string): boolean {
-  return text.toLowerCase().includes(word);
+  return text.toLowerCase().includes(word)
 }
 
 function filterContextGroups(
   contextGroups: ContextGroup[],
-  filterWords: string[]
+  filterWords: string[],
 ): { filtered: FilteredContextGroup[]; hasMatches: boolean } {
   if (filterWords.length === 0) {
     return {
@@ -322,14 +330,14 @@ function filterContextGroups(
         originalIndices: cg.contexts.map((_, i) => i),
       })),
       hasMatches: true,
-    };
+    }
   }
 
-  const allContexts = contextGroups.flatMap(cg => cg.contexts);
-  
+  const allContexts = contextGroups.flatMap(cg => cg.contexts)
+
   const applicableWords = filterWords.filter(word =>
-    allContexts.some(ctx => textContainsWord(ctx, word))
-  );
+    allContexts.some(ctx => textContainsWord(ctx, word)),
+  )
 
   if (applicableWords.length === 0) {
     return {
@@ -338,54 +346,54 @@ function filterContextGroups(
         originalIndices: cg.contexts.map((_, i) => i),
       })),
       hasMatches: true,
-    };
+    }
   }
 
   const filtered: FilteredContextGroup[] = contextGroups.map(cg => {
-    const matchingContexts: string[] = [];
-    const originalIndices: number[] = [];
-    
+    const matchingContexts: string[] = []
+    const originalIndices: number[] = []
+
     cg.contexts.forEach((ctx, i) => {
       if (matchesFilter(ctx, applicableWords)) {
-        matchingContexts.push(ctx);
-        originalIndices.push(i);
+        matchingContexts.push(ctx)
+        originalIndices.push(i)
       }
-    });
+    })
 
     return {
       name: cg.name,
       contexts: matchingContexts,
       originalIndices,
-    };
-  });
+    }
+  })
 
-  return { filtered, hasMatches: true };
+  return {filtered, hasMatches: true}
 }
 
 function filterNamespaces(
   namespaceGroups: NamespaceGroup[],
-  filterWords: string[]
+  filterWords: string[],
 ): { filtered: NamespaceGroup[]; hasMatches: boolean } {
   if (filterWords.length === 0) {
-    return { filtered: namespaceGroups, hasMatches: true };
+    return {filtered: namespaceGroups, hasMatches: true}
   }
 
-  const allNamespaces = namespaceGroups.flatMap(ng => ng.namespaces.map(ns => ns.name));
-  
+  const allNamespaces = namespaceGroups.flatMap(ng => ng.namespaces.map(ns => ns.name))
+
   const applicableWords = filterWords.filter(word =>
-    allNamespaces.some(ns => textContainsWord(ns, word))
-  );
+    allNamespaces.some(ns => textContainsWord(ns, word)),
+  )
 
   if (applicableWords.length === 0) {
-    return { filtered: namespaceGroups, hasMatches: true };
+    return {filtered: namespaceGroups, hasMatches: true}
   }
 
   const filtered: NamespaceGroup[] = namespaceGroups.map(ng => ({
     ...ng,
     namespaces: ng.namespaces.filter(ns => matchesFilter(ns.name, applicableWords)),
-  }));
+  }))
 
-  return { filtered, hasMatches: true };
+  return {filtered, hasMatches: true}
 }
 
 
@@ -397,427 +405,428 @@ interface DashboardProps {
   onCellClick: (context: string, namespace: string) => void;
 }
 
-export function Dashboard({ 
-  config, 
-  lastSelectedCell, 
-  filter,
-  onFilterChange,
-  onCellClick 
-}: DashboardProps) {
-  const filterInputRef = useRef<HTMLInputElement>(null);
+export function Dashboard({
+                            config,
+                            lastSelectedCell,
+                            filter,
+                            onFilterChange,
+                            onCellClick,
+                          }: DashboardProps) {
+  const filterInputRef = useRef<HTMLInputElement>(null)
   // Track last focused position (row, col) per group
-  const groupPositionsRef = useRef<Map<number, { row: number; col: number }>>(new Map());
+  const groupPositionsRef = useRef<Map<number, { row: number; col: number }>>(new Map())
   // Track the last focused group index and element
-  const lastFocusedRef = useRef<{ groupIndex: number; element: HTMLElement } | null>(null);
+  const lastFocusedRef = useRef<{ groupIndex: number; element: HTMLElement } | null>(null)
   // App version from tauri.conf.json
-  const [version, setVersion] = useState<string>("");
+  const [version, setVersion] = useState<string>('')
 
   // Fetch app version on mount
   useEffect(() => {
-    getVersion().then(setVersion);
-  }, []);
+    getVersion().then(setVersion)
+  }, [])
 
   // Update last focused position whenever a cell button is focused
   useEffect(() => {
     const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target as HTMLElement
       if (target.classList.contains(classes.cellButton)) {
-        const section = target.closest(`.${classes.dashboardSection}`);
+        const section = target.closest(`.${classes.dashboardSection}`)
         if (section) {
-          const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
-          const groupIndex = sections.indexOf(section);
+          const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`))
+          const groupIndex = sections.indexOf(section)
           if (groupIndex !== -1) {
-            lastFocusedRef.current = { groupIndex, element: target };
-            const row = parseInt(target.dataset.row || "0", 10);
-            const col = parseInt(target.dataset.col || "0", 10);
-            groupPositionsRef.current.set(groupIndex, { row, col });
+            lastFocusedRef.current = {groupIndex, element: target}
+            const row = parseInt(target.dataset.row || '0', 10)
+            const col = parseInt(target.dataset.col || '0', 10)
+            groupPositionsRef.current.set(groupIndex, {row, col})
           }
         }
       }
-    };
+    }
 
-    document.addEventListener('focusin', handleFocusIn);
-    return () => document.removeEventListener('focusin', handleFocusIn);
-  }, []);
+    document.addEventListener('focusin', handleFocusIn)
+    return () => document.removeEventListener('focusin', handleFocusIn)
+  }, [])
 
   // Navigate between groups
   const navigateToGroup = (direction: 'next' | 'previous') => {
-    const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
-    const filterInput = filterInputRef.current;
-    if (sections.length === 0) return;
+    const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`))
+    const filterInput = filterInputRef.current
+    if (sections.length === 0) return
 
-    const activeElement = document.activeElement as HTMLElement;
-    const isOnCellButton = activeElement?.classList.contains(classes.cellButton);
-    const isOnFilterInput = activeElement === filterInput;
+    const activeElement = document.activeElement as HTMLElement
+    const isOnCellButton = activeElement?.classList.contains(classes.cellButton)
+    const isOnFilterInput = activeElement === filterInput
 
-    let currentSectionIndex = -1;
-    let isCurrentlyOnFilter = false;
+    let currentSectionIndex = -1
+    let isCurrentlyOnFilter = false
 
     if (isOnFilterInput) {
-      isCurrentlyOnFilter = true;
+      isCurrentlyOnFilter = true
     } else if (isOnCellButton) {
-      const currentSection = activeElement.closest(`.${classes.dashboardSection}`);
+      const currentSection = activeElement.closest(`.${classes.dashboardSection}`)
       if (currentSection) {
-        currentSectionIndex = sections.indexOf(currentSection);
+        currentSectionIndex = sections.indexOf(currentSection)
         if (currentSectionIndex !== -1) {
-          const row = parseInt(activeElement.dataset.row || "0", 10);
-          const col = parseInt(activeElement.dataset.col || "0", 10);
-          groupPositionsRef.current.set(currentSectionIndex, { row, col });
+          const row = parseInt(activeElement.dataset.row || '0', 10)
+          const col = parseInt(activeElement.dataset.col || '0', 10)
+          groupPositionsRef.current.set(currentSectionIndex, {row, col})
         }
       }
     } else if (lastFocusedRef.current) {
       // If focus is elsewhere (e.g., shortcuts bar button), use last focused position
-      currentSectionIndex = lastFocusedRef.current.groupIndex;
+      currentSectionIndex = lastFocusedRef.current.groupIndex
     } else {
       // No previous focus, start from first group
-      currentSectionIndex = -1;
+      currentSectionIndex = -1
     }
 
-    let targetSectionIndex = -1;
-    let targetIsFilter = false;
-    const totalSections = sections.length;
-    const hasFilter = filterInput !== null;
+    let targetSectionIndex = -1
+    let targetIsFilter = false
+    const totalSections = sections.length
+    const hasFilter = filterInput !== null
 
     if (direction === 'previous') {
       if (isCurrentlyOnFilter) {
-        targetSectionIndex = totalSections - 1;
+        targetSectionIndex = totalSections - 1
       } else if (currentSectionIndex === 0) {
         if (hasFilter) {
-          targetIsFilter = true;
+          targetIsFilter = true
         } else {
-          targetSectionIndex = totalSections - 1;
+          targetSectionIndex = totalSections - 1
         }
       } else {
-        targetSectionIndex = currentSectionIndex - 1;
+        targetSectionIndex = currentSectionIndex - 1
       }
     } else {
       if (isCurrentlyOnFilter) {
-        targetSectionIndex = 0;
+        targetSectionIndex = 0
       } else if (currentSectionIndex === totalSections - 1) {
         if (hasFilter) {
-          targetIsFilter = true;
+          targetIsFilter = true
         } else {
-          targetSectionIndex = 0;
+          targetSectionIndex = 0
         }
       } else {
-        targetSectionIndex = currentSectionIndex + 1;
+        targetSectionIndex = currentSectionIndex + 1
       }
     }
 
     if (targetIsFilter && filterInput) {
-      filterInput.focus();
-      filterInput.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      filterInput.focus()
+      filterInput.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'})
     } else if (targetSectionIndex !== -1) {
-      const targetSection = sections[targetSectionIndex] as HTMLElement;
-      const allButtons = Array.from(targetSection.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
-      if (allButtons.length === 0) return;
+      const targetSection = sections[targetSectionIndex] as HTMLElement
+      const allButtons = Array.from(targetSection.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[]
+      if (allButtons.length === 0) return
 
-      const storedPos = groupPositionsRef.current.get(targetSectionIndex);
-      let targetButton: HTMLElement | null = null;
+      const storedPos = groupPositionsRef.current.get(targetSectionIndex)
+      let targetButton: HTMLElement | null = null
 
       if (storedPos) {
         targetButton = targetSection.querySelector(
-          `.${classes.cellButton}[data-row="${storedPos.row}"][data-col="${storedPos.col}"]`
-        ) as HTMLElement | null;
+          `.${classes.cellButton}[data-row="${storedPos.row}"][data-col="${storedPos.col}"]`,
+        ) as HTMLElement | null
 
         if (!targetButton) {
-          let minDistance = Infinity;
+          let minDistance = Infinity
           for (const btn of allButtons) {
-            const row = parseInt(btn.dataset.row || "0", 10);
-            const col = parseInt(btn.dataset.col || "0", 10);
-            const distance = Math.abs(row - storedPos.row) + Math.abs(col - storedPos.col);
+            const row = parseInt(btn.dataset.row || '0', 10)
+            const col = parseInt(btn.dataset.col || '0', 10)
+            const distance = Math.abs(row - storedPos.row) + Math.abs(col - storedPos.col)
             if (distance < minDistance) {
-              minDistance = distance;
-              targetButton = btn;
+              minDistance = distance
+              targetButton = btn
             }
           }
         }
       }
 
       if (!targetButton) {
-        targetButton = allButtons[0];
+        targetButton = allButtons[0]
       }
 
       if (targetButton) {
-        targetButton.focus({ preventScroll: true });
-        scrollCellButtonIntoView(targetButton);
-        lastFocusedRef.current = { groupIndex: targetSectionIndex, element: targetButton };
+        targetButton.focus({preventScroll: true})
+        scrollCellButtonIntoView(targetButton)
+        lastFocusedRef.current = {groupIndex: targetSectionIndex, element: targetButton}
       }
     }
-  };
+  }
 
   // Handle arrow navigation
   const handleArrowNavigation = (direction: 'up' | 'down' | 'left' | 'right') => {
-    let activeElement = document.activeElement as HTMLElement;
-    let currentSection: Element | null = null;
-    let currentRow: number;
-    let currentCol: number;
+    let activeElement = document.activeElement as HTMLElement
+    let currentSection: Element | null = null
+    let currentRow: number
+    let currentCol: number
 
     // If currently on a cell button, use it
     if (activeElement?.classList.contains(classes.cellButton)) {
-      currentSection = activeElement.closest(`.${classes.dashboardSection}`);
-      currentRow = parseInt(activeElement.dataset.row || "0", 10);
-      currentCol = parseInt(activeElement.dataset.col || "0", 10);
-    } 
+      currentSection = activeElement.closest(`.${classes.dashboardSection}`)
+      currentRow = parseInt(activeElement.dataset.row || '0', 10)
+      currentCol = parseInt(activeElement.dataset.col || '0', 10)
+    }
     // Otherwise, use last focused position
     else if (lastFocusedRef.current) {
-      activeElement = lastFocusedRef.current.element;
-      currentSection = activeElement.closest(`.${classes.dashboardSection}`);
-      currentRow = parseInt(activeElement.dataset.row || "0", 10);
-      currentCol = parseInt(activeElement.dataset.col || "0", 10);
-    } 
+      activeElement = lastFocusedRef.current.element
+      currentSection = activeElement.closest(`.${classes.dashboardSection}`)
+      currentRow = parseInt(activeElement.dataset.row || '0', 10)
+      currentCol = parseInt(activeElement.dataset.col || '0', 10)
+    }
     // No previous focus, can't navigate
     else {
-      return;
+      return
     }
 
-    if (!currentSection) return;
+    if (!currentSection) return
 
-    const tableRef = currentSection.querySelector(`.${classes.matrix}`) as HTMLTableElement | null;
-    if (!tableRef) return;
+    const tableRef = currentSection.querySelector(`.${classes.matrix}`) as HTMLTableElement | null
+    if (!tableRef) return
 
-    const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
-    const targetButton = findWrappingTarget(allButtons, currentRow, currentCol, direction);
+    const allButtons = Array.from(tableRef.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[]
+    const targetButton = findWrappingTarget(allButtons, currentRow, currentCol, direction)
 
     if (targetButton) {
-      targetButton.focus({ preventScroll: true });
-      scrollCellButtonIntoView(targetButton);
+      targetButton.focus({preventScroll: true})
+      scrollCellButtonIntoView(targetButton)
 
-      const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
-      const groupIndex = sections.indexOf(currentSection);
+      const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`))
+      const groupIndex = sections.indexOf(currentSection)
       if (groupIndex !== -1) {
-        const row = parseInt(targetButton.dataset.row || "0", 10);
-        const col = parseInt(targetButton.dataset.col || "0", 10);
-        groupPositionsRef.current.set(groupIndex, { row, col });
-        lastFocusedRef.current = { groupIndex, element: targetButton };
+        const row = parseInt(targetButton.dataset.row || '0', 10)
+        const col = parseInt(targetButton.dataset.col || '0', 10)
+        groupPositionsRef.current.set(groupIndex, {row, col})
+        lastFocusedRef.current = {groupIndex, element: targetButton}
       }
     }
-  };
+  }
 
   // Focus button when dashboard is shown (restore last selection or focus first)
   useEffect(() => {
     requestAnimationFrame(() => {
-      let targetButton: HTMLElement | null = null;
-      
+      let targetButton: HTMLElement | null = null
+
       if (lastSelectedCell) {
         targetButton = document.querySelector(
-          `.${classes.cellButton}[data-context="${lastSelectedCell.context}"][data-namespace="${lastSelectedCell.namespace}"]`
-        ) as HTMLElement | null;
+          `.${classes.cellButton}[data-context="${lastSelectedCell.context}"][data-namespace="${lastSelectedCell.namespace}"]`,
+        ) as HTMLElement | null
       }
-      
+
       if (!targetButton) {
-        targetButton = document.querySelector(`.${classes.cellButton}`) as HTMLElement | null;
+        targetButton = document.querySelector(`.${classes.cellButton}`) as HTMLElement | null
       }
-      
+
       if (targetButton) {
-        targetButton.focus({ preventScroll: true });
-        scrollCellButtonIntoView(targetButton);
-        
+        targetButton.focus({preventScroll: true})
+        scrollCellButtonIntoView(targetButton)
+
         // Set initial lastFocusedRef
-        const section = targetButton.closest(`.${classes.dashboardSection}`);
+        const section = targetButton.closest(`.${classes.dashboardSection}`)
         if (section) {
-          const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
-          const groupIndex = sections.indexOf(section);
+          const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`))
+          const groupIndex = sections.indexOf(section)
           if (groupIndex !== -1) {
-            lastFocusedRef.current = { groupIndex, element: targetButton };
+            lastFocusedRef.current = {groupIndex, element: targetButton}
           }
         }
       }
-    });
-  }, [lastSelectedCell]);
+    })
+  }, [lastSelectedCell])
 
   // Listen for keydown to handle filter shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement;
-      const isInInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-      
+      const target = e.target as HTMLElement
+      const isInInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+
       // Escape clears filter (works even in input)
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         if (filter) {
-          e.preventDefault();
-          onFilterChange("");
+          e.preventDefault()
+          onFilterChange('')
         }
-        return;
+        return
       }
-      
+
       // Skip other shortcuts if in an input
-      if (isInInput) return;
-      
+      if (isInInput) return
+
       // "/" focuses the filter input
-      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        filterInputRef.current?.focus();
-        return;
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        filterInputRef.current?.focus()
+        return
       }
-      
+
       // Backspace removes last character from filter
-      if (e.key === "Backspace" && filter) {
-        e.preventDefault();
-        onFilterChange(filter.slice(0, -1));
-        return;
+      if (e.key === 'Backspace' && filter) {
+        e.preventDefault()
+        onFilterChange(filter.slice(0, -1))
+        return
       }
-      
+
       // Space on a focused cell button should activate it (same as Enter)
-      if (e.key === " " && target.classList.contains(classes.cellButton)) {
-        e.preventDefault();
-        target.click();
-        return;
+      if (e.key === ' ' && target.classList.contains(classes.cellButton)) {
+        e.preventDefault()
+        target.click()
+        return
       }
 
       // Typing characters appends to filter
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        onFilterChange(filter + e.key);
+        e.preventDefault()
+        onFilterChange(filter + e.key)
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown, true);
-    return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [filter, onFilterChange]);
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [filter, onFilterChange])
 
   // Handle Tab navigation between dashboard groups and filter input
   useEffect(() => {
     function handleTabNavigation(e: KeyboardEvent) {
-      if (e.key !== "Tab") return;
+      if (e.key !== 'Tab') return
 
-      const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`));
-      const filterInput = filterInputRef.current;
+      const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`))
+      const filterInput = filterInputRef.current
 
-      if (sections.length === 0) return;
+      if (sections.length === 0) return
 
-      const activeElement = document.activeElement as HTMLElement;
-      
-      const isOnCellButton = activeElement?.classList.contains(classes.cellButton);
-      const isOnFilterInput = activeElement === filterInput;
-      
-      if (!isOnCellButton && !isOnFilterInput) return;
+      const activeElement = document.activeElement as HTMLElement
 
-      e.preventDefault();
+      const isOnCellButton = activeElement?.classList.contains(classes.cellButton)
+      const isOnFilterInput = activeElement === filterInput
 
-      let currentSectionIndex = -1;
-      let isCurrentlyOnFilter = false;
-      
+      if (!isOnCellButton && !isOnFilterInput) return
+
+      e.preventDefault()
+
+      let currentSectionIndex = -1
+      let isCurrentlyOnFilter = false
+
       if (isOnFilterInput) {
-        isCurrentlyOnFilter = true;
+        isCurrentlyOnFilter = true
       } else if (isOnCellButton) {
-        const currentSection = activeElement.closest(`.${classes.dashboardSection}`);
+        const currentSection = activeElement.closest(`.${classes.dashboardSection}`)
         if (currentSection) {
-          currentSectionIndex = sections.indexOf(currentSection);
-          
+          currentSectionIndex = sections.indexOf(currentSection)
+
           // Store current position for this group
           if (currentSectionIndex !== -1) {
-            const row = parseInt(activeElement.dataset.row || "0", 10);
-            const col = parseInt(activeElement.dataset.col || "0", 10);
-            groupPositionsRef.current.set(currentSectionIndex, { row, col });
+            const row = parseInt(activeElement.dataset.row || '0', 10)
+            const col = parseInt(activeElement.dataset.col || '0', 10)
+            groupPositionsRef.current.set(currentSectionIndex, {row, col})
           }
         }
       }
 
       // Calculate next section/filter
-      let targetSectionIndex = -1;
-      let targetIsFilter = false;
-      
-      const totalSections = sections.length;
-      const hasFilter = filterInput !== null;
-      
+      let targetSectionIndex = -1
+      let targetIsFilter = false
+
+      const totalSections = sections.length
+      const hasFilter = filterInput !== null
+
       if (e.shiftKey) {
         // Going backwards
         if (isCurrentlyOnFilter) {
-          targetSectionIndex = totalSections - 1;
+          targetSectionIndex = totalSections - 1
         } else if (currentSectionIndex === 0) {
           if (hasFilter) {
-            targetIsFilter = true;
+            targetIsFilter = true
           } else {
-            targetSectionIndex = totalSections - 1;
+            targetSectionIndex = totalSections - 1
           }
         } else {
-          targetSectionIndex = currentSectionIndex - 1;
+          targetSectionIndex = currentSectionIndex - 1
         }
       } else {
         // Going forwards
         if (isCurrentlyOnFilter) {
-          targetSectionIndex = 0;
+          targetSectionIndex = 0
         } else if (currentSectionIndex === totalSections - 1) {
           if (hasFilter) {
-            targetIsFilter = true;
+            targetIsFilter = true
           } else {
-            targetSectionIndex = 0;
+            targetSectionIndex = 0
           }
         } else {
-          targetSectionIndex = currentSectionIndex + 1;
+          targetSectionIndex = currentSectionIndex + 1
         }
       }
 
       // Focus the target
       if (targetIsFilter && filterInput) {
-        filterInput.focus();
-        filterInput.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        filterInput.focus()
+        filterInput.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'})
       } else if (targetSectionIndex !== -1) {
-        const targetSection = sections[targetSectionIndex] as HTMLElement;
-        const allButtons = Array.from(targetSection.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[];
-        
-        if (allButtons.length === 0) return;
-        
+        const targetSection = sections[targetSectionIndex] as HTMLElement
+        const allButtons = Array.from(targetSection.querySelectorAll(`.${classes.cellButton}`)) as HTMLElement[]
+
+        if (allButtons.length === 0) return
+
         // Try to use stored position for this group
-        const storedPos = groupPositionsRef.current.get(targetSectionIndex);
-        let targetButton: HTMLElement | null = null;
-        
+        const storedPos = groupPositionsRef.current.get(targetSectionIndex)
+        let targetButton: HTMLElement | null = null
+
         if (storedPos) {
           // Try to find button at stored position
           targetButton = targetSection.querySelector(
-            `.${classes.cellButton}[data-row="${storedPos.row}"][data-col="${storedPos.col}"]`
-          ) as HTMLElement | null;
-          
+            `.${classes.cellButton}[data-row="${storedPos.row}"][data-col="${storedPos.col}"]`,
+          ) as HTMLElement | null
+
           // If exact position not found, try to find closest button
           if (!targetButton) {
             // Find button with closest row and col
-            let minDistance = Infinity;
+            let minDistance = Infinity
             for (const btn of allButtons) {
-              const row = parseInt(btn.dataset.row || "0", 10);
-              const col = parseInt(btn.dataset.col || "0", 10);
-              const distance = Math.abs(row - storedPos.row) + Math.abs(col - storedPos.col);
+              const row = parseInt(btn.dataset.row || '0', 10)
+              const col = parseInt(btn.dataset.col || '0', 10)
+              const distance = Math.abs(row - storedPos.row) + Math.abs(col - storedPos.col)
               if (distance < minDistance) {
-                minDistance = distance;
-                targetButton = btn;
+                minDistance = distance
+                targetButton = btn
               }
             }
           }
         }
-        
+
         // Fallback to first button if no stored position or button not found
         if (!targetButton) {
-          targetButton = allButtons[0];
+          targetButton = allButtons[0]
         }
-        
+
         if (targetButton) {
-          targetButton.focus({ preventScroll: true });
-          scrollCellButtonIntoView(targetButton);
+          targetButton.focus({preventScroll: true})
+          scrollCellButtonIntoView(targetButton)
         }
       }
     }
 
-    document.addEventListener("keydown", handleTabNavigation, true);
-    return () => document.removeEventListener("keydown", handleTabNavigation, true);
-  }, []);
+    document.addEventListener('keydown', handleTabNavigation, true)
+    return () => document.removeEventListener('keydown', handleTabNavigation, true)
+  }, [])
 
-  const filterWords = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const filterWords = filter.trim().toLowerCase().split(/\s+/).filter(Boolean)
 
   // Handle focusing first button when Enter is pressed in filter
   const handleFilterSubmit = () => {
-    const firstButton = document.querySelector(`.${classes.cellButton}`) as HTMLElement | null;
-    firstButton?.focus();
-  };
+    const firstButton = document.querySelector(`.${classes.cellButton}`) as HTMLElement | null
+    firstButton?.focus()
+  }
 
   return (
     <div class={classes.dashboard}>
       <div class={classes.header}>
         <NavigationBar
           navigationStack={[]}
-          onNavigateToNode={() => {}}
+          onNavigateToNode={() => {
+          }}
           filterText={filter}
           onFilterTextChange={onFilterChange}
-          onFilterClear={() => onFilterChange("")}
+          onFilterClear={() => onFilterChange('')}
           filterInputRef={filterInputRef}
           filterInputTabIndex={0}
           onFilterSubmit={handleFilterSubmit}
@@ -828,9 +837,9 @@ export function Dashboard({
       <div class={classes.body}>
         <div class={classes.content}>
           {config.groups.map((group, groupIndex) => (
-            <DashboardTable 
-              key={group.name} 
-              group={group} 
+            <DashboardTable
+              key={group.name}
+              group={group}
               groupIndex={groupIndex}
               filterWords={filterWords}
               groupPositionsRef={groupPositionsRef}
@@ -840,13 +849,13 @@ export function Dashboard({
         </div>
       </div>
 
-      <DashboardShortcutsBar 
+      <DashboardShortcutsBar
         onNextGroup={() => navigateToGroup('next')}
         onPreviousGroup={() => navigateToGroup('previous')}
         onArrowNavigation={handleArrowNavigation}
       />
     </div>
-  );
+  )
 }
 
 interface DashboardTableProps {
@@ -857,177 +866,188 @@ interface DashboardTableProps {
   onCellClick: (context: string, namespace: string) => void;
 }
 
-function DashboardTable({ group, groupIndex, filterWords, groupPositionsRef, onCellClick }: DashboardTableProps) {
-  const tableRef = useRef<HTMLTableElement>(null);
-  const hasNamespaceGroups = group.namespaceGroups.some((ng) => ng.name !== null);
-  const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
-  const [hoveredCol, setHoveredCol] = useState<number | null>(null);
+function DashboardTable({group, groupIndex, filterWords, groupPositionsRef, onCellClick}: DashboardTableProps) {
+  const tableRef = useRef<HTMLTableElement>(null)
+  const hasNamespaceGroups = group.namespaceGroups.some((ng) => ng.name !== null)
+  const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null)
+  const [hoveredCol, setHoveredCol] = useState<number | null>(null)
 
   // Track focus within this table
   useEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
+    const table = tableRef.current
+    if (!table) return
 
     const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target as HTMLElement
       if (target.classList.contains(classes.cellButton)) {
-        const row = parseInt(target.dataset.row || "0", 10);
-        const col = parseInt(target.dataset.col || "0", 10);
-        setFocusedCell({ row, col });
+        const row = parseInt(target.dataset.row || '0', 10)
+        const col = parseInt(target.dataset.col || '0', 10)
+        setFocusedCell({row, col})
       }
-    };
+    }
 
     const handleFocusOut = (e: FocusEvent) => {
-      const relatedTarget = e.relatedTarget as HTMLElement | null;
+      const relatedTarget = e.relatedTarget as HTMLElement | null
       // Only clear if focus is leaving the table entirely
       if (!relatedTarget || !table.contains(relatedTarget)) {
-        setFocusedCell(null);
+        setFocusedCell(null)
       }
-    };
+    }
 
-    table.addEventListener('focusin', handleFocusIn);
-    table.addEventListener('focusout', handleFocusOut);
+    table.addEventListener('focusin', handleFocusIn)
+    table.addEventListener('focusout', handleFocusOut)
     return () => {
-      table.removeEventListener('focusin', handleFocusIn);
-      table.removeEventListener('focusout', handleFocusOut);
-    };
-  }, []);
+      table.removeEventListener('focusin', handleFocusIn)
+      table.removeEventListener('focusout', handleFocusOut)
+    }
+  }, [])
 
   // Track column hover within this table
   useEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
+    const table = tableRef.current
+    if (!table) return
 
     const handleMouseOver = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const cell = target.closest(`.${classes.cell}`) as HTMLElement | null;
+      const target = e.target as HTMLElement
+      const cell = target.closest(`.${classes.cell}`) as HTMLElement | null
       if (cell && cell.dataset.col !== undefined) {
-        const col = parseInt(cell.dataset.col, 10);
-        setHoveredCol(col);
+        const col = parseInt(cell.dataset.col, 10)
+        setHoveredCol(col)
       } else {
         // Clear when hovering over non-cell areas (headers, etc.)
-        setHoveredCol(null);
+        setHoveredCol(null)
       }
-    };
+    }
 
     const handleMouseLeave = () => {
-      setHoveredCol(null);
-    };
+      setHoveredCol(null)
+    }
 
-    table.addEventListener('mouseover', handleMouseOver);
-    table.addEventListener('mouseleave', handleMouseLeave);
+    table.addEventListener('mouseover', handleMouseOver)
+    table.addEventListener('mouseleave', handleMouseLeave)
     return () => {
-      table.removeEventListener('mouseover', handleMouseOver);
-      table.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, []);
+      table.removeEventListener('mouseover', handleMouseOver)
+      table.removeEventListener('mouseleave', handleMouseLeave)
+    }
+  }, [])
 
-  const { filtered: filteredContextGroups } = filterContextGroups(group.contextGroups, filterWords);
-  const { filtered: filteredNamespaceGroups } = filterNamespaces(group.namespaceGroups, filterWords);
+  const {filtered: filteredContextGroups} = filterContextGroups(group.contextGroups, filterWords)
+  const {filtered: filteredNamespaceGroups} = filterNamespaces(group.namespaceGroups, filterWords)
 
-  const totalContexts = filteredContextGroups.reduce((sum, cg) => sum + cg.contexts.length, 0);
-  const totalNamespaces = filteredNamespaceGroups.reduce((sum, ng) => sum + ng.namespaces.length, 0);
-  
+  const totalContexts = filteredContextGroups.reduce((sum, cg) => sum + cg.contexts.length, 0)
+  const totalNamespaces = filteredNamespaceGroups.reduce((sum, ng) => sum + ng.namespaces.length, 0)
+
   if (totalContexts === 0 || totalNamespaces === 0) {
-    return null;
+    return null
   }
 
-  let runningRowIndex = 0;
+  let runningRowIndex = 0
 
   return (
     <section class={classes.dashboardSection}>
       <div class={classes.tableWrapper}>
         <table class={classes.matrix} ref={tableRef}>
           <thead class={classes.stickyHeader}>
-            <tr class={classes.contextGroupRow}>
-              <th class={`${classes.stickyCol} ${classes.groupTitle}`}>
-                {group.name}
-              </th>
-              {filteredContextGroups.map((cg, cgIndex) => {
-                if (cg.contexts.length === 0) return null;
-                const hasVisibleGroupBefore = filteredContextGroups.slice(0, cgIndex).some(g => g.contexts.length > 0);
-                return (
-                  <th
-                    key={cg.name}
-                    colSpan={cg.contexts.length}
-                    class={`${classes.contextGroupHeader} ${hasVisibleGroupBefore ? classes.groupBorder : ""}`}
-                  >
-                    {cg.name}
-                  </th>
-                );
-              })}
-            </tr>
-            <tr class={classes.contextRow}>
-              <th class={classes.stickyCol}></th>
-              {(() => {
-                let prevRegion = "";
-                let isFirstVisibleGroup = true;
-                let colIndex = 0;
-                return filteredContextGroups.map((cg) => {
-                  if (cg.contexts.length === 0) return null;
-                  prevRegion = "";
-                  const hasVisibleGroupBefore = !isFirstVisibleGroup;
-                  isFirstVisibleGroup = false;
-                  
-                  return cg.contexts.map((ctx, ctxIndex) => {
-                    const parsed = parseContextName(ctx, group.contextNamePattern);
-                    const showEnv = !ctx.toLowerCase().startsWith(cg.name.toLowerCase());
-                    const isFirstInGroup = ctxIndex === 0 && hasVisibleGroupBefore;
-                    const showRegion = parsed.region !== prevRegion;
-                    prevRegion = parsed.region;
-                    const currentColIndex = colIndex++;
-                    const isHighlighted = focusedCell?.col === currentColIndex;
-                    const isHovered = hoveredCol === currentColIndex;
-                    
-                    return (
-                      <th 
-                        key={ctx} 
-                        class={`${classes.contextHeader} ${isFirstInGroup ? classes.groupBorder : ""} ${isHighlighted ? classes.headerHighlight : ""} ${isHovered && !isHighlighted ? classes.headerHover : ""}`} 
-                        title={ctx}
-                      >
-                        <div class={classes.contextLabel}>
-                          {showEnv && <span class={classes.contextEnv}>{parsed.env}</span>}
-                          {showRegion ? (
-                            <span class={classes.contextRegion}>{parsed.region}</span>
-                          ) : (
-                            <span class={classes.contextRegionHidden}>{parsed.region}</span>
-                          )}
-                          <span class={classes.contextCluster}>{parsed.cluster}</span>
-                        </div>
-                      </th>
-                    );
-                  });
-                });
-              })()}
-            </tr>
+          <tr class={classes.contextGroupRow}>
+            <th class={`${classes.stickyCol} ${classes.groupTitle}`}>
+              {group.name}
+            </th>
+            {filteredContextGroups.map((cg, cgIndex) => {
+              if (cg.contexts.length === 0) return null
+              const hasVisibleGroupBefore = filteredContextGroups.slice(0, cgIndex).some(g => g.contexts.length > 0)
+              return (
+                <th
+                  key={cg.name}
+                  colSpan={cg.contexts.length}
+                  class={`${classes.contextGroupHeader} ${hasVisibleGroupBefore ? classes.groupBorder : ''}`}
+                >
+                  {cg.name}
+                </th>
+              )
+            })}
+          </tr>
+          <tr class={classes.contextRow}>
+            <th class={classes.stickyCol}></th>
+            {(() => {
+              let prevRegion = ''
+              let isFirstVisibleGroup = true
+              let colIndex = 0
+              return filteredContextGroups.map((cg) => {
+                if (cg.contexts.length === 0) return null
+                prevRegion = ''
+                const hasVisibleGroupBefore = !isFirstVisibleGroup
+                isFirstVisibleGroup = false
+
+                return cg.contexts.map((ctx, ctxIndex) => {
+                  const parsed = parseContextName(ctx, group.contextNamePattern)
+                  const showEnv = !ctx.toLowerCase().startsWith(cg.name.toLowerCase())
+                    && !cg.name.toLowerCase().startsWith(parsed.env.toLowerCase())
+                    && parsed.env.toLowerCase() !== cg.name.toLowerCase()
+                  const isFirstInGroup = ctxIndex === 0 && hasVisibleGroupBefore
+                  const showRegion = parsed.region !== prevRegion
+                  prevRegion = parsed.region
+                  const currentColIndex = colIndex++
+                  const isHighlighted = focusedCell?.col === currentColIndex
+                  const isHovered = hoveredCol === currentColIndex
+
+                  return (
+                    <th
+                      key={ctx}
+                      class={`${classes.contextHeader} ${isFirstInGroup ? classes.groupBorder : ''} ${isHighlighted ? classes.headerHighlight : ''} ${isHovered && !isHighlighted ? classes.headerHover : ''}`}
+                      title={ctx}
+                    >
+                      <div class={classes.contextLabel}>
+                        {showEnv && <span class={classes.contextEnv}>{parsed.env}</span>}
+                        {showRegion ? (
+                          <span class={classes.contextRegion}>{parsed.region}</span>
+                        ) : (
+                          <span class={classes.contextRegionHidden}>{parsed.region}</span>
+                        )}
+                        <span class={classes.contextCluster}>
+                            {parsed.cluster.length < 10
+                              ? parsed.cluster
+                              : parsed.cluster.split('-').map(s => {
+                                return s.toLowerCase() === cg.name.toLowerCase() || s.toLowerCase() === parsed.region.toLowerCase()
+                                  ? ''
+                                  : <span>{s}</span>
+                              })
+                            }
+                          </span>
+                      </div>
+                    </th>
+                  )
+                })
+              })
+            })()}
+          </tr>
           </thead>
           <tbody>
-            {filteredNamespaceGroups.map((ng, ngIndex) => {
-              if (ng.namespaces.length === 0) return null;
-              const startRowIndex = runningRowIndex;
-              runningRowIndex += ng.namespaces.length;
-              const namespacePrefix = getNamespacePrefixForGroup(ng.namespaces);
-              return (
-                <NamespaceGroupRows
-                  key={ng.name ?? ngIndex}
-                  namespaceGroup={ng}
-                  filteredContextGroups={filteredContextGroups}
-                  showGroupHeader={hasNamespaceGroups}
-                  namespacePrefix={namespacePrefix}
-                  startRowIndex={startRowIndex}
-                  groupIndex={groupIndex}
-                  groupPositionsRef={groupPositionsRef}
-                  tableRef={tableRef}
-                  focusedCell={focusedCell}
-                  onCellClick={onCellClick}
-                />
-              );
-            })}
+          {filteredNamespaceGroups.map((ng, ngIndex) => {
+            if (ng.namespaces.length === 0) return null
+            const startRowIndex = runningRowIndex
+            runningRowIndex += ng.namespaces.length
+            const namespacePrefix = getNamespacePrefixForGroup(ng.namespaces)
+            return (
+              <NamespaceGroupRows
+                key={ng.name ?? ngIndex}
+                namespaceGroup={ng}
+                filteredContextGroups={filteredContextGroups}
+                showGroupHeader={hasNamespaceGroups}
+                namespacePrefix={namespacePrefix}
+                startRowIndex={startRowIndex}
+                groupIndex={groupIndex}
+                groupPositionsRef={groupPositionsRef}
+                tableRef={tableRef}
+                focusedCell={focusedCell}
+                onCellClick={onCellClick}
+              />
+            )
+          })}
           </tbody>
         </table>
       </div>
     </section>
-  );
+  )
 }
 
 interface NamespaceGroupRowsProps {
@@ -1044,34 +1064,34 @@ interface NamespaceGroupRowsProps {
 }
 
 function NamespaceGroupRows({
-  namespaceGroup,
-  filteredContextGroups,
-  showGroupHeader,
-  namespacePrefix,
-  startRowIndex,
-  groupIndex,
-  groupPositionsRef,
-  tableRef,
-  focusedCell,
-  onCellClick,
-}: NamespaceGroupRowsProps) {
-  const contextsWithBoundary: { ctx: string; isFirstInGroup: boolean; colIndex: number }[] = [];
-  let isFirstVisibleGroup = true;
-  let colIndex = 0;
-  
+                              namespaceGroup,
+                              filteredContextGroups,
+                              showGroupHeader,
+                              namespacePrefix,
+                              startRowIndex,
+                              groupIndex,
+                              groupPositionsRef,
+                              tableRef,
+                              focusedCell,
+                              onCellClick,
+                            }: NamespaceGroupRowsProps) {
+  const contextsWithBoundary: { ctx: string; isFirstInGroup: boolean; colIndex: number }[] = []
+  let isFirstVisibleGroup = true
+  let colIndex = 0
+
   filteredContextGroups.forEach((cg) => {
-    if (cg.contexts.length === 0) return;
-    const hasVisibleGroupBefore = !isFirstVisibleGroup;
-    isFirstVisibleGroup = false;
-    
+    if (cg.contexts.length === 0) return
+    const hasVisibleGroupBefore = !isFirstVisibleGroup
+    isFirstVisibleGroup = false
+
     cg.contexts.forEach((ctx, ctxIndex) => {
       contextsWithBoundary.push({
         ctx,
         isFirstInGroup: ctxIndex === 0 && hasVisibleGroupBefore,
         colIndex: colIndex++,
-      });
-    });
-  });
+      })
+    })
+  })
 
   return (
     <>
@@ -1084,32 +1104,32 @@ function NamespaceGroupRows({
         </tr>
       )}
       {namespaceGroup.namespaces.map((ns, nsIndex) => {
-        const hasPrefix = namespacePrefix && ns.name.startsWith(namespacePrefix);
-        const prefix = hasPrefix ? namespacePrefix : "";
-        const suffix = hasPrefix ? ns.name.slice(namespacePrefix.length) : ns.name;
-        const rowIndex = startRowIndex + nsIndex;
-        const isRowHighlighted = focusedCell?.row === rowIndex;
-        
+        const hasPrefix = namespacePrefix && ns.name.startsWith(namespacePrefix)
+        const prefix = hasPrefix ? namespacePrefix : ''
+        const suffix = hasPrefix ? ns.name.slice(namespacePrefix.length) : ns.name
+        const rowIndex = startRowIndex + nsIndex
+        const isRowHighlighted = focusedCell?.row === rowIndex
+
         return (
           <tr key={ns.name} class={classes.namespaceRow}>
-            <td class={`${classes.stickyCol} ${isRowHighlighted ? classes.headerHighlight : ""}`} title={ns.name}>
+            <td class={`${classes.stickyCol} ${isRowHighlighted ? classes.headerHighlight : ''}`} title={ns.name}>
               <span class={classes.namespaceLabel}>
                 {prefix && <span class={classes.namespacePrefix}>{prefix}</span>}
                 <span class={classes.namespaceSuffix}>{suffix}</span>
               </span>
             </td>
-            {contextsWithBoundary.map(({ ctx, isFirstInGroup, colIndex: col }) => {
-              const isAvailable = ns.contexts === null || ns.contexts.includes(ctx);
-              
+            {contextsWithBoundary.map(({ctx, isFirstInGroup, colIndex: col}) => {
+              const isAvailable = ns.contexts === null || ns.contexts.includes(ctx)
+
               return (
-                <td 
-                  key={`${ns.name}-${ctx}`} 
-                  class={`${classes.cell} ${isFirstInGroup ? classes.groupBorder : ""}`}
+                <td
+                  key={`${ns.name}-${ctx}`}
+                  class={`${classes.cell} ${isFirstInGroup ? classes.groupBorder : ''}`}
                   data-col={col}
                 >
                   {isAvailable ? (
-                    <button 
-                      class={classes.cellButton} 
+                    <button
+                      class={classes.cellButton}
                       title={`${ns.name} @ ${ctx}`}
                       data-row={rowIndex}
                       data-col={col}
@@ -1121,14 +1141,14 @@ function NamespaceGroupRows({
                       <span class={classes.bullet}>●</span>
                     </button>
                   ) : (
-                    <span class={classes.emptyCell} />
+                    <span class={classes.emptyCell}/>
                   )}
                 </td>
-              );
+              )
             })}
           </tr>
-        );
+        )
       })}
     </>
-  );
+  )
 }

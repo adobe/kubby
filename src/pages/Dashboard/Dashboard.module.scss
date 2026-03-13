@@ -182,12 +182,12 @@
 }
 
 .contextCluster {
-  font-size: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.7rem;
   font-weight: 400;
   color: var(--fgColor-default);
-  overflow: hidden;
   padding: 0 0.25rem;
-  text-overflow: ellipsis;
 }
 
 // Namespace group header
