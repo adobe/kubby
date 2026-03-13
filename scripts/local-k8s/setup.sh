@@ -42,6 +42,11 @@ else
     minikube start -p "$PROFILE_NAME" --memory=4096 --cpus=2 --driver=docker
 fi
 
+# Enable metrics-server addon (required for kubectl top / Metrics API)
+echo ""
+echo "Enabling metrics-server addon..."
+minikube addons enable metrics-server -p "$PROFILE_NAME"
+
 # Set kubectl context
 echo ""
 echo "Setting kubectl context..."
@@ -52,21 +57,22 @@ echo ""
 echo "Installing Contour HTTPProxy CRD..."
 kubectl apply -f "$SCRIPT_DIR/crds/httpproxy-crd.yaml"
 
-# Create namespaces
+# Create namespaces 
 echo ""
 echo "Creating namespaces..."
 NAMESPACES=(
-    "ns-team-stellar-graph-api"
+    "ns-team-stellar-domains"
     "ns-team-stellar-operations"
-    "ns-team-stellar-metadata-management"
-    "ns-team-stellar-namespace-api"
-    "ns-team-stellar-workflow-orchestrator"
-    "ns-team-tenant-stellar-observability-api"
-    "stellar-identity-alpha-live"
-    "stellar-identity-beta-live"
-    "stellar-identity-alpha-preview"
-    "monitoring"
-    "ingress-controllers"
+    "ns-team-stellar-data-stores"
+    "ns-team-stellar-schema-services"
+    "ns-team-stellar-workflow-schedulers"
+    "ns-team-tenant-stellar-observability"
+    "stellar-web-kappa-live"
+    "stellar-web-gamma-live"
+    "stellar-web-omicron-live"
+    "stellar-web-kappa-preview"
+    "global-monitoring"
+    "global-proxy-controllers"
 )
 
 for ns in "${NAMESPACES[@]}"; do
@@ -83,49 +89,84 @@ done
 echo ""
 echo "Deploying sample workloads..."
 
-# Deploy to ns-team-stellar-graph-api
-echo "  Deploying graph-api to ns-team-stellar-graph-api..."
-helm upgrade --install graph-api "$SCRIPT_DIR/charts/stellar-service" \
-    --namespace ns-team-stellar-graph-api \
+# Deploy to ns-team-stellar-domains
+echo "  Deploying domains-api-service to ns-team-stellar-domains..."
+helm upgrade --install domains-api-service "$SCRIPT_DIR/charts/stellar-service" \
+    --namespace ns-team-stellar-domains \
     --set replicaCount=3 \
-    --set fullnameOverride=graph-api \
-    --set httpProxy.fqdn=graph-api.stellar.local \
+    --set fullnameOverride=domains-api-service \
+    --set httpProxy.fqdn=domains-api-service.stellar.local \
+    --wait
+
+echo "  Deploying domains-api-service to ns-team-stellar-domains..."
+helm upgrade --install domains-backend-service "$SCRIPT_DIR/charts/stellar-service" \
+    --namespace ns-team-stellar-domains \
+    --set replicaCount=8 \
+    --set fullnameOverride=domains-backend-service \
+    --set httpProxy.fqdn=domains-backend-service.stellar.local \
     --wait
 
 # Deploy to ns-team-stellar-operations
-echo "  Deploying operations-api to ns-team-stellar-operations..."
-helm upgrade --install operations-api "$SCRIPT_DIR/charts/stellar-service" \
+echo "  Deploying prometheus-service to ns-team-stellar-operations..."
+helm upgrade --install prometheus-service "$SCRIPT_DIR/charts/stellar-service" \
     --namespace ns-team-stellar-operations \
     --set replicaCount=2 \
-    --set fullnameOverride=operations-api \
-    --set httpProxy.fqdn=operations-api.stellar.local \
+    --set fullnameOverride=prometheus-service \
+    --set httpProxy.fqdn=prometheus-service.stellar.local \
     --wait
 
-# Deploy to ns-team-stellar-workflow-orchestrator
-echo "  Deploying workflow-worker to ns-team-stellar-workflow-orchestrator..."
-helm upgrade --install workflow-worker "$SCRIPT_DIR/charts/stellar-service" \
-    --namespace ns-team-stellar-workflow-orchestrator \
-    --set replicaCount=2 \
-    --set fullnameOverride=workflow-worker \
+echo "  Deploying grafana-service to ns-team-stellar-operations..."
+helm upgrade --install grafana-service "$SCRIPT_DIR/charts/stellar-service" \
+    --namespace ns-team-stellar-operations \
+    --set replicaCount=1 \
+    --set fullnameOverride=grafana-service \
+    --set httpProxy.fqdn=grafana-service.stellar.local \
+    --wait
+
+# Deploy to ns-team-stellar-workflow-schedulers
+echo "  Deploying workflow-scheduler-worker to ns-team-stellar-workflow-schedulers..."
+helm upgrade --install workflow-scheduler-worker "$SCRIPT_DIR/charts/stellar-service" \
+    --namespace ns-team-stellar-workflow-schedulers \
+    --set replicaCount=6 \
+    --set fullnameOverride=workflow-scheduler-worker \
     --set httpProxy.fqdn=workflow.stellar.local \
     --set logInterval=5 \
     --wait
 
-# Deploy to stellar-identity-alpha-live
-echo "  Deploying identity-resolver to stellar-identity-alpha-live..."
-helm upgrade --install identity-resolver "$SCRIPT_DIR/charts/stellar-service" \
-    --namespace stellar-identity-alpha-live \
+echo "  Deploying workflow-scheduler-coordinator to ns-team-stellar-workflow-schedulers..."
+helm upgrade --install workflow-scheduler-coordinator "$SCRIPT_DIR/charts/stellar-service" \
+    --namespace ns-team-stellar-workflow-schedulers \
+    --set replicaCount=1 \
+    --set fullnameOverride=workflow-scheduler-coordinator \
+    --set httpProxy.fqdn=workflow.stellar.local \
+    --set logInterval=5 \
+    --set image.repository=notabox \
+    --set image.tag=1.2.3 \
+    --wait
+
+# Deploy to stellar-web-gamma-live
+echo "  Deploying schema-resolver-service to stellar-web-gamma-live..."
+helm upgrade --install schema-resolver-service "$SCRIPT_DIR/charts/stellar-service" \
+    --namespace stellar-web-gamma-live \
     --set replicaCount=3 \
-    --set fullnameOverride=identity-resolver \
+    --set fullnameOverride=schema-resolver-service \
     --set httpProxy.fqdn=identity.stellar.local \
     --wait
 
-# Deploy to ns-team-stellar-metadata-management
-echo "  Deploying metadata-api to ns-team-stellar-metadata-management..."
-helm upgrade --install metadata-api "$SCRIPT_DIR/charts/stellar-service" \
-    --namespace ns-team-stellar-metadata-management \
-    --set replicaCount=2 \
-    --set fullnameOverride=metadata-api \
+# Deploy to ns-team-stellar-data-stores
+echo "  Deploying schema-db to ns-team-stellar-data-stores..."
+helm upgrade --install schema-db "$SCRIPT_DIR/charts/stellar-service" \
+    --namespace ns-team-stellar-data-stores \
+    --set replicaCount=3 \
+    --set fullnameOverride=schema-db \
+    --set httpProxy.fqdn=metadata.stellar.local \
+    --wait
+
+echo "  Deploying domain-db to ns-team-stellar-data-stores..."
+helm upgrade --install domain-db "$SCRIPT_DIR/charts/stellar-service" \
+    --namespace ns-team-stellar-data-stores \
+    --set replicaCount=5 \
+    --set fullnameOverride=domain-db \
     --set httpProxy.fqdn=metadata.stellar.local \
     --wait
 
@@ -153,11 +194,11 @@ preferences: {}
 
 clusters:
   # Nebula clusters (simulated)
-  - name: live-alpha-nebula237-live-alpha
+  - name: live-kappa-nebula237-live-kappa
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
-  - name: live-beta-nebula12-live-beta
+  - name: live-omicron-nebula12-live-omicron
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
@@ -185,29 +226,29 @@ clusters:
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
-  - name: preview-alpha-nebula27-preview-alpha
+  - name: preview-kappa-nebula27-preview-kappa
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
-  - name: sandbox-alpha-nebula24-sandbox-alpha
+  - name: sandbox-kappa-nebula24-sandbox-kappa
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
 
   # Cosmos clusters (simulated)
-  - name: live-alpha-cosmos-0
+  - name: live-kappa-cosmos-0
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
-  - name: live-alpha-cosmos-1
+  - name: live-kappa-cosmos-1
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
-  - name: live-beta-cosmos-0
+  - name: live-omicron-cosmos-0
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
-  - name: live-beta-cosmos-1
+  - name: live-omicron-cosmos-1
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
@@ -215,7 +256,7 @@ clusters:
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
-  - name: preview-alpha-cosmos-0
+  - name: preview-kappa-cosmos-0
     cluster:
       server: ${MINIKUBE_SERVER}
       certificate-authority-data: ${CA_DATA}
@@ -228,90 +269,90 @@ users:
 
 contexts:
   # Nebula contexts
-  - name: live-alpha-nebula237-live-alpha
+  - name: live-kappa-nebula237-live-kappa
     context:
-      cluster: live-alpha-nebula237-live-alpha
+      cluster: live-kappa-nebula237-live-kappa
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
-  - name: live-beta-nebula12-live-beta
+      namespace: ns-team-stellar-domains
+  - name: live-omicron-nebula12-live-omicron
     context:
-      cluster: live-beta-nebula12-live-beta
+      cluster: live-omicron-nebula12-live-omicron
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
+      namespace: ns-team-stellar-domains
   - name: live-gamma-nebula24-live-gamma
     context:
       cluster: live-gamma-nebula24-live-gamma
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
+      namespace: ns-team-stellar-domains
   - name: live-delta-nebula08-live-delta
     context:
       cluster: live-delta-nebula08-live-delta
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
+      namespace: ns-team-stellar-domains
   - name: live-epsilon-nebula14-live-epsilon
     context:
       cluster: live-epsilon-nebula14-live-epsilon
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
+      namespace: ns-team-stellar-domains
   - name: live-zeta-nebula07-live-zeta
     context:
       cluster: live-zeta-nebula07-live-zeta
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
+      namespace: ns-team-stellar-domains
   - name: live-eta-nebula15-live-eta
     context:
       cluster: live-eta-nebula15-live-eta
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
+      namespace: ns-team-stellar-domains
   - name: live-theta-nebula10-live-theta
     context:
       cluster: live-theta-nebula10-live-theta
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
-  - name: preview-alpha-nebula27-preview-alpha
+      namespace: ns-team-stellar-domains
+  - name: preview-kappa-nebula27-preview-kappa
     context:
-      cluster: preview-alpha-nebula27-preview-alpha
+      cluster: preview-kappa-nebula27-preview-kappa
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
-  - name: sandbox-alpha-nebula24-sandbox-alpha
+      namespace: ns-team-stellar-domains
+  - name: sandbox-kappa-nebula24-sandbox-kappa
     context:
-      cluster: sandbox-alpha-nebula24-sandbox-alpha
+      cluster: sandbox-kappa-nebula24-sandbox-kappa
       user: stellar-user
-      namespace: ns-team-stellar-graph-api
+      namespace: ns-team-stellar-domains
 
   # Cosmos contexts
-  - name: live-alpha-cosmos-0
+  - name: live-kappa-cosmos-0
     context:
-      cluster: live-alpha-cosmos-0
+      cluster: live-kappa-cosmos-0
       user: stellar-user
-      namespace: stellar-identity-alpha-live
-  - name: live-alpha-cosmos-1
+      namespace: stellar-web-kappa-live
+  - name: live-kappa-cosmos-1
     context:
-      cluster: live-alpha-cosmos-1
+      cluster: live-kappa-cosmos-1
       user: stellar-user
-      namespace: stellar-identity-alpha-live
-  - name: live-beta-cosmos-0
+      namespace: stellar-web-kappa-live
+  - name: live-omicron-cosmos-0
     context:
-      cluster: live-beta-cosmos-0
+      cluster: live-omicron-cosmos-0
       user: stellar-user
-      namespace: stellar-identity-beta-live
-  - name: live-beta-cosmos-1
+      namespace: stellar-web-omicron-live
+  - name: live-omicron-cosmos-1
     context:
-      cluster: live-beta-cosmos-1
+      cluster: live-omicron-cosmos-1
       user: stellar-user
-      namespace: stellar-identity-beta-live
+      namespace: stellar-web-omicron-live
   - name: live-gamma-cosmos-0
     context:
       cluster: live-gamma-cosmos-0
       user: stellar-user
-      namespace: stellar-identity-alpha-live
-  - name: preview-alpha-cosmos-0
+      namespace: stellar-web-gamma-live
+  - name: preview-kappa-cosmos-0
     context:
-      cluster: preview-alpha-cosmos-0
+      cluster: preview-kappa-cosmos-0
       user: stellar-user
-      namespace: stellar-identity-alpha-preview
+      namespace: stellar-web-kappa-preview
 
-current-context: live-alpha-nebula237-live-alpha
+current-context: live-kappa-nebula237-live-kappa
 EOF
 
 echo "Kubeconfig generated at: $KUBECONFIG_FILE"
@@ -330,13 +371,6 @@ echo "  kubby"
 echo ""
 echo "Or run with cargo:"
 echo ""
-echo "  KUBECONFIG=\"$KUBECONFIG_FILE\" KUBBY_CONFIG=\"$SCRIPT_DIR/config/kubby_config.yaml\" cargo tauri dev"
-echo ""
-echo "Deployed workloads:"
-echo "  - graph-api (3 replicas) in ns-team-stellar-graph-api"
-echo "  - operations-api (2 replicas) in ns-team-stellar-operations"
-echo "  - workflow-worker (2 replicas) in ns-team-stellar-workflow-orchestrator"
-echo "  - identity-resolver (3 replicas) in stellar-identity-alpha-live"
-echo "  - metadata-api (2 replicas) in ns-team-stellar-metadata-management"
+echo "  KUBECONFIG=\"$KUBECONFIG_FILE\" KUBBY_CONFIG=\"$SCRIPT_DIR/config/kubby_config.yaml\" pnpm tauri dev"
 echo ""
 echo "To tear down: ./scripts/local-k8s/teardown.sh"

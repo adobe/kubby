@@ -14,8 +14,8 @@ contexts:
       contexts:
         - group: live
           contexts:
-            - name: live-alpha-nebula237-live-alpha
-            - name: live-beta-nebula12-live-beta
+            - name: live-kappa-nebula237-live-kappa
+            - name: live-omicron-nebula12-live-omicron
             - name: live-gamma-nebula24-live-gamma
             - name: live-delta-nebula08-live-delta
             - name: live-epsilon-nebula14-live-epsilon
@@ -24,53 +24,58 @@ contexts:
             - name: live-theta-nebula10-live-theta
         - group: preview
           contexts:
-            - name: preview-alpha-nebula27-preview-alpha
+            - name: preview-kappa-nebula27-preview-kappa
         - group: sandbox
           contexts:
-            - name: sandbox-alpha-nebula24-sandbox-alpha
+            - name: sandbox-kappa-nebula24-sandbox-kappa
       namespaces:
         - name: "Core Services"
           namespaces:
-            - name: ns-team-stellar-graph-api
+            - name: ns-team-stellar-domains
             - name: ns-team-stellar-operations
-            - name: ns-team-stellar-metadata-management
-            - name: ns-team-stellar-namespace-api
-            - name: ns-team-stellar-workflow-orchestrator
+              contexts:
+                - live-kappa-nebula237-live-kappa
+                - live-omicron-nebula12-live-omicron
+                - live-epsilon-nebula14-live-epsilon
+                - live-zeta-nebula07-live-zeta
+            - name: ns-team-stellar-data-stores
+            - name: ns-team-stellar-schema-services
+            - name: ns-team-stellar-workflow-schedulers
         - name: "Observability"
           namespaces:
-            - name: ns-team-tenant-stellar-observability-api
-            - name: monitoring
+            - name: ns-team-tenant-stellar-observability
         - name: "Infrastructure"
           namespaces:
-            - name: ingress-controllers
+            - name: global-proxy-controllers
+            - name: global-monitoring
 
     # Cosmos Platform (Managed K8s #2)
     - name: "Cosmos"
       contexts:
         - group: live
           contexts:
-            - name: live-alpha-cosmos-0
-            - name: live-alpha-cosmos-1
-            - name: live-beta-cosmos-0
-            - name: live-beta-cosmos-1
+            - name: live-kappa-cosmos-0
+            - name: live-kappa-cosmos-1
+            - name: live-omicron-cosmos-0
+            - name: live-omicron-cosmos-1
             - name: live-gamma-cosmos-0
         - group: preview
           contexts:
-            - name: preview-alpha-cosmos-0
+            - name: preview-kappa-cosmos-0
       namespaces:
-        - name: "Identity Services"
+        - name: "Domain Services"
           namespaces:
-            - name: stellar-identity-alpha-live
+            - name: stellar-identity-kappa-live
               contexts:
-                - live-alpha-cosmos-0
-                - live-alpha-cosmos-1
-            - name: stellar-identity-beta-live
+                - live-kappa-cosmos-0
+                - live-kappa-cosmos-1
+            - name: stellar-identity-omicron-live
               contexts:
-                - live-beta-cosmos-0
-                - live-beta-cosmos-1
-            - name: stellar-identity-alpha-preview
+                - live-omicron-cosmos-0
+                - live-omicron-cosmos-1
+            - name: stellar-identity-kappa-preview
               contexts:
-                - preview-alpha-cosmos-0
+                - preview-kappa-cosmos-0
 
 # Resource commands configuration
 resources:
@@ -86,7 +91,7 @@ resources:
       resources: ["pod", "service"]
 
 # AI Assistant Configuration
-# ai:
-#   tool: cursor-agent
-#   name: Agent
-#   readOnly: true
+ai:
+  tool: claude
+  name: Agent
+  readOnly: true

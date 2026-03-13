@@ -16,6 +16,10 @@ and multi-cluster management.
 - **Actions** - Scale, rolling restart, port-forward, shell, edit, delete, run configurable commands
 - **AI Assistant** - Launch Cursor, Claude Code, Augment, or Codex with pre-configured context
 
+![kubby.gif](docs/screenshots/kubby.gif)
+
+[Tour Screenshots](docs/tour.md)
+
 ## Installation
 
 ### Prerequisites

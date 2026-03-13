@@ -24,17 +24,100 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              echo "[$(date -Iseconds)] INFO  Starting {{ include "stellar-service.fullname" . }} service..."
+              SVC="{{ include "stellar-service.fullname" . }}"
+              TS() { date -Iseconds; }
+              RID() { head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 32; }
+
+              echo "[$(TS)] INFO  Starting $SVC service v2.4.1 (pid=$$)"
+              echo "[$(TS)] INFO  Loading configuration from /etc/$SVC/config.yaml"
+              echo "[$(TS)] INFO  Initializing connection pool: max_connections={{ .Values.config.maxConnections }} idle_timeout=30s"
+              echo "[$(TS)] INFO  Cache layer initialized: provider=redis max_memory=256mb eviction=lru"
+              echo "[$(TS)] INFO  Registered health check endpoints: /healthz, /readyz, /livez"
+              echo "[$(TS)] INFO  TLS configured: min_version=1.2 cipher_suites=TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384"
+              echo "[$(TS)] INFO  Service $SVC ready, listening on :8080 (http) :9090 (metrics)"
+
+              TICK=0
               while true; do
-                REQ_ID=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 32)
-                LATENCY=$((RANDOM % 100 + 10))
-                STATUS_CODES="success success success success success success success success warning error"
-                STATUS=$(echo $STATUS_CODES | tr ' ' '\n' | shuf | head -n1)
-                METHOD="GET POST PUT DELETE"
-                SELECTED_METHOD=$(echo $METHOD | tr ' ' '\n' | shuf | head -n1)
-                ENDPOINTS="/api/v1/users /api/v1/sessions /api/v1/tokens /api/v1/profiles /api/v1/health"
-                ENDPOINT=$(echo $ENDPOINTS | tr ' ' '\n' | shuf | head -n1)
-                echo "[$(date -Iseconds)] INFO  $SELECTED_METHOD $ENDPOINT req_id=$REQ_ID status=$STATUS latency_ms=$LATENCY"
+                TICK=$((TICK + 1))
+                R=$((RANDOM % 100))
+
+                if [ $((TICK % 60)) -eq 0 ]; then
+                  ACTIVE=$((RANDOM % 80 + 10))
+                  IDLE=$(({{ .Values.config.maxConnections }} - ACTIVE))
+                  echo "[$(TS)] INFO  Connection pool stats: active=$ACTIVE idle=$IDLE max={{ .Values.config.maxConnections }}"
+                fi
+
+                if [ $R -lt 55 ]; then
+                  REQ_ID=$(RID)
+                  LATENCY=$((RANDOM % 90 + 8))
+                  METHOD=$(echo "GET POST PUT DELETE PATCH" | tr ' ' '\n' | shuf | head -n1)
+                  ENDPOINT=$(echo "/api/v1/users /api/v1/sessions /api/v1/tokens /api/v1/profiles /api/v1/health /api/v1/settings /api/v1/notifications /api/v2/search /api/v2/analytics" | tr ' ' '\n' | shuf | head -n1)
+                  CODE=$(echo "200 200 200 200 200 201 204 304" | tr ' ' '\n' | shuf | head -n1)
+                  echo "[$(TS)] INFO  $METHOD $ENDPOINT req_id=$REQ_ID status=$CODE latency_ms=$LATENCY"
+
+                elif [ $R -lt 65 ]; then
+                  HIT=$((RANDOM % 95 + 1))
+                  KEYS=$((RANDOM % 5000 + 100))
+                  echo "[$(TS)] INFO  Cache report: hit_rate=${HIT}% keys=$KEYS evictions=$((RANDOM % 20)) memory_mb=$((RANDOM % 200 + 30))"
+
+                elif [ $R -lt 72 ]; then
+                  GOROUTINES=$((RANDOM % 200 + 40))
+                  HEAP=$((RANDOM % 120 + 15))
+                  echo "[$(TS)] INFO  Runtime stats: goroutines=$GOROUTINES heap_mb=$HEAP gc_pause_ms=$((RANDOM % 8 + 1)) uptime_min=$((TICK * {{ .Values.logInterval }} / 60))"
+
+                elif [ $R -lt 78 ]; then
+                  CLIENT=$(echo "web-app mobile-ios mobile-android internal-gateway partner-api" | tr ' ' '\n' | shuf | head -n1)
+                  DURATION=$((RANDOM % 500 + 50))
+                  echo "[$(TS)] INFO  Auth token issued: client=$CLIENT grant_type=client_credentials expires_in=${DURATION}s scope=read,write"
+
+                elif [ $R -lt 83 ]; then
+                  OP=$(echo "SELECT INSERT UPDATE DELETE" | tr ' ' '\n' | shuf | head -n1)
+                  TABLE=$(echo "users sessions tokens profiles audit_log" | tr ' ' '\n' | shuf | head -n1)
+                  QT=$((RANDOM % 45 + 2))
+                  ROWS=$((RANDOM % 500 + 1))
+                  echo "[$(TS)] INFO  Query executed: op=$OP table=$TABLE duration_ms=$QT rows_affected=$ROWS"
+
+                elif [ $R -lt 88 ]; then
+                  TOPIC=$(echo "user.created user.updated order.placed order.shipped payment.processed notification.sent" | tr ' ' '\n' | shuf | head -n1)
+                  PARTITION=$((RANDOM % 12))
+                  echo "[$(TS)] INFO  Event published: topic=$TOPIC partition=$PARTITION offset=$((TICK * 17 + RANDOM % 100)) size_bytes=$((RANDOM % 4000 + 200))"
+
+                elif [ $R -lt 93 ]; then
+                  REQ_ID=$(RID)
+                  LATENCY=$((RANDOM % 3000 + 800))
+                  ENDPOINT=$(echo "/api/v1/users /api/v1/search /api/v2/analytics /api/v1/reports" | tr ' ' '\n' | shuf | head -n1)
+                  echo "[$(TS)] WARN  Slow request detected: GET $ENDPOINT req_id=$REQ_ID latency_ms=$LATENCY threshold_ms=500"
+
+                elif [ $R -lt 95 ]; then
+                  ATTEMPT=$((RANDOM % 3 + 1))
+                  DOWNSTREAM=$(echo "auth-service payment-service inventory-service notification-service" | tr ' ' '\n' | shuf | head -n1)
+                  echo "[$(TS)] WARN  Upstream retry: service=$DOWNSTREAM attempt=$ATTEMPT/3 backoff_ms=$((ATTEMPT * 200)) reason=connection_timeout"
+
+                elif [ $R -lt 96 ]; then
+                  ACTIVE=$((RANDOM % 20 + 85))
+                  echo "[$(TS)] WARN  Connection pool near capacity: active=$ACTIVE max={{ .Values.config.maxConnections }} queue_depth=$((RANDOM % 15 + 1))"
+
+                elif [ $R -lt 97 ]; then
+                  ENDPOINT=$(echo "/api/v1/legacy/export /api/v1/legacy/import /api/v1/sync" | tr ' ' '\n' | shuf | head -n1)
+                  echo "[$(TS)] WARN  Deprecated endpoint called: $ENDPOINT — scheduled for removal in v3.0"
+
+                elif [ $R -lt 98 ]; then
+                  RATE=$((RANDOM % 50 + 50))
+                  CLIENT=$(echo "10.0.2.$((RANDOM % 254 + 1)) 10.0.5.$((RANDOM % 254 + 1))" | tr ' ' '\n' | shuf | head -n1)
+                  echo "[$(TS)] WARN  Rate limit approaching: client=$CLIENT requests_per_sec=$RATE limit=100 window=60s"
+
+                elif [ $R -lt 99 ]; then
+                  REQ_ID=$(RID)
+                  DOWNSTREAM=$(echo "auth-service payment-service inventory-service user-profile-service" | tr ' ' '\n' | shuf | head -n1)
+                  echo "[$(TS)] ERROR Request failed: req_id=$REQ_ID error=\"connection refused\" downstream=$DOWNSTREAM retries_exhausted=true"
+
+                else
+                  REQ_ID=$(RID)
+                  CODE=$(echo "500 502 503 504" | tr ' ' '\n' | shuf | head -n1)
+                  ENDPOINT=$(echo "/api/v1/users /api/v1/tokens /api/v2/search /api/v1/sessions" | tr ' ' '\n' | shuf | head -n1)
+                  echo "[$(TS)] ERROR HTTP $CODE: POST $ENDPOINT req_id=$REQ_ID error=\"internal server error\" trace_id=$(RID | head -c 16)"
+                fi
+
                 sleep {{ .Values.logInterval }}
               done
           ports:

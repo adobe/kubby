@@ -438,8 +438,8 @@ struct ToolCommand {
 fn get_tool_command(tool: &AiTool) -> ToolCommand {
     match tool {
         AiTool::CursorAgent => ToolCommand {
-            exe_name: "cursor",
-            command: "cursor agent",
+            exe_name: "agent",
+            command: "agent",
             args: vec!["agent"],
             use_terminal: true,
         },

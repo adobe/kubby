@@ -17,10 +17,10 @@ service:
 resources:
   limits:
     cpu: 100m
-    memory: 64Mi
-  requests:
-    cpu: 50m
     memory: 32Mi
+  requests:
+    cpu: 10m
+    memory: 1Mi
 
 # Log generation settings
 logInterval: 3
