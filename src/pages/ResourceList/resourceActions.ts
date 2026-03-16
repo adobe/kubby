@@ -36,6 +36,8 @@ export interface ActionContext {
   resourceName: string
   /** For containers view, the parent pod name */
   parentResourceName?: string
+  /** For delete: skip grace period and force-remove the resource */
+  force?: boolean
 }
 
 /**
@@ -108,7 +110,7 @@ export async function executeEdit(ctx: ActionContext): Promise<ActionResult> {
  * Delete a resource
  */
 export async function executeDelete(ctx: ActionContext): Promise<ActionResult> {
-  const { context, namespace, resourceType, resourceName } = ctx
+  const { context, namespace, resourceType, resourceName, force = false } = ctx
   
   try {
     await invoke('delete_resource', {
@@ -116,6 +118,7 @@ export async function executeDelete(ctx: ActionContext): Promise<ActionResult> {
       resourceName,
       context,
       namespace,
+      force,
     })
     return { success: true }
   } catch (e) {

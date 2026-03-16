@@ -81,15 +81,14 @@ pub async fn delete_resource(
     resource_name: String,
     context: String,
     namespace: String,
+    force: bool,
 ) -> Result<String, String> {
     eprintln!(
-        "[Delete] Deleting {} {} in {}/{}",
-        resource_type, resource_name, context, namespace
+        "[Delete] Deleting {} {} in {}/{} (force={})",
+        resource_type, resource_name, context, namespace, force
     );
     
-    // Use --wait=false to return immediately after delete is initiated
-    // (otherwise kubectl waits for finalizers which can take a long time)
-    let args = [
+    let mut args = vec![
         "delete",
         &resource_type,
         &resource_name,
@@ -97,6 +96,11 @@ pub async fn delete_resource(
         "--namespace", &namespace,
         "--wait=false",
     ];
+
+    if force {
+        args.push("--force");
+        args.push("--grace-period=0");
+    }
     
     let result = kubectl::run(&args).await?;
     

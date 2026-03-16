@@ -2,6 +2,7 @@ import { useState, useCallback } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { ConfirmModal } from '../../../components/ConfirmModal/ConfirmModal.tsx'
 import { executeDelete } from '../resourceActions.ts'
+import classes from './useDeleteAction.module.scss'
 
 interface UseDeleteActionProps {
   context: string
@@ -34,15 +35,18 @@ export function useDeleteAction({
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ resourceName: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [force, setForce] = useState(false)
 
   const openDelete = useCallback((resourceName: string) => {
     setDeleteConfirmation({ resourceName })
     setDeleteError(null)
+    setForce(false)
   }, [])
 
   const handleClose = useCallback(() => {
     setDeleteConfirmation(null)
     setDeleteError(null)
+    setForce(false)
   }, [])
 
   const handleConfirmDelete = useCallback(async () => {
@@ -64,6 +68,7 @@ export function useDeleteAction({
         namespace,
         resourceType,
         resourceName: deleteConfirmation.resourceName,
+        force,
       })
 
       console.log('[Delete] Result:', result)
@@ -81,7 +86,7 @@ export function useDeleteAction({
     } finally {
       setIsDeleting(false)
     }
-  }, [deleteConfirmation, context, namespace, resourceType, onSuccess])
+  }, [deleteConfirmation, context, namespace, resourceType, force, onSuccess])
 
   const DeleteModal = deleteConfirmation ? (
     <ConfirmModal
@@ -97,7 +102,17 @@ export function useDeleteAction({
       error={deleteError}
       destructive
       readOnly={readOnly}
-    />
+    >
+      <label class={classes.forceOption}>
+        <input
+          type="checkbox"
+          checked={force}
+          onChange={(e) => setForce((e.target as HTMLInputElement).checked)}
+          disabled={isDeleting}
+        />
+        Force delete (immediate, no grace period)
+      </label>
+    </ConfirmModal>
   ) : null
 
   return {

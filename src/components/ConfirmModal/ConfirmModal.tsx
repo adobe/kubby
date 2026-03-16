@@ -29,6 +29,8 @@ interface ConfirmModalProps {
   destructive?: boolean
   /** Whether in read-only mode (disables confirm action) */
   readOnly?: boolean
+  /** Optional content rendered between the message/warning area and the action buttons */
+  children?: ComponentChildren
 }
 
 /**
@@ -48,6 +50,7 @@ export function ConfirmModal({
   error,
   destructive = false,
   readOnly = false,
+  children,
 }: ConfirmModalProps) {
   const handleClose = () => {
     if (!isConfirming) {
@@ -69,6 +72,7 @@ export function ConfirmModal({
         <p class={classes.message}>{message}</p>
         {warningText && <p class={classes.warning}>{warningText}</p>}
         {error && <div class={classes.error}>{error}</div>}
+        {children}
         <div class={classes.actions}>
           <Button
             label="Cancel"

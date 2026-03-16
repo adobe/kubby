@@ -1,0 +1,19 @@
+.forceOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--fgColor-default);
+  cursor: pointer;
+  user-select: none;
+
+  input[type="checkbox"] {
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--borderColor-accent-emphasis);
+      outline-offset: 1px;
+      border-radius: 2px;
+    }
+  }
+}
