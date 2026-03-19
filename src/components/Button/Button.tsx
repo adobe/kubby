@@ -1,6 +1,6 @@
 import {useState, useRef, useEffect, useCallback, useImperativeHandle, useLayoutEffect} from 'preact/hooks'
 import {forwardRef} from 'preact/compat'
-import type {Ref} from 'preact'
+import type {Ref, JSX} from 'preact'
 import classes from './Button.module.scss'
 import {formatShortcut} from '../../navigation/keyboardShortcuts.ts'
 
@@ -31,7 +31,9 @@ export interface ButtonHandle {
   focus: () => void
 }
 
-interface ButtonProps {
+type NativeButtonProps = Omit<JSX.HTMLAttributes<HTMLButtonElement>, 'label' | 'className' | 'tabIndex' | 'disabled' | 'onClick'>
+
+interface ButtonProps extends NativeButtonProps {
   /** The label text displayed next to the shortcut key */
   label: string
   /** The shortcut string (e.g., "Ctrl+R", "Enter", "Shift+F") */
@@ -74,6 +76,7 @@ function ButtonComponent({
   external = false,
   shortcutMuted = false,
   onOpenChange,
+  ...rest
 }: ButtonProps, ref: Ref<ButtonHandle>) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -254,6 +257,7 @@ function ButtonComponent({
         disabled={disabled}
         tabIndex={tabIndex}
         title={tooltip}
+        {...rest}
       >
         <span class={classes.label}>{label}</span>
         {shortcut && (<span class={`${classes.shortcutKey} ${shortcutMuted ? classes.shortcutMuted : ''}`}>{formatShortcut(shortcut)}</span>)}
@@ -280,6 +284,7 @@ function ButtonComponent({
         title={tooltip}
         aria-haspopup="true"
         aria-expanded={isOpen}
+        {...rest}
       >
         <span class={classes.label}>{label}</span>
         {shortcut && (<span class={`${classes.shortcutKey} ${shortcutMuted ? classes.shortcutMuted : ''}`}>{formatShortcut(shortcut)}</span>)}

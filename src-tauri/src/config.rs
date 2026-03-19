@@ -15,10 +15,25 @@ const DEFAULT_CONTEXT_NAME_PATTERN: &str = r"^(?<env>[^-]+)-(?<region>[^-]+)-(?<
 
 /// Global storage for kubectl timeout from config
 static KUBECTL_TIMEOUT: OnceLock<u64> = OnceLock::new();
+static SHELL_OVERRIDE: OnceLock<Option<String>> = OnceLock::new();
+static AI_TOOL_OVERRIDE: OnceLock<Option<String>> = OnceLock::new();
+static EDITOR_OVERRIDE: OnceLock<Option<String>> = OnceLock::new();
 
 /// Get the kubectl timeout in seconds (from config or default)
 pub fn get_kubectl_timeout_secs() -> u64 {
     *KUBECTL_TIMEOUT.get().unwrap_or(&DEFAULT_KUBECTL_TIMEOUT_SECS)
+}
+
+pub fn get_shell_override() -> Option<&'static String> {
+    SHELL_OVERRIDE.get().and_then(|o| o.as_ref())
+}
+
+pub fn get_ai_tool_override() -> Option<&'static String> {
+    AI_TOOL_OVERRIDE.get().and_then(|o| o.as_ref())
+}
+
+pub fn get_editor_override() -> Option<&'static String> {
+    EDITOR_OVERRIDE.get().and_then(|o| o.as_ref())
 }
 
 // Run command configuration
@@ -37,6 +52,17 @@ pub struct RunCommand {
 pub struct ResourcesConfig {
     #[serde(default, alias = "run")]
     pub run_commands: Vec<RunCommand>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TestingConfig {
+    #[serde(default)]
+    pub shell_override: Option<String>,
+    #[serde(default)]
+    pub ai_tool_override: Option<String>,
+    #[serde(default)]
+    pub editor_override: Option<String>,
 }
 
 // AI assistant configuration
@@ -120,6 +146,9 @@ pub struct DashboardConfig {
     /// Can be overridden per group or namespace group.
     #[serde(default)]
     pub namespace_name_pattern: Option<String>,
+    /// Testing overrides for e2e tests (replaces external tool launches with noop commands)
+    #[serde(default)]
+    pub testing: Option<TestingConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -335,8 +364,12 @@ pub fn get_dashboard_config() -> Result<NormalizedDashboardConfig, String> {
 
     let normalized = config.normalize();
     
-    // Initialize global kubectl timeout (only sets once, ignores subsequent calls)
+    // Initialize global values (only sets once, ignores subsequent calls)
     let _ = KUBECTL_TIMEOUT.set(normalized.kubectl_timeout_seconds);
+    let testing = config.testing.unwrap_or_default();
+    let _ = SHELL_OVERRIDE.set(testing.shell_override);
+    let _ = AI_TOOL_OVERRIDE.set(testing.ai_tool_override);
+    let _ = EDITOR_OVERRIDE.set(testing.editor_override);
 
     Ok(normalized)
 }

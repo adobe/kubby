@@ -1,7 +1,7 @@
 {
   "name": "kubby",
   "private": true,
-  "version": "0.59.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,24 +10,32 @@
     "tauri": "tauri",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "test:e2e": "wdio run e2e/wdio.conf.ts",
+    "test:e2e:setup": "./scripts/local-k8s/setup.sh"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2",
+    "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
-    "@tauri-apps/plugin-opener": "^2",
-    "downshift": "^9.0.13",
-    "preact": "^10.25.1",
-    "shiki": "^3.21.0",
-    "virtua": "^0.48.3",
+    "@tauri-apps/plugin-opener": "^2.5.3",
+    "downshift": "^9.3.2",
+    "preact": "^10.29.0",
+    "shiki": "^4.0.2",
+    "virtua": "^0.48.8",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.9.3",
-    "@tauri-apps/cli": "^2",
-    "sass-embedded": "^1.97.1",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.3",
-    "vitepress": "^1.6.4"
+    "@preact/preset-vite": "^2.10.4",
+    "@tauri-apps/cli": "^2.10.1",
+    "@wdio/cli": "^9.26.1",
+    "@wdio/local-runner": "^9.26.1",
+    "@wdio/mocha-framework": "^9.26.1",
+    "@wdio/spec-reporter": "^9.26.1",
+    "sass-embedded": "^1.98.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3",
+    "vite": "^8.0.0",
+    "vitepress": "^1.6.4",
+    "webdriverio": "^9.26.1"
   }
 }

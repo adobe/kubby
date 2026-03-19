@@ -8,7 +8,7 @@ interface ShortcutsBarProps {
 
 export function ShortcutsBar({ children, disabled }: ShortcutsBarProps) {
   return (
-    <div class={classes.ShortcutsBar} data-disabled={disabled}>
+    <div class={classes.ShortcutsBar} role="toolbar" data-disabled={disabled}>
       {children}
     </div>
   )

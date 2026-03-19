@@ -479,7 +479,7 @@ export function PortForwardModal({
                     tabIndex={0}
                   />
                 </div>
-                <table class={classes.forwardsTable}>
+                <table class={classes.forwardsTable} role="table">
                   <thead>
                   <tr>
                     <th>Container</th>

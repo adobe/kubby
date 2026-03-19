@@ -141,8 +141,9 @@ helm upgrade --install workflow-scheduler-coordinator "$SCRIPT_DIR/charts/stella
     --set httpProxy.fqdn=workflow.stellar.local \
     --set logInterval=5 \
     --set image.repository=notabox \
-    --set image.tag=1.2.3 \
-    --wait
+    --set image.tag=1.2.3
+    # Wrong image name is intentional, so we can test agent
+    # Do not wait, because the idea is it will fail, because of wrong image name
 
 # Deploy to stellar-web-gamma-live
 echo "  Deploying schema-resolver-service to stellar-web-gamma-live..."

@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use include_dir::{include_dir, Dir};
 use serde::Deserialize;
 
+use crate::config;
 use crate::config::AiTool;
 use crate::shell_env;
 use crate::terminal;
@@ -338,6 +339,15 @@ fn format_info_box(title: &str, rows: &[InfoRow]) -> String {
 /// Open an AI tool with the current Kubernetes context
 #[tauri::command]
 pub async fn open_ai_tool(params: OpenAiToolParams) -> Result<(), String> {
+    if let Some(override_cmd) = config::get_ai_tool_override() {
+        tokio::process::Command::new("sh")
+            .args(["-c", override_cmd])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run AI tool override: {}", e))?;
+        return Ok(());
+    }
+
     // Ensure workspace exists
     let workspace = ensure_ai_workspace()?;
     

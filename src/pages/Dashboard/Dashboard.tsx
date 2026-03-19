@@ -973,7 +973,7 @@ function DashboardTable({group, groupIndex, filterWords, groupPositionsRef, onCe
   return (
     <section class={classes.dashboardSection}>
       <div class={classes.tableWrapper}>
-        <table class={classes.matrix} ref={tableRef}>
+        <table class={classes.matrix} ref={tableRef} role="grid">
           <thead class={classes.stickyHeader}>
           <tr class={classes.contextGroupRow}>
             <th class={`${classes.stickyCol} ${classes.groupTitle}`}>

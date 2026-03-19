@@ -90,4 +90,8 @@ make docs-preview  # Preview build
 
 # Release
 make release       # Build, tag, and publish to GitHub
+
+# E2E Tests (requires minikube)
+make test-e2e-setup  # Provision local cluster with sample workloads
+make test-e2e        # Build debug binary, launch tauri-driver, run tests
 ```

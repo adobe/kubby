@@ -1,5 +1,6 @@
 use tokio::process::Command;
 
+use crate::config;
 use crate::shell_env;
 
 /// Detect which terminal to use on macOS.
@@ -46,6 +47,15 @@ fn build_command_with_env(command: &str) -> String {
 /// Open a new terminal window with the specified command
 #[tauri::command]
 pub async fn open_terminal_with_command(command: String) -> Result<(), String> {
+    if let Some(override_cmd) = config::get_shell_override() {
+        Command::new("sh")
+            .args(["-c", override_cmd])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run shell override: {}", e))?;
+        return Ok(());
+    }
+
     // Prepend env exports so the external terminal uses the same config as the app
     let command = build_command_with_env(&command);
 
@@ -179,6 +189,15 @@ pub async fn open_terminal_with_command(command: String) -> Result<(), String> {
 /// Returns when the command finishes or the terminal window is closed.
 /// Used by the editor module to launch terminal-based editors (vi, vim, nano, etc.).
 pub async fn run_in_terminal_and_wait(command: String) -> Result<(), String> {
+    if let Some(override_cmd) = config::get_shell_override() {
+        Command::new("sh")
+            .args(["-c", override_cmd])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run shell override: {}", e))?;
+        return Ok(());
+    }
+
     let command = build_command_with_env(&command);
 
     #[cfg(target_os = "macos")]

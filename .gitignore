@@ -27,3 +27,5 @@ docs/.vitepress/cache
 docs/.vitepress/dist
 
 docs/screenshots/adobe/**
+
+e2e/logs/

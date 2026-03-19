@@ -878,7 +878,7 @@ export function ResourceList({
         {/* Show table if we have resources OR if there's no error (empty state) */}
         {(resources.length > 0 || !error) && (
           <div class={classes.tableWrapper}>
-            <table class={classes.table}>
+            <table class={classes.table} role="grid">
               <thead>
               <tr tabIndex={-1}>
                 {resourceType !== 'events' && <th class={classes.nameColumn}>NAME</th>}
@@ -901,6 +901,8 @@ export function ResourceList({
                   <tr
                     key={resource.name}
                     class={`${classes.resourceRow} ${selectedIndex === index ? classes.resourceRowSelected : ''}`}
+                    data-testid={`row-index-${index}`}
+                    aria-selected={selectedIndex === index}
                     onClick={() => handleRowClick(index)}
                     onDblClick={() => handleRowActivate(index)}
                     data-index={index}
@@ -947,7 +949,7 @@ export function ResourceList({
               </tbody>
             </table>
             {resources.length > 0 && (
-              <div class={classes.footer}>
+              <div class={classes.footer} role="status">
                 {resources.length} item{resources.length !== 1 ? 's' : ''}
               </div>
             )}

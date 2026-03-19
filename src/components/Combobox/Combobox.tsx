@@ -124,7 +124,7 @@ function ComboboxInner<T>(
   const inputStyle = typeof width === 'number' ? {width: `${width}px`} : {width}
 
   return (
-    <div className={`${classes.Combobox} ${className || ''}`}>
+    <div className={`${classes.Combobox} ${className || ''}`} aria-label={label}>
       {label && (
         <span className={classes.labelText}>
           {label}

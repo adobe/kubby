@@ -95,3 +95,9 @@ ai:
   tool: claude
   name: Agent
   readOnly: true
+
+# Testing overrides (replaces external tool launches with noop commands for e2e tests)
+testing:
+  shellOverride: "touch /tmp/kubby-e2e-shell"
+  aiToolOverride: "touch /tmp/kubby-e2e-ai"
+  editorOverride: "touch /tmp/kubby-e2e-editor"

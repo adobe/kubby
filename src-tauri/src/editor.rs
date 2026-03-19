@@ -1,5 +1,7 @@
 use tokio::io::AsyncWriteExt;
+use tokio::process::Command;
 
+use crate::config;
 use crate::kubectl;
 use crate::shell_env;
 use crate::terminal;
@@ -88,6 +90,15 @@ fn build_editor_shell_command(editor_cmd: &str, editor_args: &[String], file_pat
 /// Open a file in the default editor (fire-and-forget, does not wait for close).
 #[tauri::command]
 pub async fn open_file_in_editor(path: String) -> Result<(), String> {
+    if let Some(override_cmd) = config::get_editor_override() {
+        Command::new("sh")
+            .args(["-c", override_cmd])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run editor override: {}", e))?;
+        return Ok(());
+    }
+
     let editor = get_editor();
     let (editor_cmd, editor_args) = resolve_editor_path(&editor);
     
@@ -114,6 +125,15 @@ pub async fn edit_resource(
     context: String,
     namespace: String,
 ) -> Result<String, String> {
+    if let Some(override_cmd) = config::get_editor_override() {
+        Command::new("sh")
+            .args(["-c", override_cmd])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run editor override: {}", e))?;
+        return Ok("Edit overridden for testing.".to_string());
+    }
+
     // Step 1: Fetch the resource as YAML
     let get_result = kubectl::run([
         "get", &resource_type, &resource_name,

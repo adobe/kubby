@@ -109,6 +109,7 @@ export function useDeleteAction({
           checked={force}
           onChange={(e) => setForce((e.target as HTMLInputElement).checked)}
           disabled={isDeleting}
+          aria-label="Force delete"
         />
         Force delete (immediate, no grace period)
       </label>

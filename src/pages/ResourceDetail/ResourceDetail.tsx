@@ -59,6 +59,8 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCo
         onClick={() => onViewModeChange('tree')}
         tabIndex={0}
         className={viewMode === 'tree' ? classes.activeViewButton : undefined}
+        role="tab"
+        aria-selected={viewMode === 'tree'}
       />
       <Button
         label="Yaml"
@@ -66,6 +68,8 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCo
         onClick={() => onViewModeChange('yaml')}
         tabIndex={0}
         className={viewMode === 'yaml' ? classes.activeViewButton : undefined}
+        role="tab"
+        aria-selected={viewMode === 'yaml'}
       />
       <Button
         label="Json"
@@ -73,6 +77,8 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCo
         onClick={() => onViewModeChange('json')}
         tabIndex={0}
         className={viewMode === 'json' ? classes.activeViewButton : undefined}
+        role="tab"
+        aria-selected={viewMode === 'json'}
       />
       {canCopy && (
         <Button

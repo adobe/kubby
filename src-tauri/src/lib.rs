@@ -42,11 +42,15 @@ fn zoom_webview(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .manage(Mutex::new(1.0_f64))
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .setup(|app| {
+        .plugin(tauri_plugin_clipboard_manager::init());
+
+    #[cfg(debug_assertions)]
+    let builder = builder.plugin(tauri_plugin_webdriver::init());
+
+    builder.setup(|app| {
             // Initialize documentation module (sets up docs directory path)
             if let Err(e) = docs::init(&app.handle()) {
                 eprintln!("Failed to initialize documentation: {}", e);

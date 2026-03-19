@@ -402,6 +402,7 @@ export function ScaleModal({
                     onInput={(e) => setReplicas((e.target as HTMLInputElement).value)}
                     class={`${classes.input} ${validationErrors.replicas ? classes.inputError : ''}`}
                     disabled={readOnly}
+                    aria-label="Replicas"
                   />
                   {validationErrors.replicas && (
                     <span class={classes.errorText}>{validationErrors.replicas}</span>

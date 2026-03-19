@@ -72,6 +72,7 @@ export function HighlightInput({
       <input
         ref={inputRef}
         type="text"
+        role="searchbox"
         autocorrect="off"
         autocapitalize="off"
         autocomplete="off"
