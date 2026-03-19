@@ -2,6 +2,7 @@
 
 # Git post-commit hook to auto-increment version based on commit message
 # - Increments PATCH version if commit message starts with "fix" or "[fix]"
+# - Does nothing if commit message starts with "release"
 # - Increments MINOR version otherwise
 # Source of truth: src-tauri/tauri.conf.json
 
@@ -42,6 +43,8 @@ COMMIT_TITLE_LOWER=$(echo "$COMMIT_TITLE" | tr '[:upper:]' '[:lower:]')
 if [[ "$COMMIT_TITLE_LOWER" =~ ^fix[[:space:]:] ]] || [[ "$COMMIT_TITLE_LOWER" =~ ^\[fix\] ]]; then
     # Increment patch version
     PATCH=$((PATCH + 1))
+else if [[ "$COMMIT_TITLE_LOWER" =~ ^release[[:space:]:] ]]; then
+    # leave as is
 else
     # Increment minor version, reset patch
     MINOR=$((MINOR + 1))
