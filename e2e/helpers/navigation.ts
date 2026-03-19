@@ -15,15 +15,6 @@ import {
 } from './constants'
 
 export async function waitForApp() {
-  // #region agent log
-  const pageInfo = await browser.execute(() => ({
-    url: window.location.href,
-    title: document.title,
-    bodyText: document.body?.textContent?.substring(0, 200) ?? 'NO_BODY',
-    hasNav: !!document.querySelector('[aria-label="Navigation breadcrumb"]'),
-  }))
-  fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:waitForApp',message:'page state on entry',data:pageInfo,timestamp:Date.now(),hypothesisId:'H1_H2'})}).catch(()=>{});
-  // #endregion
   for (let attempt = 0; attempt < 5; attempt++) {
     const nav = await breadcrumb()
     const visible = await nav.isDisplayed().catch(() => false)
@@ -37,18 +28,6 @@ export async function waitForApp() {
 
 export async function navigateToDashboard() {
   for (let i = 0; i < 10; i++) {
-    // #region agent log
-    const navState = await browser.execute(() => {
-      const nav = document.querySelector('[aria-label="Navigation breadcrumb"]')
-      return {
-        navExists: !!nav,
-        navHTML: nav?.innerHTML?.substring(0, 300) ?? 'NO_NAV',
-        url: window.location.href,
-        activeEl: (document.activeElement as HTMLElement)?.tagName + '.' + (document.activeElement as HTMLElement)?.className,
-      }
-    })
-    fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:navigateToDashboard',message:`iteration ${i}`,data:navState,timestamp:Date.now(),hypothesisId:'H3_H4'})}).catch(()=>{});
-    // #endregion
     const dashText = await $(`//nav[@aria-label="Navigation breadcrumb"]//button[text()="Dashboard"]`)
     const isDashboardActive = await dashText.isExisting()
 
@@ -162,28 +141,10 @@ async function setComboboxValue(label: string, value: string) {
     await browser.pause(KEY_DELAY)
   }
 
-  // #region agent log
-  const afterType = await browser.execute((cSel: string, iSel: string) => {
-    const container = document.querySelector(cSel)
-    const el = document.querySelector(iSel) as HTMLInputElement
-    const ul = container?.querySelector('ul')
-    const lis = ul ? Array.from(ul.querySelectorAll('li')).map((l: Element) => l.textContent?.substring(0, 30)) : null
-    return {
-      inputVal: el?.value ?? 'NOT_FOUND',
-      focused: document.activeElement === el,
-      hasUl: !!ul,
-      liCount: lis?.length ?? -1,
-      firstItems: lis?.slice(0, 5) ?? [],
-    }
-  }, containerSel, selector)
-  fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:setComboboxValue',message:`AFTER-TYPE ${label} = "${value}"`,data:afterType,timestamp:Date.now(),hypothesisId:'H1_KEYBOARD_CLEAR'})}).catch(()=>{});
-  // #endregion
-
   await browser.pause(SHORT_WAIT)
 
   // Click the matching dropdown item directly
-  // #region agent log
-  const clicked = await browser.execute((cSel: string, val: string) => {
+  await browser.execute((cSel: string, val: string) => {
     const container = document.querySelector(cSel)
     const ul = container?.querySelector('ul')
     if (!ul) return { clicked: false, reason: 'no_ul' }
@@ -200,8 +161,6 @@ async function setComboboxValue(label: string, value: string) {
     }
     return { clicked: false, reason: 'no_match', available: items.map(li => li.textContent?.substring(0, 30)) }
   }, containerSel, value)
-  fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:setComboboxValue',message:`CLICK-ITEM ${label} = "${value}"`,data:clicked,timestamp:Date.now(),hypothesisId:'H1_KEYBOARD_CLEAR'})}).catch(()=>{});
-  // #endregion
 
   await browser.pause(SHORT_WAIT)
 }
@@ -224,13 +183,6 @@ export async function ensureNamespace(namespace: string) {
 
 export async function ensureResourceType(resourceType: string) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    // #region agent log
-    const pre = await browser.execute(() => ({
-      navText: document.querySelector('[aria-label="Navigation breadcrumb"]')?.textContent?.substring(0, 100) ?? 'NO_NAV',
-    }))
-    fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:ensureResourceType',message:`attempt ${attempt} pre for ${resourceType}`,data:pre,timestamp:Date.now(),hypothesisId:'H4retry'})}).catch(()=>{});
-    // #endregion
-
     const navBefore = await browser.execute(() =>
       document.querySelector('[aria-label="Navigation breadcrumb"]')?.textContent ?? '',
     )
@@ -241,26 +193,6 @@ export async function ensureResourceType(resourceType: string) {
 
     await pressAltR()
     await browser.pause(SHORT_WAIT)
-
-    // #region agent log
-    const afterAltR = await browser.execute(() => {
-      const container = document.querySelector('div[aria-label="Resource"]')
-      const ul = container?.querySelector('ul')
-      const dialog = document.querySelector('[role="dialog"]')
-      const active = document.activeElement as HTMLElement
-      return {
-        hasContainer: !!container,
-        hasUl: !!ul,
-        ulItems: ul ? Array.from(ul.querySelectorAll('li')).map(li => li.textContent?.substring(0, 30)).slice(0, 5) : null,
-        hasDialog: !!dialog,
-        dialogTitle: dialog?.querySelector('#modal-title')?.textContent ?? 'NONE',
-        activeTag: active?.tagName ?? 'NONE',
-        activeClass: active?.className?.substring(0, 50) ?? '',
-        selectedIdx: document.querySelector('tr[aria-selected="true"]')?.getAttribute('data-testid') ?? 'NONE',
-      }
-    })
-    fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:ensureResourceType',message:`attempt ${attempt} after pressAltR for ${resourceType}`,data:afterAltR,timestamp:Date.now(),hypothesisId:'H_ALTR'})}).catch(()=>{});
-    // #endregion
 
     try {
       await setComboboxValue('Resource', resourceType)
@@ -276,30 +208,8 @@ export async function ensureResourceType(resourceType: string) {
       )
       await waitForResourcesLoaded()
       await blurActiveElement()
-      // #region agent log
-      const after = await browser.execute(() => ({
-        navText: document.querySelector('[aria-label="Navigation breadcrumb"]')?.textContent?.substring(0, 100) ?? 'NO_NAV',
-      }))
-      fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:ensureResourceType',message:`attempt ${attempt} ensured ${resourceType}`,data:after,timestamp:Date.now(),hypothesisId:'H4retry'})}).catch(()=>{});
-      // #endregion
       return
     } catch {
-      // #region agent log
-      const failState = await browser.execute(() => {
-        const dialog = document.querySelector('[role="dialog"]')
-        const container = document.querySelector('div[aria-label="Resource"]')
-        const ul = container?.querySelector('ul')
-        return {
-          hasDialog: !!dialog,
-          dialogTitle: dialog?.querySelector('#modal-title')?.textContent ?? 'NONE',
-          hasUl: !!ul,
-          ulItems: ul ? Array.from(ul.querySelectorAll('li')).map(li => li.textContent?.substring(0, 30)).slice(0, 3) : null,
-          activeTag: (document.activeElement as HTMLElement)?.tagName ?? 'NONE',
-          bodySnippet: document.body?.textContent?.substring(0, 200) ?? 'NO_BODY',
-        }
-      })
-      fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:ensureResourceType',message:`attempt ${attempt} FAILED for ${resourceType}, retrying`,data:failState,timestamp:Date.now(),hypothesisId:'H_ALTR'})}).catch(()=>{});
-      // #endregion
       await pressKey('Escape')
       await browser.pause(SHORT_WAIT)
     }
@@ -315,19 +225,6 @@ export async function selectFirstRow() {
   // Home always selects the first row (index 0), unlike ArrowDown which increments
   await pressKey('Home')
   await browser.pause(LONG_WAIT)
-
-  // #region agent log
-  const state = await browser.execute(() => {
-    const selected = document.querySelector('tr[aria-selected="true"]')
-    return {
-      hasSelected: !!selected,
-      selectedTestId: selected?.getAttribute('data-testid') ?? 'NONE',
-      activeTag: document.activeElement?.tagName ?? 'NONE',
-      rowCount: document.querySelectorAll('[role="grid"] tbody tr').length,
-    }
-  })
-  fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'navigation.ts:selectFirstRow',message:'after arrowDown',data:state,timestamp:Date.now(),hypothesisId:'H2_SELECT'})}).catch(()=>{});
-  // #endregion
 }
 
 export async function getSelectedRowText(): Promise<string> {

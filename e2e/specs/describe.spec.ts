@@ -133,14 +133,6 @@ describe('Describe / Detail', () => {
     // Use navigateToDescribe which has the proven blur+pressKey('d') flow
     await navigateToDescribe('secrets', 'domains-api-service-secrets')
 
-    // #region agent log
-    const postDescribe = await browser.execute(() => ({
-      bodySnippet: document.body?.textContent?.substring(0, 300) ?? 'NO_BODY',
-      hasNChars: /\[\d+ chars\]/.test(document.body?.textContent ?? ''),
-    }))
-    fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'describe.spec.ts:secrets-decode',message:'after navigateToDescribe(secrets)',data:postDescribe,timestamp:Date.now(),hypothesisId:'H4_SECRETS'})}).catch(()=>{});
-    // #endregion
-
     await browser.waitUntil(
       async () => browser.execute(() => /\[\d+ chars\]/.test(document.body.textContent ?? '')),
       { timeout: DEFAULT_TIMEOUT, timeoutMsg: 'Secret [N chars] markers did not appear' },

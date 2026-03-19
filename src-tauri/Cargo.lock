@@ -2084,7 +2084,7 @@ dependencies = [
 
 [[package]]
 name = "kubby"
-version = "0.60.0"
+version = "0.60.1"
 dependencies = [
  "chrono",
  "include_dir",

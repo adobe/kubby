@@ -22,26 +22,8 @@ async function navigateToLogs() {
 
   await selectFirstRow()
 
-  // #region agent log
-  const preLog = await browser.execute(() => ({
-    selectedIdx: document.querySelector('tr[aria-selected="true"]')?.getAttribute('data-testid') ?? 'NONE',
-    activeTag: document.activeElement?.tagName ?? 'NONE',
-    navText: document.querySelector('[aria-label="Navigation breadcrumb"]')?.textContent ?? 'NONE',
-  }))
-  fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'logs.spec.ts:navigateToLogs',message:'before pressKey(l)',data:preLog,timestamp:Date.now(),hypothesisId:'H5_LOGS'})}).catch(()=>{});
-  // #endregion
-
   await pressKey('l')
   await browser.pause(LONG_WAIT)
-
-  // #region agent log
-  const postLog = await browser.execute(() => ({
-    bodySnippet: document.body?.textContent?.substring(0, 200) ?? 'NO_BODY',
-    navText: document.querySelector('[aria-label="Navigation breadcrumb"]')?.textContent ?? 'NONE',
-    hasLogViewer: !!document.querySelector('[class*="LogViewer"]'),
-  }))
-  fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'logs.spec.ts:navigateToLogs',message:'after pressKey(l)',data:postLog,timestamp:Date.now(),hypothesisId:'H5_LOGS'})}).catch(()=>{});
-  // #endregion
 }
 
 describe('LogViewer', () => {

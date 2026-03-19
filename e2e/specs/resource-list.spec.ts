@@ -236,19 +236,6 @@ describe('ResourceList', () => {
     }, newValue)
     await browser.pause(SHORT_WAIT)
 
-    // #region agent log
-    const scaleState = await browser.execute(() => {
-      const el = document.querySelector('[aria-label="Replicas"]') as HTMLInputElement
-      const dialog = document.querySelector('[role="dialog"]')
-      return {
-        inputValue: el?.value ?? 'NONE',
-        hasErrors: !!dialog?.querySelector('[class*="errorText"]'),
-        dialogText: dialog?.textContent?.substring(0, 200) ?? 'NO_DIALOG',
-      }
-    })
-    fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'resource-list.spec.ts:scale',message:'before Enter',data:scaleState,timestamp:Date.now(),hypothesisId:'H6_SCALE'})}).catch(()=>{});
-    // #endregion
-
     await pressKey('Enter')
     await waitForModalClosed(K8S_TIMEOUT)
     await waitForNoAlert()
@@ -303,41 +290,8 @@ describe('ResourceList', () => {
     const rowText = await row.getText()
     const podName = rowText.split(/\s+/)[0]
 
-    // #region agent log
-    const preDelete = await browser.execute(() => ({
-      selectedIdx: document.querySelector('tr[aria-selected="true"]')?.getAttribute('data-testid') ?? 'NONE',
-      activeTag: document.activeElement?.tagName ?? 'NONE',
-      resourceType: document.querySelector('[aria-label="Navigation breadcrumb"]')?.textContent ?? 'NONE',
-    }))
-    fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'resource-list.spec.ts:delete-pod',message:'before pressKey(Delete)',data:preDelete,timestamp:Date.now(),hypothesisId:'H4_DELETE'})}).catch(()=>{});
-    // #endregion
-
-    // Capture what key event WebKit produces for Delete
-    await browser.execute(() => {
-      const listener = (e: KeyboardEvent) => {
-        const marker = document.createElement('div')
-        marker.id = 'debug-delete-key'
-        marker.dataset.key = e.key
-        marker.dataset.code = e.code
-        marker.dataset.keyCode = String(e.keyCode)
-        document.body.appendChild(marker)
-        document.removeEventListener('keydown', listener)
-      }
-      document.addEventListener('keydown', listener)
-    })
     await pressKey('Delete')
     await browser.pause(SHORT_WAIT)
-
-    // #region agent log
-    const keyInfo = await browser.execute(() => {
-      const marker = document.getElementById('debug-delete-key')
-      if (!marker) return { found: false }
-      const result = { found: true, key: marker.dataset.key, code: marker.dataset.code, keyCode: marker.dataset.keyCode }
-      marker.remove()
-      return result
-    })
-    fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'resource-list.spec.ts:delete-pod',message:'Delete key event info',data:keyInfo,timestamp:Date.now(),hypothesisId:'H4_DELETE'})}).catch(()=>{});
-    // #endregion
 
     await waitForModalOpen('Delete Resource')
 
@@ -382,15 +336,6 @@ describe('ResourceList', () => {
       },
       { timeout: K8S_TIMEOUT, timeoutMsg: 'Port information did not finish loading' },
     )
-
-    // #region agent log
-    const modalInfo = await browser.execute(() => ({
-      checkboxes: document.querySelectorAll('input[type="checkbox"]').length,
-      checkedCheckboxes: document.querySelectorAll('input[type="checkbox"]:checked').length,
-      modalText: document.querySelector('[role="dialog"]')?.textContent?.substring(0, 300) ?? 'NO_DIALOG',
-    }))
-    fetch('http://127.0.0.1:7243/ingest/e58d2dda-67da-48f2-ba95-bd3d36d6253b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c6c2c7'},body:JSON.stringify({sessionId:'c6c2c7',location:'resource-list.spec.ts:port-forward',message:'port forward modal state',data:modalInfo,timestamp:Date.now(),hypothesisId:'H5_portfwd'})}).catch(()=>{});
-    // #endregion
 
     const checkbox = await $('input[type="checkbox"]:checked')
     expect(await checkbox.isExisting()).toBe(true)
