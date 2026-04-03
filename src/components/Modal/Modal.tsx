@@ -22,9 +22,24 @@ interface ModalProps {
  * Important: When open, this modal captures ALL keyboard events in the capture phase
  * to prevent them from reaching global handlers. This ensures modal isolation.
  */
+const TEXT_INPUT_TYPES = new Set([
+  'text', 'search', 'url', 'tel', 'password', 'email', 'number', '',
+])
+
+function isTextEntryElement(el: Element | null): boolean {
+  if (!el) return false
+  if (el.tagName === 'TEXTAREA') return true
+  if (el.tagName === 'INPUT') {
+    const type = (el as HTMLInputElement).type.toLowerCase()
+    return TEXT_INPUT_TYPES.has(type)
+  }
+  return false
+}
+
 export function Modal({ isOpen, onClose, title, children, onKeyDown }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const previousActiveElement = useRef<HTMLElement | null>(null)
+  const mouseDownOnOverlay = useRef(false)
 
   // Capture ALL keyboard events when modal is open to prevent them from reaching global handlers
   // This runs in the capture phase (before bubble phase) so it intercepts events first
@@ -61,7 +76,8 @@ export function Modal({ isOpen, onClose, title, children, onKeyDown }: ModalProp
       const reverse = e.key === 'ArrowLeft' || (isTab && e.shiftKey)
 
       if (isArrowNav) {
-        // Arrows always explicitly move focus (wrap around)
+        if (isTextEntryElement(document.activeElement)) return
+
         e.preventDefault()
         const index = Array.from(focusableElements).indexOf(document.activeElement as HTMLElement)
         if (reverse) {
@@ -121,14 +137,24 @@ export function Modal({ isOpen, onClose, title, children, onKeyDown }: ModalProp
     }
   }, [isOpen, handleCaptureKeyDown])
 
+  const handleOverlayMouseDown = useCallback((e: MouseEvent) => {
+    mouseDownOnOverlay.current = e.target === e.currentTarget
+  }, [])
+
+  const handleOverlayClick = useCallback((e: MouseEvent) => {
+    if (mouseDownOnOverlay.current && e.target === e.currentTarget) {
+      onClose()
+    }
+    mouseDownOnOverlay.current = false
+  }, [onClose])
+
   if (!isOpen) return null
 
   return (
-    <div class={classes.overlay} onClick={onClose}>
+    <div class={classes.overlay} onMouseDown={handleOverlayMouseDown} onClick={handleOverlayClick}>
       <div 
         ref={modalRef}
         class={classes.modal} 
-        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
