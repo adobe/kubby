@@ -292,15 +292,20 @@ export function ResourceList({
   // Initialize from prop if provided, otherwise -1
   const [selectedIndex, setSelectedIndex] = useState(initialSelectedIndex ?? -1)
 
-  // Port forward error state (for silent failures)
-  const [portForwardError, setPortForwardError] = useState<string | null>(null)
+  // Action error state (for port forward failures, shell errors, etc.)
+  const [actionError, setActionError] = useState<{ label: string; message: string } | null>(null)
+
+  const showActionError = useCallback((label: string, message: string, timeoutMs = 30000) => {
+    setActionError({ label, message })
+    setTimeout(() => setActionError(null), timeoutMs)
+  }, [])
 
   // Handle port forward failure callback
-  const handlePortForwardFailed = useCallback((resourceName: string, localPort: number, targetPort: number) => {
-    setPortForwardError(`Port forward to ${resourceName}:${targetPort} (local ${localPort}) failed unexpectedly`)
-    // Auto-clear error after 10 seconds
-    setTimeout(() => setPortForwardError(null), 10000)
-  }, [])
+  const handlePortForwardFailed = useCallback((resourceName: string, localPort: number, targetPort: number, errorMessage?: string) => {
+    const summary = `Port forward to ${resourceName}:${targetPort} (local ${localPort}) failed`
+    const detail = errorMessage ? `${summary}\n${errorMessage}` : summary
+    showActionError('Port Forward Failed', detail)
+  }, [showActionError])
 
   // Action hooks
   const deleteAction = useDeleteAction({
@@ -420,6 +425,7 @@ export function ResourceList({
         })
         if (!result.success) {
           console.error('Shell failed:', result.error)
+          showActionError('Shell Failed', result.error ?? 'Failed to open shell')
         }
         break
       }
@@ -544,6 +550,7 @@ export function ResourceList({
         console.error('Failed to fetch resource types:', e)
         if (isMountedRef.current) {
           setResourceTypes([])
+          showActionError('Loading Error', `Failed to load resource types: ${e instanceof Error ? e.message : String(e)}`)
         }
       }
     }
@@ -871,7 +878,7 @@ export function ResourceList({
 
       <div class={classes.body}>
         <Alert type="error" label="Edit Failed" message={editAction.editError}/>
-        <Alert type="error" label="Port Forward Failed" message={portForwardError}/>
+        <Alert type="error" label={actionError?.label ?? 'Error'} message={actionError?.message}/>
         <Alert type="error" label="Loading Error" message={error}/>
         <Alert type="error" label="Column Evaluation Error" message={evaluationError}/>
 

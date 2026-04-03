@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Stdio;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
@@ -19,6 +19,9 @@ const DEAD_FORWARD_EXPIRY_SECS: u64 = 60;
 /// Global state for tracking active port forwards
 static PORT_FORWARDS: Mutex<Option<HashMap<String, PortForwardProcess>>> = Mutex::new(None);
 
+/// Maximum stderr lines to retain per port-forward process
+const MAX_STDERR_LINES: usize = 50;
+
 /// Information about a port forward that died unexpectedly
 #[derive(Debug, Serialize, Clone)]
 pub struct DeadPortForward {
@@ -26,6 +29,9 @@ pub struct DeadPortForward {
     /// Exit code if available
     #[serde(rename = "exitCode")]
     pub exit_code: Option<i32>,
+    /// Detailed error message from kubectl stderr, if available
+    #[serde(rename = "errorMessage")]
+    pub error_message: Option<String>,
 }
 
 /// Dead port forward with timestamp for expiry
@@ -42,6 +48,7 @@ static DEAD_PORT_FORWARDS: Mutex<Vec<DeadPortForwardWithTimestamp>> = Mutex::new
 struct PortForwardProcess {
     child: Child,
     info: ActivePortForward,
+    stderr_buffer: Arc<Mutex<Vec<String>>>,
 }
 
 /// Container port information
@@ -461,54 +468,90 @@ pub async fn start_port_forward(
     match confirmation_result {
         Ok(Ok(())) => {
             // Success! Port forward is confirmed
-            // Spawn background tasks to drain stdout/stderr so the pipes stay open
-            // and kubectl doesn't get SIGPIPE when it tries to write
+            let stderr_buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+            let stderr_buffer_clone = stderr_buffer.clone();
+
+            // Drain stdout so the pipe stays open and kubectl doesn't get SIGPIPE
             tokio::spawn(async move {
                 while let Ok(Some(_)) = stdout_reader.next_line().await {}
             });
+            // Capture stderr lines into the shared buffer so we can report them if the process dies
             tokio::spawn(async move {
-                while let Ok(Some(_)) = stderr_reader.next_line().await {}
+                while let Ok(Some(line)) = stderr_reader.next_line().await {
+                    let mut buf = stderr_buffer_clone.lock().unwrap();
+                    if buf.len() >= MAX_STDERR_LINES {
+                        buf.remove(0);
+                    }
+                    buf.push(line);
+                }
             });
+
+            let id = Uuid::new_v4().to_string();
+
+            let info = ActivePortForward {
+                id: id.clone(),
+                context,
+                namespace,
+                resource_type: normalized_type,
+                resource_name,
+                container_name,
+                local_port,
+                target_port: container_port,
+            };
+
+            // Store the process with its stderr buffer
+            {
+                let mut guard = PORT_FORWARDS.lock().unwrap();
+                if let Some(ref mut map) = *guard {
+                    map.insert(id, PortForwardProcess {
+                        child,
+                        info: info.clone(),
+                        stderr_buffer,
+                    });
+                }
+            }
+
+            return Ok(info);
         }
         Ok(Err(e)) => {
             // kubectl reported an error - kill and wait to clean up resources
             let _ = child.kill().await;
             let _ = child.wait().await;
-            return Err(e);
+            // Drain any remaining stderr lines for a more complete error
+            let mut extra_lines = Vec::new();
+            while let Ok(Some(line)) = stderr_reader.next_line().await {
+                if !line.trim().is_empty() {
+                    extra_lines.push(line);
+                }
+            }
+            return if extra_lines.is_empty() {
+                Err(e)
+            } else {
+                Err(format!("{}\n{}", e, extra_lines.join("\n")))
+            };
         }
         Err(_) => {
             // Timeout waiting for confirmation - kill and wait to clean up resources
             let _ = child.kill().await;
             let _ = child.wait().await;
-            return Err(format!(
+            // Drain any stderr lines to include in the timeout error
+            let mut extra_lines = Vec::new();
+            while let Ok(Some(line)) = stderr_reader.next_line().await {
+                if !line.trim().is_empty() {
+                    extra_lines.push(line);
+                }
+            }
+            let base = format!(
                 "Timeout waiting for port forward to start ({}s)",
                 PORT_FORWARD_CONFIRM_TIMEOUT_SECS
-            ));
+            );
+            return if extra_lines.is_empty() {
+                Err(base)
+            } else {
+                Err(format!("{}\n{}", base, extra_lines.join("\n")))
+            };
         }
     }
-
-    let id = Uuid::new_v4().to_string();
-
-    let info = ActivePortForward {
-        id: id.clone(),
-        context,
-        namespace,
-        resource_type: normalized_type,
-        resource_name,
-        container_name,
-        local_port,
-        target_port: container_port,
-    };
-
-    // Store the process
-    {
-        let mut guard = PORT_FORWARDS.lock().unwrap();
-        if let Some(ref mut map) = *guard {
-            map.insert(id, PortForwardProcess { child, info: info.clone() });
-        }
-    }
-
-    Ok(info)
 }
 
 /// Stop a port forward
@@ -591,6 +634,44 @@ fn current_timestamp() -> u64 {
         .unwrap_or(0)
 }
 
+/// Strip the kubectl log prefix (e.g. "E0403 10:26:45.474731  94024 portforward.go:424] ")
+/// so we can deduplicate lines that differ only by timestamp/pid.
+fn strip_klog_prefix(line: &str) -> &str {
+    if let Some(pos) = line.find("] ") {
+        let prefix = &line[..pos];
+        // Verify it looks like a klog prefix: starts with a letter + digits
+        if prefix.len() > 1 && prefix.as_bytes()[0].is_ascii_alphabetic()
+            && prefix.as_bytes()[1].is_ascii_digit()
+        {
+            return &line[pos + 2..];
+        }
+    }
+    line
+}
+
+/// Extract error-relevant lines from a stderr buffer, filtering out noise like
+/// "Handling connection for ..." and "Forwarding from ..." lines, and deduplicating
+/// lines that only differ by their klog timestamp/pid prefix.
+fn extract_error_message(stderr_buffer: &Arc<Mutex<Vec<String>>>) -> Option<String> {
+    let lines = stderr_buffer.lock().unwrap();
+    let mut seen = std::collections::HashSet::new();
+    let error_lines: Vec<&str> = lines
+        .iter()
+        .map(|l| l.as_str())
+        .filter(|l| {
+            !l.starts_with("Handling connection for")
+                && !l.starts_with("Forwarding from")
+                && !l.trim().is_empty()
+        })
+        .filter(|l| seen.insert(strip_klog_prefix(l).to_string()))
+        .collect();
+    if error_lines.is_empty() {
+        None
+    } else {
+        Some(error_lines.join("\n"))
+    }
+}
+
 /// Clean up any dead processes from the map and store them in the dead list
 fn cleanup_dead_processes_and_store() {
     let mut guard = PORT_FORWARDS.lock().unwrap();
@@ -604,18 +685,20 @@ fn cleanup_dead_processes_and_store() {
             // Try to check if process is still running
             match process.child.try_wait() {
                 Ok(Some(status)) => {
-                    // Process has exited - this is an unexpected failure
+                    let error_message = extract_error_message(&process.stderr_buffer);
                     eprintln!(
-                        "[PortForward] Process died: {} -> {} (exit code: {:?})",
+                        "[PortForward] Process died: {} -> {} (exit code: {:?}, stderr: {:?})",
                         process.info.resource_name,
                         process.info.target_port,
-                        status.code()
+                        status.code(),
+                        error_message,
                     );
                     dead_ids.push(id.clone());
                     new_dead_forwards.push(DeadPortForwardWithTimestamp {
                         dead_forward: DeadPortForward {
                             info: process.info.clone(),
                             exit_code: status.code(),
+                            error_message,
                         },
                         timestamp: now,
                     });
@@ -629,11 +712,13 @@ fn cleanup_dead_processes_and_store() {
                         "[PortForward] Error checking process for {}: {}",
                         process.info.resource_name, e
                     );
+                    let error_message = extract_error_message(&process.stderr_buffer);
                     dead_ids.push(id.clone());
                     new_dead_forwards.push(DeadPortForwardWithTimestamp {
                         dead_forward: DeadPortForward {
                             info: process.info.clone(),
                             exit_code: None,
+                            error_message,
                         },
                         timestamp: now,
                     });

@@ -2,6 +2,7 @@ import {useCallback, useEffect, useMemo, useState} from 'preact/hooks'
 import {invoke} from '@tauri-apps/api/core'
 import {writeText} from '@tauri-apps/plugin-clipboard-manager'
 import {Modal} from '../Modal/Modal.tsx'
+import {Alert} from '../Alert/Alert.tsx'
 import classes from './RunModal.module.scss'
 import type {LabelSelector, ResourceDetailResponse} from '../../kubectl/resourceTypes.ts'
 
@@ -129,6 +130,7 @@ export function RunModal({
                          }: RunModalProps) {
   const [resourceDef, setResourceDef] = useState<ResourceDetailResponse | null>(null)
   const [isLoadingDef, setIsLoadingDef] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Check if any command uses ${...} syntax and needs the resource definition
   const needsResourceDef = useMemo(() =>
@@ -160,6 +162,7 @@ export function RunModal({
       .catch(e => {
         if (!cancelled) {
           console.error('Failed to fetch resource detail for command substitution:', e)
+          setError(`Failed to load resource details: ${e instanceof Error ? e.message : String(e)}`)
         }
       })
       .finally(() => {
@@ -182,6 +185,7 @@ export function RunModal({
       onClose()
     } catch (e) {
       console.error('Failed to open terminal:', e)
+      setError(`Failed to execute command: ${e instanceof Error ? e.message : String(e)}`)
     }
   }, [context, namespace, labels, resourceName, resourceDef, onClose])
 
@@ -211,6 +215,7 @@ export function RunModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Run Command">
+      <Alert type="error" label="Error" message={error}/>
       <div class={classes.commandList}>
         {needsResourceDef && isLoadingDef && (
           <div class={classes.loading}>Loading resource details...</div>

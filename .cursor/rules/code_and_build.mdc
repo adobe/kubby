@@ -16,3 +16,8 @@ Rules for code and build.
 ## Backend
 
 - Avoid writing code in mod/lib files, make separate modules for related code.
+
+## Tests
+
+Update e2e tests if necessary. 
+Do not run them everytime since they take a couple of minutes, suggest to run if impacting changes.

@@ -8,6 +8,7 @@ import type { ActivePortForward } from '../resourceActions.ts'
 interface DeadPortForward {
   info: ActivePortForward
   exitCode: number | null
+  errorMessage: string | null
 }
 
 interface UsePortForwardActionProps {
@@ -18,7 +19,7 @@ interface UsePortForwardActionProps {
   parentResourceName?: string
   readOnly: boolean
   /** Callback when a port forward fails silently (process died) */
-  onPortForwardFailed?: (resourceName: string, localPort: number, targetPort: number) => void
+  onPortForwardFailed?: (resourceName: string, localPort: number, targetPort: number, errorMessage?: string) => void
 }
 
 interface UsePortForwardActionReturn {
@@ -72,8 +73,8 @@ export function usePortForwardAction({
         const failureKey = `${dead.info.id}`
         if (!reportedFailuresRef.current.has(failureKey)) {
           reportedFailuresRef.current.add(failureKey)
-          console.log('[PortForward] Reporting failure:', dead.info.resourceName, dead.info.localPort, dead.info.targetPort)
-          onPortForwardFailed?.(dead.info.resourceName, dead.info.localPort, dead.info.targetPort)
+          console.log('[PortForward] Reporting failure:', dead.info.resourceName, dead.info.localPort, dead.info.targetPort, dead.errorMessage)
+          onPortForwardFailed?.(dead.info.resourceName, dead.info.localPort, dead.info.targetPort, dead.errorMessage ?? undefined)
           // Clear the failure key after a delay to allow re-reporting if it happens again
           setTimeout(() => {
             reportedFailuresRef.current.delete(failureKey)

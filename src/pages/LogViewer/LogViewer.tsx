@@ -606,6 +606,9 @@ export function LogViewer({
       }
     } catch (e) {
       console.error('Failed to fetch historical logs:', e)
+      if (sessionIdRef.current === currentSessionId) {
+        setError(`Failed to load log history: ${e instanceof Error ? e.message : String(e)}`)
+      }
     } finally {
       // Only clear loading state if session hasn't changed
       if (sessionIdRef.current === currentSessionId) {
