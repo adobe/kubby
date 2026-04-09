@@ -233,6 +233,21 @@ export function ResourceList({
     return allResources.filter(r => r.name.toLowerCase().includes(lowerFilter))
   }, [allResources, filterText])
 
+  const statusSummary = useMemo(() => {
+    const statusCol = columns.find(c => c.name === 'STATUS' || c.name === 'STATE')
+    if (!statusCol || resources.length === 0) return null
+
+    const counts = new Map<string, number>()
+    for (const r of resources) {
+      const val = String(r[statusCol.name] ?? '<none>')
+      counts.set(val, (counts.get(val) ?? 0) + 1)
+    }
+
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1])
+    if (sorted.length === 1) return `(all ${sorted[0][0]})`
+    return `(${sorted.map(([status, count]) => `${count} ${status}`).join(', ')})`
+  }, [columns, resources])
+
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
 
   // Extract contexts and namespaces from dashboard config
@@ -957,7 +972,7 @@ export function ResourceList({
             </table>
             {resources.length > 0 && (
               <div class={classes.footer} role="status">
-                {resources.length} item{resources.length !== 1 ? 's' : ''}
+                {resources.length} item{resources.length !== 1 ? 's' : ''}{statusSummary ? ` ${statusSummary}` : ''}
               </div>
             )}
           </div>
