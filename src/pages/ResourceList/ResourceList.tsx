@@ -192,6 +192,7 @@ export function ResourceList({
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
   const filterInputRef = useRef<HTMLInputElement>(null)
   const jumpButtonRef = useRef<ButtonHandle>(null)
+  const copyButtonRef = useRef<ButtonHandle>(null)
 
   // Text filter state for filtering resources by name
   const [filterText, setFilterText] = useState(initialFilterText ?? '')
@@ -760,6 +761,13 @@ export function ResourceList({
           return
         }
 
+        // C - Open Copy dropdown
+        if (e.code === 'KeyC' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault()
+          copyButtonRef.current?.toggle()
+          return
+        }
+
         // J - Open Jump dropdown (if available)
         if (e.code === 'KeyJ' && !e.metaKey && !e.ctrlKey && !e.altKey && selectedIndex >= 0) {
           const relatedResources = getRelatedResources(resourceType)
@@ -1000,6 +1008,12 @@ export function ResourceList({
         onAction={handleAction}
         onJump={handleJump}
         jumpButtonRef={jumpButtonRef}
+        context={context}
+        namespace={namespace}
+        columns={columns}
+        resources={resources}
+        selectedResourceName={selectedIndex >= 0 && resources[selectedIndex] ? resources[selectedIndex].name : null}
+        copyButtonRef={copyButtonRef}
       />
 
       {/* Action modals */}

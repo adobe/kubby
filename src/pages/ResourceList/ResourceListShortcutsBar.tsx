@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'preact/hooks'
+import { useCallback, useMemo, useState } from 'preact/hooks'
 import type { Ref } from 'preact'
 import { ShortcutsBar } from '../../components/ShortcutsBar/ShortcutsBar.tsx'
 import { Button, type SubItem, type ButtonHandle } from '../../components/Button/Button.tsx'
 import type { ActionCode } from './resourceActions.ts'
 import { getRelatedResources } from './relatedResources.ts'
 import type { AiConfig } from '../Dashboard/Dashboard.tsx'
+import type { ColumnConfig, ResourceItem } from '../../kubectl/resourceTypes.ts'
 
 export interface ShortcutConfig {
   label: string
@@ -30,6 +31,18 @@ interface ResourceListShortcutsBarProps {
   onJump?: (relationCode: string) => void
   /** Ref for the Jump button (for keyboard shortcut handling) */
   jumpButtonRef?: Ref<ButtonHandle>
+  /** Current kubectl context */
+  context: string
+  /** Current namespace */
+  namespace: string
+  /** Table columns */
+  columns: ColumnConfig[]
+  /** Filtered table rows */
+  resources: ResourceItem[]
+  /** Name of the currently selected resource (null if none) */
+  selectedResourceName: string | null
+  /** Ref for the Copy button (for keyboard shortcut handling) */
+  copyButtonRef?: Ref<ButtonHandle>
 }
 
 // Shortcut configurations by resource type
@@ -126,6 +139,40 @@ const JUMP_SHORTCUTS: Record<string, string> = {
   jobs: 'J',
 }
 
+function buildMarkdownTable(
+  columns: ColumnConfig[],
+  resources: ResourceItem[],
+  includeNameColumn: boolean,
+): string {
+  const colNames = includeNameColumn ? ['NAME', ...columns.map(c => c.name)] : columns.map(c => c.name)
+
+  const rows = resources.map(r => {
+    const cells: string[] = []
+    if (includeNameColumn) cells.push(r.name)
+    for (const col of columns) cells.push(String(r[col.name] ?? '<none>'))
+    return cells
+  })
+
+  // Compute max width per column (at least the header width)
+  const widths = colNames.map((header, i) => {
+    let max = header.length
+    for (const row of rows) {
+      if (row[i].length > max) max = row[i].length
+    }
+    return max
+  })
+
+  const pad = (val: string, w: number) => val.padEnd(w)
+  const formatRow = (cells: string[]) =>
+    '| ' + cells.map((c, i) => pad(c, widths[i])).join(' | ') + ' |'
+
+  const headerLine = formatRow(colNames)
+  const separatorLine = '| ' + widths.map(w => '-'.repeat(w)).join(' | ') + ' |'
+  const dataLines = rows.map(formatRow)
+
+  return [headerLine, separatorLine, ...dataLines].join('\n')
+}
+
 export function ResourceListShortcutsBar({ 
   resourceType, 
   hasSelection, 
@@ -137,9 +184,38 @@ export function ResourceListShortcutsBar({
   onAction,
   onJump,
   jumpButtonRef,
+  context,
+  namespace,
+  columns,
+  resources,
+  selectedResourceName,
+  copyButtonRef,
 }: ResourceListShortcutsBarProps) {
   const [isJumpOpen, setIsJumpOpen] = useState(false)
+  const [isCopyOpen, setIsCopyOpen] = useState(false)
   const shortcuts = getShortcutsForResourceType(resourceType, hasSelection, hasRunCommands)
+
+  const copySubItems: SubItem[] = useMemo(() => [
+    { code: 'markdown_table', label: 'Markdown Table', shortcut: 'T' },
+    { code: 'kubectl_get_all', label: `Kubectl Cmd Get All ${resourceType}`, shortcut: 'A' },
+    { code: 'kubectl_get_selection', label: 'Kubectl Cmd Get Selection', shortcut: 'S', available: hasSelection },
+    { code: 'kubectl_get_yaml', label: 'Kubectl Cmd Get Selection YAML', shortcut: 'Y', available: hasSelection },
+  ], [resourceType, hasSelection])
+
+  const handleCopyAction = useCallback((code: string) => {
+    let text = ''
+    if (code === 'markdown_table') {
+      const includeNameColumn = resourceType.toLowerCase() !== 'events'
+      text = buildMarkdownTable(columns, resources, includeNameColumn)
+    } else if (code === 'kubectl_get_all') {
+      text = `kubectl get ${resourceType} --output wide --context ${context} --namespace ${namespace}`
+    } else if (code === 'kubectl_get_selection' && selectedResourceName) {
+      text = `kubectl get ${resourceType} ${selectedResourceName} --output wide --context ${context} --namespace ${namespace}`
+    } else if (code === 'kubectl_get_yaml' && selectedResourceName) {
+      text = `kubectl get ${resourceType} ${selectedResourceName} --output yaml --context ${context} --namespace ${namespace}`
+    }
+    if (text) navigator.clipboard.writeText(text)
+  }, [resourceType, columns, resources, context, namespace, selectedResourceName])
   
   // Get related resources for the current resource type
   const relatedResources = useMemo(() => getRelatedResources(resourceType), [resourceType])
@@ -186,13 +262,27 @@ export function ResourceListShortcutsBar({
             disabled={isDisabled}
             tooltip={tooltip}
             external={shortcut.external}
-            shortcutMuted={isJumpOpen}
+            shortcutMuted={isJumpOpen || isCopyOpen}
           />
         )
       })}
 
       {/* Spacer to push remaining buttons to the right */}
       <div style={{ flexGrow: 1 }} />
+
+      {/* Copy dropdown button */}
+      <Button
+        ref={copyButtonRef}
+        label="Copy"
+        shortcut="C"
+        subItems={copySubItems}
+        onSubItemClick={handleCopyAction}
+        onOpenChange={setIsCopyOpen}
+        dropDirection="up"
+        tabIndex={0}
+        disabled={disabled}
+        tooltip="Copy resource data to clipboard"
+      />
       
       {/* Jump dropdown button - only show if there are related resources */}
       {hasJumpOptions && (
@@ -220,7 +310,7 @@ export function ResourceListShortcutsBar({
           disabled={disabled}
           tooltip={`Open ${aiConfig.toolDisplayName} with current context`}
           external={true}
-          shortcutMuted={isJumpOpen}
+          shortcutMuted={isJumpOpen || isCopyOpen}
         />
       )}
     </ShortcutsBar>
