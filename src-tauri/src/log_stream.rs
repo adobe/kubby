@@ -244,20 +244,14 @@ pub async fn fetch_historical_logs(
         args.push("--prefix".to_string());
     }
     
-    let kubectl_path = kubectl::get_path();
-    let command_str = kubectl::format_command(&args);
-    let output = Command::new(kubectl_path)
-        .args(&args)
-        .output()
-        .await
-        .map_err(|e| format!("Failed to execute kubectl logs: {}\nCommand: {}", e, command_str))?;
-    
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("kubectl logs failed: {}\nCommand: {}", stderr.trim(), command_str));
+    let result = kubectl::run(&args).await?;
+
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl logs failed: {}\nCommand: {}", stderr.trim(), result.command));
     }
-    
-    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let stdout = String::from_utf8_lossy(&result.output.stdout);
     let lines: Vec<String> = stdout.lines().map(|s| s.to_string()).collect();
     
     // If no before_timestamp provided, return all lines
