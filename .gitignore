@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# license-header-checker binary (installed via scripts/install-license-checker.sh)
+bin/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

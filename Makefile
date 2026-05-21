@@ -1,4 +1,4 @@
-.PHONY: dev build release clean kill docs docs-dev docs-preview test-e2e-setup test-e2e
+.PHONY: dev build release clean kill docs docs-dev docs-preview test-e2e-setup test-e2e license license-check
 
 dev:
 	exec ./node_modules/.bin/tauri dev
@@ -8,6 +8,12 @@ build:
 
 release:
 	./scripts/release.sh
+
+license:
+	./scripts/license-headers.sh
+
+license-check:
+	./scripts/license-headers.sh --check
 
 clean:
 	rm -rf src-tauri/target/release/bundle

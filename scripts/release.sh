@@ -15,8 +15,21 @@ echo -e "${YELLOW}🚀 Releasing kubby ${TAG}${NC}"
 # Pre-flight checks
 BRANCH=$(git branch --show-current)
 [ "$BRANCH" != "main" ] && echo -e "${RED}Error: Must be on main branch${NC}" && exit 1
-[ -n "$(git status --porcelain)" ] && echo -e "${RED}Error: Uncommitted changes${NC}" && exit 1
 git rev-parse "$TAG" >/dev/null 2>&1 && echo -e "${RED}Error: Tag ${TAG} already exists${NC}" && exit 1
+
+# Apply / refresh license headers and auto-commit any drift before tagging
+echo -e "${YELLOW}📝 Updating license headers...${NC}"
+./scripts/license-headers.sh
+if [ -n "$(git status --porcelain)" ]; then
+    if [ -n "$(git status --porcelain | grep -v -E '^.. (LICENSE_HEADER\.md|src/|src-tauri/src/|e2e/|scripts/|docs/\.vitepress/)')" ]; then
+        echo -e "${RED}Error: Uncommitted changes outside of license-header scope. Commit or stash first.${NC}"
+        git status --short
+        exit 1
+    fi
+    echo -e "${YELLOW}📝 Committing license header updates...${NC}"
+    git add -A
+    git commit -m "chore: refresh license headers for ${TAG}"
+fi
 
 # Confirm
 echo "This will build, tag ${TAG}, and publish to GitHub."
