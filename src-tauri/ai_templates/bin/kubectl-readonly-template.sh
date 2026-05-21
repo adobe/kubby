@@ -16,7 +16,7 @@ if [[ -z "$REAL_KUBECTL" ]]; then
     exit 1
 fi
 
-# Read-only subcommands whitelist
+# Read-only subcommands allow-list
 READONLY_COMMANDS=(
     "get"
     "describe"
@@ -121,7 +121,7 @@ if [[ "$SUBCOMMAND" == "config" ]]; then
         exit 1
     fi
 else
-    # Check if subcommand is in the read-only whitelist
+    # Check if subcommand is in the read-only allow-list
     ALLOWED=false
     for cmd in "${READONLY_COMMANDS[@]}"; do
         if [[ "$SUBCOMMAND" == "$cmd" ]]; then
