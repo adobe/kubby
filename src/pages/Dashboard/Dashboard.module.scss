@@ -330,6 +330,10 @@
 .headerHighlight {
   background: var(--bgColor-muted) !important;
 
+  [data-ns-badge] {
+    color: var(--fgColor-accent) !important;
+  }
+
   .contextRegion, .namespaceHighlight {
     color: var(--fgColor-accent) !important;
   }

@@ -14,6 +14,7 @@ import {useEffect, useRef, useState} from 'preact/hooks'
 import {getVersion} from '@tauri-apps/api/app'
 import classes from './Dashboard.module.scss'
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
+import {NamespaceBadge} from '../../components/NamespaceBadge/NamespaceBadge.tsx'
 import {DashboardShortcutsBar} from './DashboardShortcutsBar.tsx'
 
 export interface ContextGroup {
@@ -30,6 +31,7 @@ interface FilteredContextGroup {
 export interface NamespaceItem {
   name: string;
   contexts: string[] | null;
+  label?: string | null;
 }
 
 export interface NamespaceGroup {
@@ -1159,6 +1161,7 @@ function NamespaceGroupRows({
         return (
           <tr key={ns.name} class={classes.namespaceRow}>
             <td class={`${classes.stickyCol} ${isRowHighlighted ? classes.headerHighlight : ''}`} title={ns.name}>
+              <NamespaceBadge label={ns.label} />
               <span class={classes.namespaceLabel}>
                 {lowlightFirst ? (
                   <>{lowlight && <span class={classes.namespaceLowlight}>{lowlight}</span>}<span

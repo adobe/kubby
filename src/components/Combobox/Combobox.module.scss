@@ -56,7 +56,6 @@
     border-radius: 4px;
     color: var(--fgColor-default);
     cursor: text;
-    width: 250px !important;
 
     &::placeholder {
       color: var(--fgColor-muted);
@@ -90,15 +89,33 @@
   }
 
   .comboboxItem {
+    display: flex;
+    align-items: center;
     padding: 0.35rem 0.5rem;
     font-size: 0.75rem;
     cursor: pointer;
     color: var(--fgColor-default);
     transition: background-color 0.1s ease;
 
+    // Dim the namespace name (when a label badge is present) so the badge stands out
+    [data-ns-name] {
+      color: var(--fgColor-muted);
+    }
+
     &.comboboxItemHighlighted {
       background: var(--bgColor-accent-emphasis);
       color: var(--fgColor-onEmphasis);
+
+      // On the accent-emphasis background, accent text would blend in; make the
+      // label solid and keep the dimmed name slightly recessed.
+      [data-ns-badge] {
+        color: var(--fgColor-onEmphasis);
+      }
+
+      [data-ns-name] {
+        color: var(--fgColor-onEmphasis);
+        opacity: 0.75;
+      }
     }
 
     &.comboboxItemSelected {

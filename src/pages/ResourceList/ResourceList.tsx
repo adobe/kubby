@@ -22,6 +22,7 @@ import {Alert} from '../../components/Alert/Alert.tsx'
 import {Button, type ButtonHandle} from '../../components/Button/Button.tsx'
 import {Combobox} from '../../components/Combobox/Combobox.tsx'
 import type {ComboboxHandle} from '../../components/Combobox/Combobox.tsx'
+import {NamespaceBadge} from '../../components/NamespaceBadge/NamespaceBadge.tsx'
 import {isAltModifierPressed, isControlModifierPressed} from '../../navigation/keyboardShortcuts.ts'
 import type {LabelSelector} from '../../kubectl/resourceTypes.ts'
 import type {ResourceFilter} from '../../kubectl/filterTypes.ts'
@@ -143,6 +144,23 @@ function getNamespacesForContext(config: DashboardConfig, context: string): stri
   }
 
   return namespaces
+}
+
+/** Build a lookup of namespace name -> configured label across all groups. */
+function getNamespaceLabels(config: DashboardConfig): Map<string, string> {
+  const labels = new Map<string, string>()
+
+  for (const group of config.groups) {
+    for (const ng of group.namespaceGroups) {
+      for (const ns of ng.namespaces) {
+        if (ns.label && !labels.has(ns.name)) {
+          labels.set(ns.name, ns.label)
+        }
+      }
+    }
+  }
+
+  return labels
 }
 
 interface ResourceListProps {
@@ -268,6 +286,30 @@ export function ResourceList({
   const availableNamespaces = useMemo(
     () => getNamespacesForContext(dashboardConfig, context),
     [dashboardConfig, context],
+  )
+  const namespaceLabels = useMemo(
+    () => getNamespaceLabels(dashboardConfig),
+    [dashboardConfig],
+  )
+  const namespaceItemToString = useCallback(
+    (ns: string | null) => {
+      if (!ns) return ''
+      const label = namespaceLabels.get(ns)
+      return label ? `[${label}] ${ns}` : ns
+    },
+    [namespaceLabels],
+  )
+  const renderNamespaceItem = useCallback(
+    (ns: string) => {
+      const label = namespaceLabels.get(ns)
+      return (
+        <>
+          <NamespaceBadge label={label} />
+          <span {...(label ? {'data-ns-name': true} : {})}>{ns}</span>
+        </>
+      )
+    },
+    [namespaceLabels],
   )
 
   // Auto-refresh configuration from dashboard config (backend provides defaults)
@@ -836,6 +878,7 @@ export function ResourceList({
               onSelectedItemChange={handleResourceTypeSelect}
               itemToString={(item) => item || ''}
               filterItems={filterResourceTypes}
+              width={250}
               placeholder="Select resource type..."
               emptyMessage="No resource types found"
               tabIndex={1}
@@ -849,6 +892,7 @@ export function ResourceList({
               selectedItem={context}
               onSelectedItemChange={handleContextSelect}
               itemToString={(item) => item || ''}
+              width={250}
               placeholder="Select context..."
               emptyMessage="No contexts found"
               tabIndex={2}
@@ -858,10 +902,13 @@ export function ResourceList({
             />
             <Combobox
               ref={namespaceComboboxRef}
+              className={classes.namespaceCombobox}
               items={availableNamespaces}
               selectedItem={namespace}
               onSelectedItemChange={handleNamespaceSelect}
-              itemToString={(item) => item || ''}
+              itemToString={namespaceItemToString}
+              renderItem={renderNamespaceItem}
+              width="100%"
               placeholder="Select namespace..."
               emptyMessage="No namespaces found"
               tabIndex={3}

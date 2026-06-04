@@ -149,6 +149,24 @@ namespaces:
     contexts: ["prod-us-east", "prod-us-west"]  # Only for these contexts
 ```
 
+#### Namespace Labels
+
+Generated namespace names can be long and hard to read. Add an optional `label`
+to give a namespace a short, human-friendly badge that is shown before the full
+name in the dashboard rows and the resource list namespace selector:
+
+```yaml
+namespaces:
+  - name: "ns-team-oneadobe--semantic-profile-query-deploy--ab93-05a1b20f"
+    label: "query-api"
+  - name: "ns-team-oneadobe--semantic-profile-query-deploy--65a5-e3a99418"
+    label: "obs-enm"
+```
+
+The label is matched by exact namespace name, so different namespaces sharing a
+common prefix can each have their own label. The label is display-only and does
+not change the namespace passed to `kubectl`.
+
 ## Context Name Parsing
 
 Kubby parses context names into three display parts — **env**, **region**, and **cluster** — shown in the dashboard

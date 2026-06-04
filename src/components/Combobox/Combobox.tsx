@@ -13,7 +13,7 @@
 import {useRef, useState, useEffect, useImperativeHandle} from 'preact/hooks'
 import {forwardRef} from 'preact/compat'
 import {useCombobox} from 'downshift'
-import type {Ref, JSX} from 'preact'
+import type {Ref, JSX, ComponentChildren} from 'preact'
 import classes from './Combobox.module.scss'
 import {formatShortcut} from '../../navigation/keyboardShortcuts.ts'
 
@@ -22,6 +22,8 @@ interface ComboboxProps<T> {
   selectedItem: T | null;
   onSelectedItemChange: (item: T | null) => void;
   itemToString: (item: T | null) => string;
+  /** Optional custom renderer for dropdown items (e.g. to show badges). Falls back to itemToString. */
+  renderItem?: (item: T) => ComponentChildren;
   filterItems?: (items: T[], inputValue: string) => T[];
   placeholder?: string;
   width?: string | number;
@@ -55,6 +57,7 @@ function ComboboxInner<T>(
     selectedItem,
     onSelectedItemChange,
     itemToString,
+    renderItem,
     filterItems,
     placeholder = 'Select...',
     width = 200,
@@ -167,7 +170,7 @@ function ComboboxInner<T>(
               {...getItemProps({item, index})}
               className={`${classes.comboboxItem} ${highlightedIndex === index ? classes.comboboxItemHighlighted : ''} ${downshiftSelectedItem === item ? classes.comboboxItemSelected : ''}`}
             >
-              {itemToString(item)}
+              {renderItem ? renderItem(item) : itemToString(item)}
             </li>
           ))}
           {filteredItems.length === 0 && (

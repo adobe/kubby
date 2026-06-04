@@ -32,7 +32,9 @@ contexts:
         - name: "Core Services"
           namespaces:
             - name: ns-team-stellar-domains
+              label: domains
             - name: ns-team-stellar-operations
+              label: ops
               contexts:
                 - live-kappa-nebula237-live-kappa
                 - live-omicron-nebula12-live-omicron

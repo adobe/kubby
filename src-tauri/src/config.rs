@@ -208,6 +208,9 @@ pub struct NamespaceItem {
     pub name: String,
     #[serde(default)]
     pub contexts: Option<Vec<String>>,
+    /// Optional human-friendly label displayed as a badge before the namespace name.
+    #[serde(default)]
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -266,6 +269,8 @@ pub struct NormalizedNamespaceItem {
     pub name: String,
     /// If None, namespace is available in all contexts. If Some, only in listed contexts.
     pub contexts: Option<Vec<String>>,
+    /// Optional human-friendly label displayed as a badge before the namespace name.
+    pub label: Option<String>,
 }
 
 impl DashboardConfig {
@@ -311,6 +316,7 @@ impl DashboardConfig {
                                     .map(|n| NormalizedNamespaceItem {
                                         name: n.name.clone(),
                                         contexts: n.contexts.clone(),
+                                        label: n.label.clone(),
                                     })
                                     .collect(),
                             }]
@@ -328,6 +334,7 @@ impl DashboardConfig {
                                     .map(|n| NormalizedNamespaceItem {
                                         name: n.name.clone(),
                                         contexts: n.contexts.clone(),
+                                        label: n.label.clone(),
                                     })
                                     .collect(),
                             })
