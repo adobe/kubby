@@ -46,6 +46,8 @@ export interface ResourceItem {
   name: string;
   labels: LabelSelector[];
   rawValues?: Record<string, (string | number)[]>;
+  /** Pod selector string from `status.selector` (e.g. Argo Rollouts) */
+  podSelector?: string;
   [key: string]: string | number | null | LabelSelector[] | Record<string, (string | number)[]> | undefined;
 }
 

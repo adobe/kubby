@@ -152,6 +152,29 @@ export function getSpecFilters(filters: ResourceFilter[]): SpecFilter[] {
 }
 
 /**
+ * Parse a Kubernetes label selector string (e.g. "k1=v1,k2=v2") into key/value pairs.
+ * Only equality-based selectors are supported; set-based expressions are ignored.
+ */
+export function parseLabelSelectorString(selector: string): { key: string; value: string }[] {
+  if (!selector) return []
+  return selector
+    .split(',')
+    .map(part => part.trim())
+    .filter(part => part.length > 0)
+    .map(part => {
+      // Support both "key=value" and "key==value"
+      const eqIndex = part.indexOf('=')
+      if (eqIndex === -1) return null
+      const key = part.slice(0, eqIndex).replace(/=$/, '').trim()
+      let value = part.slice(eqIndex + 1).trim()
+      if (value.startsWith('=')) value = value.slice(1).trim()
+      if (!key) return null
+      return { key, value }
+    })
+    .filter((pair): pair is { key: string; value: string } => pair !== null)
+}
+
+/**
  * Convert legacy LabelSelector array to ResourceFilter array
  */
 export function fromLabelSelectors(labelSelectors: { key: string; value: string }[]): LabelFilter[] {

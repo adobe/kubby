@@ -68,6 +68,13 @@ const DEPLOYMENT_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
 ]
 
+const ROLLOUT_SHORTCUTS: ShortcutConfig[] = [
+  { label: 'Pods', shortcut: 'Enter', code: 'pods', tooltip: 'Show the pods for this rollout', isModifying: false },
+  { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
+  { label: 'Edit', shortcut: 'E', code: 'edit', tooltip: 'Edit the resource YAML in your default editor', isModifying: true, external: true },
+  { label: 'Delete...', shortcut: 'Del', code: 'delete', tooltip: 'Delete this resource', isModifying: true },
+]
+
 const POD_SHORTCUTS: ShortcutConfig[] = [
   { label: 'Containers', shortcut: 'Enter', code: 'containers', tooltip: 'Show containers in this pod', isModifying: false },
   { label: 'Describe', shortcut: 'D', code: 'describe', tooltip: 'View detailed resource information', isModifying: false },
@@ -116,6 +123,8 @@ export function getShortcutsForResourceType(resourceType: string, hasSelection: 
   
   if (normalizedType === 'deployments' || normalizedType === 'deployment') {
     shortcuts = DEPLOYMENT_SHORTCUTS
+  } else if (normalizedType === 'rollouts' || normalizedType === 'rollout') {
+    shortcuts = ROLLOUT_SHORTCUTS
   } else if (normalizedType === 'pods' || normalizedType === 'pod') {
     shortcuts = POD_SHORTCUTS
   } else if (normalizedType === 'containers' || normalizedType === 'container') {
@@ -145,6 +154,7 @@ const JUMP_SHORTCUTS: Record<string, string> = {
   services: 'S',
   events: 'E',
   deployments: 'D',
+  rollouts: 'O',
   endpoints: 'N',
   pods: 'P',
   pvc: 'V',

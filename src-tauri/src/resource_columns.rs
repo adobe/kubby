@@ -507,6 +507,105 @@ pub fn get_builtin_resource_columns(resource_type: &str) -> Option<ResourceColum
                 align: ColumnAlign::End,
             },
         ],
+        "rollouts" => vec![
+            ColumnConfig {
+                name: "STATUS".to_string(),
+                json_paths: vec!["$.status.phase".to_string()],
+                format: None,
+                column_type: Some(ColumnType::Text),
+                color_rules: Some(vec![
+                    ColorRule {
+                        expression: "{0} === 'Healthy'".to_string(),
+                        color: ColorState::Success,
+                    },
+                    ColorRule {
+                        expression: "{0} === 'Progressing' || {0} === 'Paused'".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} === 'Degraded' || {0} === 'Error'".to_string(),
+                        color: ColorState::Danger,
+                    },
+                ]),
+                align: ColumnAlign::Start,
+            },
+            ColumnConfig {
+                name: "READY".to_string(),
+                json_paths: vec![
+                    "$.status.readyReplicas".to_string(),
+                    "$.spec.replicas".to_string(),
+                ],
+                format: Some("{0}/{1}".to_string()),
+                column_type: Some(ColumnType::Number),
+                color_rules: Some(vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{0} === 0 && {1} > 0".to_string(),
+                        color: ColorState::Danger,
+                    },
+                    ColorRule {
+                        expression: "{0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                    ColorRule {
+                        expression: "{0} === {1}".to_string(),
+                        color: ColorState::Success,
+                    },
+                ]),
+                align: ColumnAlign::End,
+            },
+            ColumnConfig {
+                name: "UP-TO-DATE".to_string(),
+                json_paths: vec![
+                    "$.status.updatedReplicas".to_string(),
+                    "$.spec.replicas".to_string(),
+                ],
+                format: Some("{0}".to_string()),
+                column_type: Some(ColumnType::Number),
+                color_rules: Some(vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{1} !== 0 && {0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                ]),
+                align: ColumnAlign::End,
+            },
+            ColumnConfig {
+                name: "AVAILABLE".to_string(),
+                json_paths: vec![
+                    "$.status.availableReplicas".to_string(),
+                    "$.spec.replicas".to_string(),
+                ],
+                format: Some("{0}".to_string()),
+                column_type: Some(ColumnType::Number),
+                color_rules: Some(vec![
+                    ColorRule {
+                        expression: "{0} === '<none>' && {1} === 0".to_string(),
+                        color: ColorState::Muted,
+                    },
+                    ColorRule {
+                        expression: "{1} !== 0 && {0} < {1}".to_string(),
+                        color: ColorState::Attention,
+                    },
+                ]),
+                align: ColumnAlign::End,
+            },
+            ColumnConfig {
+                name: "AGE".to_string(),
+                json_paths: vec!["$.metadata.creationTimestamp".to_string()],
+                format: None,
+                column_type: Some(ColumnType::Duration),
+                color_rules: None,
+                align: ColumnAlign::End,
+            },
+        ],
         "services" => vec![
             ColumnConfig {
                 name: "TYPE".to_string(),

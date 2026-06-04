@@ -16,7 +16,7 @@
  */
 
 import type { ResourceFilter } from '../../kubectl/filterTypes.ts'
-import { createSpecFilter, createLabelFilter } from '../../kubectl/filterTypes.ts'
+import { createSpecFilter, createLabelFilter, parseLabelSelectorString } from '../../kubectl/filterTypes.ts'
 import type { LabelSelector } from '../../kubectl/resourceTypes.ts'
 
 /** Filter type for related resource navigation */
@@ -45,6 +45,13 @@ export interface RelatedResource {
 /** Related resources configuration per source resource type */
 const RELATED_RESOURCES: Record<string, RelatedResource[]> = {
   deployments: [
+    {
+      code: 'rollouts',
+      label: 'Rollouts',
+      targetResourceType: 'rollouts',
+      filterType: 'name',
+      displayLabel: 'for',
+    },
     {
       code: 'replicasets',
       label: 'ReplicaSets',
@@ -107,6 +114,13 @@ const RELATED_RESOURCES: Record<string, RelatedResource[]> = {
   deployment: [
     // Same as deployments (singular form)
     {
+      code: 'rollouts',
+      label: 'Rollouts',
+      targetResourceType: 'rollouts',
+      filterType: 'name',
+      displayLabel: 'for',
+    },
+    {
       code: 'replicasets',
       label: 'ReplicaSets',
       targetResourceType: 'replicasets',
@@ -165,11 +179,105 @@ const RELATED_RESOURCES: Record<string, RelatedResource[]> = {
       displayLabel: 'for',
     },
   ],
+  rollouts: [
+    {
+      code: 'deployments',
+      label: 'Deployment',
+      targetResourceType: 'deployments',
+      filterType: 'name',
+      displayLabel: 'for',
+    },
+    {
+      code: 'replicasets',
+      label: 'ReplicaSets',
+      targetResourceType: 'replicasets',
+      filterType: 'label',
+      labelKey: 'app.kubernetes.io/name',
+      displayLabel: 'for',
+    },
+    {
+      code: 'pods',
+      label: 'Pods',
+      targetResourceType: 'pods',
+      filterType: 'label',
+      labelKey: 'app.kubernetes.io/name',
+      displayLabel: 'for',
+    },
+    {
+      code: 'hpa',
+      label: 'HorizontalPodAutoscalers',
+      targetResourceType: 'horizontalpodautoscalers',
+      filterType: 'spec',
+      specPath: 'spec.scaleTargetRef.name',
+      specKindPath: 'spec.scaleTargetRef.kind',
+      displayLabel: 'for',
+    },
+    {
+      code: 'events',
+      label: 'Events',
+      targetResourceType: 'events',
+      filterType: 'spec',
+      specPath: 'involvedObject.name',
+      specKindPath: 'involvedObject.kind',
+      displayLabel: 'for',
+    },
+  ],
+  rollout: [
+    {
+      code: 'deployments',
+      label: 'Deployment',
+      targetResourceType: 'deployments',
+      filterType: 'name',
+      displayLabel: 'for',
+    },
+    {
+      code: 'replicasets',
+      label: 'ReplicaSets',
+      targetResourceType: 'replicasets',
+      filterType: 'label',
+      labelKey: 'app.kubernetes.io/name',
+      displayLabel: 'for',
+    },
+    {
+      code: 'pods',
+      label: 'Pods',
+      targetResourceType: 'pods',
+      filterType: 'label',
+      labelKey: 'app.kubernetes.io/name',
+      displayLabel: 'for',
+    },
+    {
+      code: 'hpa',
+      label: 'HorizontalPodAutoscalers',
+      targetResourceType: 'horizontalpodautoscalers',
+      filterType: 'spec',
+      specPath: 'spec.scaleTargetRef.name',
+      specKindPath: 'spec.scaleTargetRef.kind',
+      displayLabel: 'for',
+    },
+    {
+      code: 'events',
+      label: 'Events',
+      targetResourceType: 'events',
+      filterType: 'spec',
+      specPath: 'involvedObject.name',
+      specKindPath: 'involvedObject.kind',
+      displayLabel: 'for',
+    },
+  ],
   pods: [
     {
       code: 'deployments',
       label: 'Deployments',
       targetResourceType: 'deployments',
+      filterType: 'label',
+      labelKey: 'app.kubernetes.io/name',
+      displayLabel: 'for',
+    },
+    {
+      code: 'rollouts',
+      label: 'Rollouts',
+      targetResourceType: 'rollouts',
       filterType: 'label',
       labelKey: 'app.kubernetes.io/name',
       displayLabel: 'for',
@@ -197,6 +305,14 @@ const RELATED_RESOURCES: Record<string, RelatedResource[]> = {
       code: 'deployments',
       label: 'Deployments',
       targetResourceType: 'deployments',
+      filterType: 'label',
+      labelKey: 'app.kubernetes.io/name',
+      displayLabel: 'for',
+    },
+    {
+      code: 'rollouts',
+      label: 'Rollouts',
+      targetResourceType: 'rollouts',
       filterType: 'label',
       labelKey: 'app.kubernetes.io/name',
       displayLabel: 'for',
@@ -525,6 +641,8 @@ function resourceTypeToKind(resourceType: string): string {
   const mapping: Record<string, string> = {
     deployments: 'Deployment',
     deployment: 'Deployment',
+    rollouts: 'Rollout',
+    rollout: 'Rollout',
     pods: 'Pod',
     pod: 'Pod',
     services: 'Service',
@@ -571,7 +689,8 @@ export function buildFiltersForRelation(
   relation: RelatedResource,
   sourceResourceType: string,
   sourceResourceName: string,
-  sourceLabels: LabelSelector[]
+  sourceLabels: LabelSelector[],
+  sourcePodSelector?: string
 ): ResourceFilter[] {
   const filters: ResourceFilter[] = []
 
@@ -601,6 +720,11 @@ export function buildFiltersForRelation(
             ?? sourceLabels.find(l => l.key === 'app')
           if (appLabel) {
             filters.push(createLabelFilter(appLabel.key, appLabel.value))
+          } else if (sourcePodSelector) {
+            // Final fallback: use the source's computed pod selector (e.g. Argo Rollouts)
+            for (const pair of parseLabelSelectorString(sourcePodSelector)) {
+              filters.push(createLabelFilter(pair.key, pair.value))
+            }
           }
         }
       }

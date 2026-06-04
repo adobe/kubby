@@ -915,7 +915,15 @@ fn parse_kubectl_json(
             raw_values.insert(col.name.clone(), raw_vals);
         }
         
-        result.push(ResourceItem { name, columns, labels, raw_values });
+        // Extract the pod selector string (e.g. Argo Rollouts expose `status.selector`)
+        // so the frontend can navigate from a workload to its pods.
+        let pod_selector = item.get("status")
+            .and_then(|s| s.get("selector"))
+            .and_then(|s| s.as_str())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+        
+        result.push(ResourceItem { name, columns, labels, raw_values, pod_selector });
     }
     
     Ok((result, validation_error))
@@ -1125,6 +1133,7 @@ pub async fn get_pod_containers(
             columns: column_values,
             labels: vec![], // Containers don't have labels
             raw_values,
+            pod_selector: None,
         });
     }
     

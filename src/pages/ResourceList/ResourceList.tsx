@@ -159,7 +159,7 @@ interface ResourceListProps {
   onResourceTypeChange?: (resourceType: string) => void;
   onContextChange?: (context: string) => void;
   onNamespaceChange?: (namespace: string) => void;
-  onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[]) => void;
+  onResourceClick?: (resourceType: string, resourceName: string, labels: LabelSelector[], podSelector?: string) => void;
   /** Called when user wants to clear all filters */
   onClearFilters?: () => void;
   /** Called when user wants to describe (view details of) a resource */
@@ -421,7 +421,7 @@ export function ResourceList({
       case 'pods':
       case 'containers':
         // Navigate to child resources (same as Enter/double-click)
-        onResourceClick?.(resourceType, resource.name, resource.labels)
+        onResourceClick?.(resourceType, resource.name, resource.labels, resource.podSelector)
         break
 
       case 'describe':
@@ -511,6 +511,7 @@ export function ResourceList({
       resourceType,
       resource.name,
       resource.labels,
+      resource.podSelector,
     )
 
     onJump(relation.targetResourceType, jumpFilters)
@@ -609,7 +610,7 @@ export function ResourceList({
   const handleRowActivate = useCallback((index: number) => {
     if (onResourceClick && resources[index]) {
       const resource = resources[index]
-      onResourceClick(resourceType, resource.name, resource.labels)
+      onResourceClick(resourceType, resource.name, resource.labels, resource.podSelector)
     }
   }, [onResourceClick, resources, resourceType])
 

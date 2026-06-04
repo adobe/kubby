@@ -1,8 +1,8 @@
 [package]
 name = "kubby"
 version = "0.60.1"
-description = "A Tauri App"
-authors = ["you"]
+description = "Kubby is a cross-platform desktop application for managing Kubernetes clusters. It is intended as a richer, GUI-based alternative to the popular terminal tool k9s, targeted at developers and SREs who work with multiple clusters and namespaces every day."
+authors = ["Adrian Tosca"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

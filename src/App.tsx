@@ -21,7 +21,7 @@ import { Onboarding } from "./pages/Onboarding/Onboarding.tsx";
 import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
 import type { ResourceFilter } from "./kubectl/filterTypes";
-import { isTextFilter, getTextFilter } from "./kubectl/filterTypes";
+import { isTextFilter, getTextFilter, parseLabelSelectorString } from "./kubectl/filterTypes";
 import { 
   createNavigationNode, 
   createNavigationNodeWithLabels, 
@@ -206,12 +206,27 @@ function App() {
     }
   };
 
-  const handleResourceClick = (resourceType: string, resourceName: string, labels: LabelSelector[]) => {
+  const handleResourceClick = (resourceType: string, resourceName: string, labels: LabelSelector[], podSelector?: string) => {
     if (navigationStack.length === 0) return;
 
     const currentNode = navigationStack[navigationStack.length - 1];
 
-    if (resourceType === 'deployments' || resourceType === 'services') {
+    if (resourceType === 'rollouts') {
+      // Argo Rollouts expose their pod selector at status.selector; use it to find the pods.
+      const selectorLabels = podSelector ? parseLabelSelectorString(podSelector) : [];
+      if (selectorLabels.length > 0) {
+        const newNode = createNavigationNodeWithLabels(
+          currentNode.context,
+          currentNode.namespace,
+          'pods',
+          resourceType,
+          selectorLabels
+        );
+        setNavigationStack([...navigationStack, newNode]);
+      } else {
+        console.warn(`No status.selector found on rollout ${resourceName}`);
+      }
+    } else if (resourceType === 'deployments' || resourceType === 'services') {
       // Try app.kubernetes.io/name first, then fallback to app label
       const appLabel = labels.find(l => l.key === 'app.kubernetes.io/name') 
         ?? labels.find(l => l.key === 'app');

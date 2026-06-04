@@ -166,6 +166,8 @@ export function isActionAvailable(action: ActionCode, resourceType: string): boo
     case 'shell':
       return normalizedType === 'pods' || normalizedType === 'pod' || normalizedType === 'containers'
     case 'pods':
+      return normalizedType === 'deployments' || normalizedType === 'deployment' ||
+             normalizedType === 'rollouts' || normalizedType === 'rollout'
     case 'replica_sets':
     case 'rolling_restart':
     case 'scale':

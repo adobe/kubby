@@ -114,6 +114,10 @@ pub struct ResourceItem {
     /// Raw values for each column (before formatting) for color evaluation
     #[serde(rename = "rawValues")]
     pub raw_values: std::collections::HashMap<String, Vec<String>>,
+    /// Pod selector string from `status.selector` (e.g. for Argo Rollouts),
+    /// used to navigate from a workload to its pods.
+    #[serde(rename = "podSelector", skip_serializing_if = "Option::is_none")]
+    pub pod_selector: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
