@@ -152,8 +152,10 @@ namespaces:
 #### Namespace Labels
 
 Generated namespace names can be long and hard to read. Add an optional `label`
-to give a namespace a short, human-friendly badge that is shown before the full
-name in the dashboard rows and the resource list namespace selector:
+to give a namespace a short, human-friendly badge. The badge is shown before the
+full name in the dashboard rows, and as a prefix inside the resource list
+namespace selector (the input keeps only the real namespace name, so copying it
+yields the actual name and not the label):
 
 ```yaml
 namespaces:
@@ -165,7 +167,9 @@ namespaces:
 
 The label is matched by exact namespace name, so different namespaces sharing a
 common prefix can each have their own label. The label is display-only and does
-not change the namespace passed to `kubectl`.
+not change the namespace passed to `kubectl`. In the resource list namespace
+selector you can also filter by the label: type part of it and the dropdown
+narrows to the matching namespaces.
 
 ## Context Name Parsing
 

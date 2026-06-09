@@ -24,6 +24,21 @@ Quickly switch between resource types:
 <!-- TODO: Add resource selector screenshot -->
 <!-- ![Resource Selector](../public/images/resource-selector.png) -->
 
+### Namespace Selector
+
+Switch the active namespace from the header:
+
+- Press `Opt+N` to focus the namespace selector
+- Type to filter available namespaces
+- Pick a namespace from the dropdown to switch
+
+If a namespace has a [label](../configuration.md#namespace-labels) configured,
+a short badge is shown as a prefix inside the selector, while the input itself
+holds only the real namespace name. This keeps the field readable and means
+copying the value yields the actual Kubernetes namespace name, not the helper
+label. You can still filter by the label: type part of the label and the
+dropdown narrows to the matching namespaces.
+
 ### Filtering
 
 Filter resources by name using the filter input:
