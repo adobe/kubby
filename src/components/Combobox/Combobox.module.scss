@@ -42,8 +42,30 @@
   }
 
 
+  // The wrapper is the visible "input box" frame so a prefix (e.g. a namespace
+  // label badge) sits inside the same border as the editable name. Only the
+  // <input> is actually editable, but the whole frame looks like one field.
   .comboboxInputWrapper {
     position: relative;
+    display: flex;
+    align-items: stretch;
+    background: transparent;
+    border: 1px solid var(--borderColor-default);
+    border-radius: 4px;
+    cursor: text;
+
+    &:focus-within {
+      border-color: var(--borderColor-accent-emphasis);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
+  .comboboxPrefix {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0.5rem 0 0 0.4rem;
   }
 
   .comboboxInput {
@@ -52,10 +74,11 @@
     letter-spacing: 0.05em;
     padding: 0.5rem 0.25rem 0.1rem 0.25rem;
     background: transparent;
-    border: 1px solid var(--borderColor-default);
-    border-radius: 4px;
+    border: none;
     color: var(--fgColor-default);
     cursor: text;
+    min-width: 0;
+    flex: 1;
 
     &::placeholder {
       color: var(--fgColor-muted);
@@ -63,9 +86,11 @@
     }
 
     &:focus {
-      border-color: var(--borderColor-accent-emphasis);
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
+      outline: none;
+    }
+
+    &.withPrefix {
+      color: var(--fgColor-muted);
     }
   }
 

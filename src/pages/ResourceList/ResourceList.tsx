@@ -292,11 +292,19 @@ export function ResourceList({
     [dashboardConfig],
   )
   const namespaceItemToString = useCallback(
+    (ns: string | null) => ns ?? '',
+    [],
+  )
+  const namespaceItemToFilterString = useCallback(
     (ns: string | null) => {
       if (!ns) return ''
       const label = namespaceLabels.get(ns)
       return label ? `[${label}] ${ns}` : ns
     },
+    [namespaceLabels],
+  )
+  const renderNamespacePrefix = useCallback(
+    (ns: string | null) => (ns ? <NamespaceBadge label={namespaceLabels.get(ns)} /> : null),
     [namespaceLabels],
   )
   const renderNamespaceItem = useCallback(
@@ -907,6 +915,8 @@ export function ResourceList({
               selectedItem={namespace}
               onSelectedItemChange={handleNamespaceSelect}
               itemToString={namespaceItemToString}
+              itemToFilterString={namespaceItemToFilterString}
+              renderPrefix={renderNamespacePrefix}
               renderItem={renderNamespaceItem}
               width="100%"
               placeholder="Select namespace..."

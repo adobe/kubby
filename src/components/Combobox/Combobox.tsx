@@ -24,6 +24,14 @@ interface ComboboxProps<T> {
   itemToString: (item: T | null) => string;
   /** Optional custom renderer for dropdown items (e.g. to show badges). Falls back to itemToString. */
   renderItem?: (item: T) => ComponentChildren;
+  /**
+   * Optional string used for filtering, decoupled from the input display value.
+   * Lets the input show a clean value (e.g. just a name) while still matching on
+   * extra metadata (e.g. a label). Defaults to itemToString.
+   */
+  itemToFilterString?: (item: T | null) => string;
+  /** Optional prefix rendered before the input (e.g. a badge for the selected item). */
+  renderPrefix?: (selectedItem: T | null) => ComponentChildren;
   filterItems?: (items: T[], inputValue: string) => T[];
   placeholder?: string;
   width?: string | number;
@@ -58,6 +66,8 @@ function ComboboxInner<T>(
     onSelectedItemChange,
     itemToString,
     renderItem,
+    itemToFilterString,
+    renderPrefix,
     filterItems,
     placeholder = 'Select...',
     width = 200,
@@ -99,7 +109,7 @@ function ComboboxInner<T>(
   const filteredItems = filterInput
     ? (filterItems
         ? filterItems(items, filterInput)
-        : defaultFilter(items, filterInput, itemToString))
+        : defaultFilter(items, filterInput, itemToFilterString ?? itemToString))
     : items
 
   const {
@@ -138,6 +148,8 @@ function ComboboxInner<T>(
 
   const inputStyle = typeof width === 'number' ? {width: `${width}px`} : {width}
 
+  const prefix = renderPrefix?.(selectedItem)
+
   return (
     <div className={`${classes.Combobox} ${className || ''}`} aria-label={label}>
       {label && (
@@ -148,7 +160,18 @@ function ComboboxInner<T>(
           )}
         </span>
       )}
-      <div className={classes.comboboxInputWrapper}>
+      <div
+        className={classes.comboboxInputWrapper}
+        onMouseDown={(e) => {
+          // Keep the framed area acting like a single input: clicking the prefix
+          // (or padding) focuses the actual text input instead of stealing focus.
+          if (e.target !== inputRef.current) {
+            e.preventDefault()
+            inputRef.current?.focus()
+          }
+        }}
+      >
+        {prefix && <span className={classes.comboboxPrefix}>{prefix}</span>}
         <input
           {...getInputProps({
             ref: inputRef,
@@ -156,7 +179,7 @@ function ComboboxInner<T>(
               setFilterInput(itemToString(selectedItem))
             },
           })}
-          className={classes.comboboxInput}
+          className={`${classes.comboboxInput} ${prefix ? classes.withPrefix : ''}`}
           placeholder={placeholder}
           tabIndex={tabIndex}
           style={inputStyle}
