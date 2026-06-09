@@ -304,7 +304,10 @@ export function ResourceList({
     [namespaceLabels],
   )
   const renderNamespacePrefix = useCallback(
-    (ns: string | null) => (ns ? <NamespaceBadge label={namespaceLabels.get(ns)} /> : null),
+    (ns: string | null) => {
+      const label = ns ? namespaceLabels.get(ns) : undefined
+      return label ? <NamespaceBadge label={label} /> : null
+    },
     [namespaceLabels],
   )
   const renderNamespaceItem = useCallback(

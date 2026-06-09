@@ -179,7 +179,7 @@ function ComboboxInner<T>(
               setFilterInput(itemToString(selectedItem))
             },
           })}
-          className={`${classes.comboboxInput} ${prefix ? classes.withPrefix : ''}`}
+          className={`${classes.comboboxInput} ${prefix ? classes.hasPrefix : ''}`}
           placeholder={placeholder}
           tabIndex={tabIndex}
           style={inputStyle}
