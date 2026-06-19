@@ -28,6 +28,12 @@ and multi-cluster management.
 - `kubectl` installed and configured
 - At least one cluster in your kubeconfig file
 
+### Setting up config file
+Kubby needs a configuration file to organize clusters and namespaces in groups and 
+to know which namespaces to manage, since in some environments you do not have 
+access rights to list namespaces.
+See [configuration.md](docs/configuration.md) for details on how to set up your config file.
+
 ### Credential Plugins
 
 If your cluster uses exec-based auth, ensure the plugin is in your `PATH`:
