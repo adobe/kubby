@@ -341,3 +341,17 @@
   }
 
 }
+
+// Resource-type combobox item: type name with a muted short-name alias hint
+.resourceTypeItem {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.resourceTypeAlias {
+  color: var(--fgColor-muted);
+  font-size: 0.7rem;
+}

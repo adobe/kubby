@@ -45,6 +45,8 @@ Switch to a different resource type:
 2. Type to filter (e.g., "deploy", "pod", "svc")
 3. Press `Enter` to view that resource type
 
+Results are ranked by how often you use each type — your most-used types surface first (type `po` and `pods` leads the list). Matching also understands **short-name aliases**: `hpa` → `horizontalpodautoscalers`, `svc` → `services`, `pvc` → `persistentvolumeclaims`, and so on. Available aliases show as a hint next to each entry.
+
 ### Quick Resource Switch (`:`)
 
 k9s-style resource switching:
