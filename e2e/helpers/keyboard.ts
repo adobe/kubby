@@ -52,6 +52,10 @@ export async function pressAltR() {
   await pressModKey(ALT_KEY, 'r')
 }
 
+export async function pressAltH() {
+  await pressModKey(ALT_KEY, 'h')
+}
+
 export async function arrowDown(times = 1) {
   for (let i = 0; i < times; i++) {
     await pressKey('ArrowDown')

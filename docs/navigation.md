@@ -53,6 +53,24 @@ k9s-style resource switching:
 2. Type the resource type (e.g., `pods`, `deploy`, `svc`)
 3. Press `Enter` to switch
 
+## Hotbar
+
+The **hotbar** is a toggle-able sidebar on the right of the resource screens (Resource List, Resource Detail, Log Viewer — it does not appear on the Dashboard). It stores shortcuts to specific screens so you can jump between resource / context / namespace combinations without going through the selectors each time.
+
+Each saved slot captures a **resource type + context + namespace** (e.g. `horizontalpodautoscalers @ dev / my-namespace`).
+
+| Shortcut | Action |
+|----------|--------|
+| `Opt+H` | Show / hide the hotbar |
+| `Opt+1` … `Opt+9` | Jump to the first nine saved slots |
+
+- **Add:** open the hotbar and click **Add current screen** to pin the screen you are on. Duplicate screens are ignored, and the containers view can't be pinned (it needs a parent pod).
+- **Jump:** click a slot (or press `Opt+1`–`Opt+9`) to switch the current view to that screen. It replaces where you are in the breadcrumb instead of stacking, so the depth never grows; `Esc` / Back then goes up one level from there.
+- **Rename:** hover a slot and click the pencil (`✎`) to give it a custom name.
+- **Remove:** hover a slot and click `×`.
+
+Saved slots and the open / collapsed state persist across restarts. Slots whose context is no longer in your config are dimmed.
+
 ## View Navigation
 
 ### Dashboard

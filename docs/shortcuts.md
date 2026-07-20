@@ -48,6 +48,17 @@ Kubby displays shortcuts appropriate for your platform:
 
 Actions are resource dependent and shown on the shortcut footer bar.
 
+## Hotbar
+
+The hotbar is a toggle-able sidebar of saved screen shortcuts (resource type + context + namespace), available on all resource screens.
+
+| Shortcut          | Action                            |
+|-------------------|-----------------------------------|
+| `Opt+H`           | Show / hide the hotbar            |
+| `Opt+1` … `Opt+9` | Jump to the first nine saved slots |
+
+See [Navigation → Hotbar](./navigation.md#hotbar) for adding, renaming, and removing slots.
+
 ## Modals & Dialogs
 
 | Shortcut | Action         |

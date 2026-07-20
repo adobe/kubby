@@ -22,42 +22,19 @@ import type { LabelSelector } from "./kubectl/resourceTypes";
 import type { NavigationNode } from "./navigation/navigationTypes";
 import type { ResourceFilter } from "./kubectl/filterTypes";
 import { isTextFilter, getTextFilter, parseLabelSelectorString } from "./kubectl/filterTypes";
-import { 
-  createNavigationNode, 
-  createNavigationNodeWithLabels, 
+import {
+  createNavigationNode,
+  createNavigationNodeWithLabels,
   createNavigationNodeWithResourceName,
   createDescribeNavigationNode,
   createLogsNavigationNode,
   isDescribeView,
   isLogsView,
 } from "./navigation/navigationTypes";
-
-/**
- * Get all namespaces available for a given context from the dashboard config.
- * Returns namespaces where contexts is null (available everywhere) or includes the context.
- */
-function getNamespacesForContext(config: DashboardConfig, context: string): string[] {
-  const namespaces: string[] = [];
-  
-  for (const group of config.groups) {
-    // Check if context exists in this group
-    const contextInGroup = group.contextGroups.some(cg => cg.contexts.includes(context));
-    if (!contextInGroup) continue;
-    
-    for (const ng of group.namespaceGroups) {
-      for (const ns of ng.namespaces) {
-        // Namespace is available if contexts is null or includes this context
-        if (ns.contexts === null || ns.contexts.includes(context)) {
-          if (!namespaces.includes(ns.name)) {
-            namespaces.push(ns.name);
-          }
-        }
-      }
-    }
-  }
-  
-  return namespaces;
-}
+import type { JSX } from "preact";
+import { useHotbar } from "./components/Hotbar/useHotbar.ts";
+import { ResourceScreenWithHotbar } from "./components/Hotbar/ResourceScreenWithHotbar.tsx";
+import { getNamespacesForContext } from "./pages/Dashboard/configHelpers.ts";
 
 function App() {
   // Config existence state: null = checking, true = exists, false = doesn't exist
@@ -91,6 +68,13 @@ function App() {
     } catch {
       return "";
     }
+  });
+  // Hotbar state + behavior (persistence, actions, and keyboard shortcuts)
+  const hotbar = useHotbar({
+    navigationStack,
+    setNavigationStack,
+    setLastResourceType,
+    setLastNamespaceByContext,
   });
 
   // Persist filter to localStorage
@@ -429,11 +413,22 @@ function App() {
   // Show ResourceDetail when current node is a describe view, LogViewer for logs view
   if (navigationStack.length > 0 && config) {
     const currentNode = navigationStack[navigationStack.length - 1];
-    
+
+    // Wrap a resource screen with the hotbar sidebar on the right
+    const withHotbar = (screen: JSX.Element) => (
+      <main class={classes.App}>
+        <ResourceScreenWithHotbar
+          screen={screen}
+          hotbar={hotbar}
+          currentNode={currentNode}
+          dashboardConfig={config}
+        />
+      </main>
+    );
+
     // Render describe view if current node is a describe view
     if (isDescribeView(currentNode) && currentNode.resourceName) {
-      return (
-        <main class={classes.App}>
+      return withHotbar(
           <ResourceDetail
             context={currentNode.context}
             namespace={currentNode.namespace}
@@ -445,14 +440,12 @@ function App() {
             onBack={handleBackNavigation}
             onJump={handleJump}
           />
-        </main>
       );
     }
     
     // Render logs view if current node is a logs view
     if (isLogsView(currentNode) && currentNode.resourceName) {
-      return (
-        <main class={classes.App}>
+      return withHotbar(
           <LogViewer
             context={currentNode.context}
             namespace={currentNode.namespace}
@@ -461,14 +454,12 @@ function App() {
             containerName={currentNode.containerName}
             onBack={handleBackNavigation}
           />
-        </main>
       );
     }
     
     // Otherwise render resource list
     // Key forces remount when navigating, ensuring state (filterText, selectedIndex) initializes from props
-    return (
-      <main class={classes.App}>
+    return withHotbar(
         <ResourceList
           key={navigationStack.length}
           context={currentNode.context}
@@ -509,8 +500,7 @@ function App() {
             currentNode.filterText = text;
           }}
         />
-      </main>
-    );
+      );
   }
 
   // Show loading while checking if config exists
