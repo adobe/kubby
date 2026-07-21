@@ -32,6 +32,10 @@ interface ResourceScreenWithHotbarProps {
   /** The current navigation node (drives the add/save affordances) */
   currentNode: NavigationNode
   dashboardConfig: DashboardConfig
+  /** Effective read-only state (drives the hotbar toggle) */
+  readOnly: boolean
+  /** Toggle the session read-only override */
+  onToggleReadOnly: () => void
 }
 
 export function ResourceScreenWithHotbar({
@@ -39,6 +43,8 @@ export function ResourceScreenWithHotbar({
   hotbar,
   currentNode,
   dashboardConfig,
+  readOnly,
+  onToggleReadOnly,
 }: ResourceScreenWithHotbarProps) {
   // Config-derived values; recomputed only when the config changes
   const knownContexts = useMemo(() => getAllContexts(dashboardConfig), [dashboardConfig])
@@ -59,6 +65,8 @@ export function ResourceScreenWithHotbar({
         currentAlreadySaved={hotbar.entries.some(e => isSameScreen(e, currentNode))}
         namespaceLabels={namespaceLabels}
         knownContexts={knownContexts}
+        readOnly={readOnly}
+        onToggleReadOnly={onToggleReadOnly}
       />
     </div>
   )

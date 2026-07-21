@@ -950,7 +950,7 @@ export function ResourceList({
           </div>
         </div>
 
-        <div class={classes.navigationBar}>
+        <div class={classes.navigationBar} data-kubby-navbar>
           <NavigationBar
             navigationStack={navigationStack}
             onNavigateToNode={onNavigateToNode}

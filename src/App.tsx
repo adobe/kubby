@@ -77,6 +77,9 @@ function App() {
     setLastNamespaceByContext,
   });
 
+  // Session-only read-only override (null = follow the config value). Not persisted.
+  const [readOnlyOverride, setReadOnlyOverride] = useState<boolean | null>(null);
+
   // Persist filter to localStorage
   useEffect(() => {
     try {
@@ -410,9 +413,16 @@ function App() {
     setNavigationStack([...navigationStack, logsNode]);
   };
 
+  // Flip the session read-only override relative to the current effective value
+  const toggleReadOnly = useCallback(() => {
+    setReadOnlyOverride(prev => !(prev ?? config?.readOnly ?? false));
+  }, [config?.readOnly]);
+
   // Show ResourceDetail when current node is a describe view, LogViewer for logs view
   if (navigationStack.length > 0 && config) {
     const currentNode = navigationStack[navigationStack.length - 1];
+    // Effective read-only: session override wins over the config value
+    const effectiveReadOnly = readOnlyOverride ?? config.readOnly;
 
     // Wrap a resource screen with the hotbar sidebar on the right
     const withHotbar = (screen: JSX.Element) => (
@@ -422,6 +432,8 @@ function App() {
           hotbar={hotbar}
           currentNode={currentNode}
           dashboardConfig={config}
+          readOnly={effectiveReadOnly}
+          onToggleReadOnly={toggleReadOnly}
         />
       </main>
     );
@@ -436,6 +448,7 @@ function App() {
             resourceName={currentNode.resourceName}
             dashboardConfig={config}
             navigationStack={navigationStack}
+            readOnly={effectiveReadOnly}
             onNavigateToNode={handleNavigateToNode}
             onBack={handleBackNavigation}
             onJump={handleJump}
@@ -468,7 +481,7 @@ function App() {
           filters={currentNode.filters}
           navigationStack={navigationStack}
           dashboardConfig={config}
-          readOnly={config.readOnly}
+          readOnly={effectiveReadOnly}
           onNavigateToNode={handleNavigateToNode}
           onBack={handleBackNavigation}
           onResourceTypeChange={(newResourceType) => {

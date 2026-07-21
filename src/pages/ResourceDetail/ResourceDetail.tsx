@@ -36,6 +36,8 @@ interface ResourceDetailProps {
   resourceName: string;
   dashboardConfig: DashboardConfig;
   navigationStack: NavigationNode[];
+  /** When true, disables the Edit action (read-only mode) */
+  readOnly: boolean;
   onNavigateToNode: (index: number) => void;
   onBack: () => void;
   onJump?: (targetResourceType: string, filters: ResourceFilter[]) => void;
@@ -44,7 +46,7 @@ interface ResourceDetailProps {
 /**
  * Shortcuts bar for resource detail view
  */
-function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCopy, isSecretResource, isDecoded, onToggleDecode}: {
+function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCopy, isSecretResource, isDecoded, onToggleDecode, readOnly}: {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onEdit: () => void;
@@ -53,6 +55,7 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCo
   isSecretResource: boolean;
   isDecoded: boolean;
   onToggleDecode: () => void;
+  readOnly: boolean;
 }) {
   const canCopy = viewMode === 'yaml' || viewMode === 'json'
   return (
@@ -62,7 +65,8 @@ function DetailShortcutsBar({viewMode, onViewModeChange, onEdit, isEditing, onCo
         shortcut="E"
         onClick={onEdit}
         tabIndex={0}
-        disabled={isEditing}
+        disabled={isEditing || readOnly}
+        tooltip={readOnly ? 'Disabled in read-only mode' : undefined}
       />
       <span class={classes.label}>View: </span>
       <Button
@@ -187,6 +191,7 @@ export function ResourceDetail({
                                  resourceType,
                                  resourceName,
                                  dashboardConfig,
+                                 readOnly,
                                  onBack,
                                  onJump,
                                }: ResourceDetailProps) {
@@ -282,7 +287,7 @@ export function ResourceDetail({
 
   // Handle edit resource
   const handleEdit = useCallback(async () => {
-    if (isEditing) return
+    if (isEditing || readOnly) return
 
     setIsEditing(true)
     setEditError(null)
@@ -302,7 +307,7 @@ export function ResourceDetail({
       setIsEditing(false)
       refocusBody()
     }
-  }, [resourceType, resourceName, context, namespace, refresh, isEditing, refocusBody])
+  }, [resourceType, resourceName, context, namespace, refresh, isEditing, readOnly, refocusBody])
 
   // Handle copy to clipboard (yaml or json only)
   const handleCopy = useCallback(async () => {
@@ -585,7 +590,7 @@ export function ResourceDetail({
 
       <DetailShortcutsBar viewMode={viewMode} onViewModeChange={handleViewModeChange} onEdit={handleEdit}
                           isEditing={isEditing} onCopy={handleCopy} isSecretResource={isSecretResource}
-                          isDecoded={isDecoded} onToggleDecode={handleToggleDecode}/>
+                          isDecoded={isDecoded} onToggleDecode={handleToggleDecode} readOnly={readOnly}/>
     </div>
   )
 }

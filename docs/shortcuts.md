@@ -57,7 +57,7 @@ The hotbar is a toggle-able sidebar of saved screen shortcuts (resource type + c
 | `Opt+H`           | Show / hide the hotbar            |
 | `Opt+1` … `Opt+9` | Jump to the first nine saved slots |
 
-See [Navigation → Hotbar](./navigation.md#hotbar) for adding, renaming, and removing slots.
+See [Navigation → Hotbar](./navigation.md#hotbar) for adding, renaming, and removing slots. The hotbar also holds a **Read-only toggle** (session-only; starts from the config value) that disables mutating actions across the resource screens.
 
 ## Modals & Dialogs
 

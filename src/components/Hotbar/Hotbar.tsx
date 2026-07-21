@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import classes from './Hotbar.module.scss'
 import type { HotbarEntry } from '../../navigation/hotbarTypes.ts'
 import {
@@ -45,6 +45,10 @@ interface HotbarProps {
   namespaceLabels: Map<string, string>
   /** Contexts known to the config; slots with an unknown context are dimmed */
   knownContexts: string[]
+  /** Effective read-only state (drives the toggle) */
+  readOnly: boolean
+  /** Toggle the session read-only override */
+  onToggleReadOnly: () => void
 }
 
 /**
@@ -64,10 +68,37 @@ export function Hotbar({
   currentAlreadySaved,
   namespaceLabels,
   knownContexts,
+  readOnly,
+  onToggleReadOnly,
 }: HotbarProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  // Divider alignment: match the two header dividers on the resource list screen.
+  // Measured relative to the hotbar's own top so any vertical offset cancels out.
+  // null → fall back to the CSS heights (e.g. on the detail/logs screens).
+  const [rowHeights, setRowHeights] = useState<{ row1: number; row2: number } | null>(null)
+
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    const navBar = document.querySelector('[data-kubby-navbar]') as HTMLElement | null
+    if (!root || !navBar) {
+      return
+    }
+    const navRect = navBar.getBoundingClientRect()
+    const rootTop = root.getBoundingClientRect().top
+    // +1px so the read-only row's bottom border overlaps the nav bar's top
+    // border (one continuous line across the screen/sidebar boundary).
+    const next = {
+      row1: Math.round(navRect.top - rootTop) + 1,
+      row2: Math.round(navRect.height),
+    }
+    setRowHeights(prev =>
+      prev && prev.row1 === next.row1 && prev.row2 === next.row2 ? prev : next,
+    )
+  })
 
   // Resizable width (persisted). Only applied to the expanded panel.
   const [width, setWidth] = useState<number>(() => loadHotbarWidth())
@@ -128,9 +159,23 @@ export function Hotbar({
     setDraftName('')
   }
 
+  const readOnlyTitle = readOnly
+    ? 'Read-only mode is ON — click to allow changes'
+    : 'Read-only mode is OFF — click to prevent changes'
+
   if (!open) {
     return (
-      <div class={classes.Hotbar} data-collapsed="true">
+      <div ref={rootRef} class={classes.Hotbar} data-collapsed="true">
+        <button
+          type="button"
+          class={`${classes.railLock} ${readOnly ? classes.railLockOn : ''}`}
+          onClick={onToggleReadOnly}
+          title={readOnlyTitle}
+          aria-label="Toggle read-only mode"
+          aria-pressed={readOnly}
+        >
+          RO
+        </button>
         <button
           class={classes.rail}
           onClick={onToggle}
@@ -152,7 +197,7 @@ export function Hotbar({
       : 'Save the current resource, context and namespace as a shortcut'
 
   return (
-    <div class={classes.Hotbar} style={{ width: `${width}px` }}>
+    <div ref={rootRef} class={classes.Hotbar} style={{ width: `${width}px` }}>
       <div
         class={classes.resizeHandle}
         onMouseDown={startResize}
@@ -160,7 +205,27 @@ export function Hotbar({
         role="separator"
         aria-orientation="vertical"
       />
-      <div class={classes.header}>
+      <div
+        class={classes.readOnlyRow}
+        style={rowHeights ? { height: `${rowHeights.row1}px` } : undefined}
+      >
+        <span class={classes.readOnlyLabel}>Read-only</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={readOnly}
+          class={`${classes.switch} ${readOnly ? classes.switchOn : ''}`}
+          onClick={onToggleReadOnly}
+          title={readOnlyTitle}
+        >
+          <span class={classes.switchKnob} />
+        </button>
+      </div>
+
+      <div
+        class={classes.header}
+        style={rowHeights ? { height: `${rowHeights.row2}px` } : undefined}
+      >
         <span class={classes.title}>Hotbar</span>
         <button
           class={classes.collapseButton}

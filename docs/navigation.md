@@ -71,6 +71,8 @@ Each saved slot captures a **resource type + context + namespace** (e.g. `horizo
 
 Saved slots and the open / collapsed state persist across restarts. Slots whose context is no longer in your config are dimmed.
 
+The sidebar also has a **Read-only toggle** at the top. It starts from your config's `readOnly` value; when on, it disables mutating actions (Edit, Scale, Delete, Rolling Restart, Port-forward, Run) across all resource screens. It is a temporary, session-only switch — it never edits your config file and resets to the config value when you restart Kubby. When the hotbar is collapsed, the same toggle appears as an **RO** button on the rail.
+
 ## View Navigation
 
 ### Dashboard
