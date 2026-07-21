@@ -45,26 +45,18 @@ describe('ResourceList', () => {
   it('navigate with keyboard in items', async () => {
     await navigateToResourceList(DEFAULT_CONTEXT, DEFAULT_NAMESPACE)
 
-    await arrowDown(1)
-    await browser.pause(SHORT_WAIT)
-
-    const row1 = await selectedRow()
-    const text1 = await row1.getText()
+    await selectFirstRow()
+    const text1 = await (await selectedRow()).getText()
     expect(text1.length).toBeGreaterThan(0)
 
-    await arrowDown(2)
+    await arrowDown(1)
     await browser.pause(SHORT_WAIT)
-    const row3 = await selectedRow()
-    const text3 = await row3.getText()
-    expect(text3).not.toBe(text1)
+    const text2 = await (await selectedRow()).getText()
+    expect(text2).not.toBe(text1)
 
     await arrowUp(1)
     await browser.pause(SHORT_WAIT)
-    const row2 = await selectedRow()
-    const text2 = await row2.getText()
-    expect(text2).not.toBe(text3)
-
-    expect(text1).not.toBe(text2)
+    expect(await (await selectedRow()).getText()).toBe(text1)
   })
 
   it('refresh', async () => {

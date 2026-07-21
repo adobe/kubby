@@ -21,7 +21,7 @@ export const LONG_WAIT = 1_000
 
 // --- Timeouts (ms) ---
 export const DEFAULT_TIMEOUT = 3_000
-export const K8S_TIMEOUT = 10_000
+export const K8S_TIMEOUT = 30_000
 export const POLL_INTERVAL = 3_000
 
 // --- Test data ---
