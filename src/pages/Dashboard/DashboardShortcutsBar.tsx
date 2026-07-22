@@ -11,22 +11,32 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import type { Ref } from 'preact';
 import { ShortcutsBar } from '../../components/ShortcutsBar/ShortcutsBar.tsx';
-import { Button } from '../../components/Button/Button.tsx';
+import { Button, type SubItem, type ButtonHandle } from '../../components/Button/Button.tsx';
 import { BarLabel } from '../../components/ShortcutsBar/BarLabel.tsx';
-import gearIcon from '../../assets/icons/gear.svg';
-import classes from './Dashboard.module.scss';
 
 interface DashboardShortcutsBarProps {
   onNextGroup: () => void;
   onPreviousGroup: () => void;
   onArrowNavigation: (direction: 'up' | 'down' | 'left' | 'right') => void;
+  onRefresh: () => void;
+  configButtonRef?: Ref<ButtonHandle>;
+  onConfigMenuOpenChange?: (isOpen: boolean) => void;
 }
 
-export function DashboardShortcutsBar({ 
-  onNextGroup, 
-  onPreviousGroup, 
-  onArrowNavigation 
+const CONFIG_SUB_ITEMS: SubItem[] = [
+  { code: 'open', label: 'Open config file', shortcut: 'O' },
+  { code: 'refresh', label: 'Refresh', shortcut: 'R' },
+];
+
+export function DashboardShortcutsBar({
+  onNextGroup,
+  onPreviousGroup,
+  onArrowNavigation,
+  onRefresh,
+  configButtonRef,
+  onConfigMenuOpenChange,
 }: DashboardShortcutsBarProps) {
   const handleOpenConfig = async () => {
     try {
@@ -34,6 +44,14 @@ export function DashboardShortcutsBar({
       await invoke('open_file_in_editor', { path: configPath });
     } catch (e) {
       console.error('Failed to open config file:', e);
+    }
+  };
+
+  const handleConfigAction = (code: string) => {
+    if (code === 'open') {
+      handleOpenConfig();
+    } else if (code === 'refresh') {
+      onRefresh();
     }
   };
 
@@ -79,13 +97,17 @@ export function DashboardShortcutsBar({
         tooltip="Navigate down"
       />
       <div style={{ flexGrow: 1 }} />
-      <button
-        class={classes.settingsButton}
-        onClick={handleOpenConfig}
-        title="Open configuration file"
-      >
-        <img src={gearIcon} alt="Settings" />
-      </button>
+      <Button
+        ref={configButtonRef}
+        label="Config"
+        shortcut="Opt+C"
+        subItems={CONFIG_SUB_ITEMS}
+        onSubItemClick={handleConfigAction}
+        onOpenChange={onConfigMenuOpenChange}
+        dropDirection="up"
+        tabIndex={0}
+        tooltip="Configuration options"
+      />
     </ShortcutsBar>
   );
 }

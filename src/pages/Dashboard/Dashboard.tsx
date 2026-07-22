@@ -16,6 +16,8 @@ import classes from './Dashboard.module.scss'
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
 import {NamespaceBadge} from '../../components/NamespaceBadge/NamespaceBadge.tsx'
 import {DashboardShortcutsBar} from './DashboardShortcutsBar.tsx'
+import type {ButtonHandle} from '../../components/Button/Button.tsx'
+import {isAltModifierPressed} from '../../navigation/keyboardShortcuts.ts'
 
 export interface ContextGroup {
   name: string;
@@ -444,6 +446,7 @@ interface DashboardProps {
   filter: string;
   onFilterChange: (filter: string) => void;
   onCellClick: (context: string, namespace: string) => void;
+  onRefresh: () => void;
 }
 
 export function Dashboard({
@@ -452,8 +455,12 @@ export function Dashboard({
                             filter,
                             onFilterChange,
                             onCellClick,
+                            onRefresh,
                           }: DashboardProps) {
   const filterInputRef = useRef<HTMLInputElement>(null)
+  const configButtonRef = useRef<ButtonHandle>(null)
+  // Tracked via a ref so key handlers can consult it without re-registering listeners.
+  const isConfigMenuOpenRef = useRef(false)
   // Track last focused position (row, col) per group
   const groupPositionsRef = useRef<Map<number, { row: number; col: number }>>(new Map())
   // Track the last focused group index and element
@@ -681,6 +688,18 @@ export function Dashboard({
       const target = e.target as HTMLElement
       const isInInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
+      // Opt+C toggles the Config menu (works globally, even from the filter input).
+      // Use e.code because Opt+letter produces special characters on macOS (e.g., Opt+C → 'ç').
+      if (e.code === 'KeyC' && isAltModifierPressed(e) && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        configButtonRef.current?.toggle()
+        return
+      }
+
+      // While the Config menu is open it owns the keyboard (the Button component
+      // handles O/R/arrows/Escape); don't let key presses fall through to the filter.
+      if (isConfigMenuOpenRef.current) return
+
       // Escape clears filter (works even in input)
       if (e.key === 'Escape') {
         if (filter) {
@@ -729,6 +748,8 @@ export function Dashboard({
   useEffect(() => {
     function handleTabNavigation(e: KeyboardEvent) {
       if (e.key !== 'Tab') return
+      // Let the open Config menu handle Tab (it closes on Tab) instead of moving group focus.
+      if (isConfigMenuOpenRef.current) return
 
       const sections = Array.from(document.querySelectorAll(`.${classes.dashboardSection}`))
       const filterInput = filterInputRef.current
@@ -894,6 +915,9 @@ export function Dashboard({
         onNextGroup={() => navigateToGroup('next')}
         onPreviousGroup={() => navigateToGroup('previous')}
         onArrowNavigation={handleArrowNavigation}
+        onRefresh={onRefresh}
+        configButtonRef={configButtonRef}
+        onConfigMenuOpenChange={(isOpen) => { isConfigMenuOpenRef.current = isOpen }}
       />
     </div>
   )

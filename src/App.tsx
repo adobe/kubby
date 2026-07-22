@@ -558,6 +558,7 @@ function App() {
         filter={filter}
         onFilterChange={setFilter}
         onCellClick={handleCellClick}
+        onRefresh={loadConfig}
       />
     </main>
   );
