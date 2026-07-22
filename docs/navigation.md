@@ -117,7 +117,16 @@ Streaming log view:
 |----------|--------|
 | `↑` `↓` | Scroll (when auto-scroll off) |
 | `A` | Toggle auto-scroll |
-| `Esc` | Close log viewer |
+| `C` | Copy logs |
+| `D` | Open the download menu |
+| `Esc` | Close the download menu, then close the log viewer |
+
+**Downloading logs.** Pressing `D` (or clicking **Download**) opens a small menu with two choices, both saved to `~/Downloads`:
+
+- **All logs** (`A`) — fetches the complete log for the container from the cluster (not just what is loaded on screen).
+- **Visible logs** (`V`) — saves only what is currently loaded in the viewer (the filtered lines when a text filter is active).
+
+Tick **Show logs from previous terminated container** (`P`) to have **All logs** also include the previously terminated container's log (when one exists). While the menu is open `Esc` closes it.
 
 ## Back Navigation
 

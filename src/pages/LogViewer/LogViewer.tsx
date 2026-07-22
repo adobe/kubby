@@ -449,6 +449,15 @@ export function LogViewer({
   const [timestamps, setTimestamps] = useState(false)
   const [autoscroll, setAutoscroll] = useState(true)
   const [formattedLines, setFormattedLines] = useState<Set<number>>(new Set())
+  // Transient status shown after saving logs to a file
+  const [saveStatus, setSaveStatus] = useState<{ text: string; error: boolean } | null>(null)
+
+  // Download options popover: choose "All logs" vs "Visible logs" and whether
+  // to include the previously terminated container.
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
+  const [includePrevious, setIncludePrevious] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const downloadRef = useRef<HTMLDivElement>(null)
   
   // Log mode: 'current' shows live logs, 'previous' shows logs from the previously terminated container
   const [logMode, setLogMode] = useState<'current' | 'previous'>('current')
@@ -934,6 +943,72 @@ export function LogViewer({
     refocusLogs()
   }, [filteredLogs, refocusLogs])
 
+  // Build a sanitized download file name for the current resource / container.
+  const buildLogFileName = useCallback((scope: string) => {
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+    const base = containerName ? `${resourceName}-${containerName}` : resourceName
+    return `${base}-${scope}-${ts}.log`.replace(/[^a-zA-Z0-9._-]/g, '_')
+  }, [resourceName, containerName])
+
+  // Download only what is currently loaded in the viewer — the filtered lines
+  // when a text filter is active, otherwise the whole in-memory buffer.
+  const downloadVisible = useCallback(async () => {
+    const lines = filterText.trim() ? filteredLogs.map(({ log }) => log) : logs
+    if (lines.length === 0) return
+    const fileName = buildLogFileName('visible')
+    try {
+      const path = await invoke<string>('save_pod_logs', { fileName, contents: lines.join('\n') })
+      setSaveStatus({ text: `Downloaded to ${path}`, error: false })
+      setTimeout(() => setSaveStatus(null), 5000)
+    } catch (e) {
+      setSaveStatus({ text: `Download failed: ${e instanceof Error ? e.message : String(e)}`, error: true })
+      setTimeout(() => setSaveStatus(null), 8000)
+    }
+    setDownloadMenuOpen(false)
+    refocusLogs()
+  }, [filterText, filteredLogs, logs, buildLogFileName, refocusLogs])
+
+  // Fetch the complete log from the cluster (optionally including the previous
+  // terminated container) and save it to ~/Downloads.
+  const downloadAll = useCallback(async () => {
+    const fileName = buildLogFileName(includePrevious ? 'all-with-previous' : 'all')
+    setIsDownloading(true)
+    try {
+      const path = await invoke<string>('download_pod_logs', {
+        resourceType,
+        resourceName,
+        context,
+        namespace,
+        containerName: containerName || null,
+        timestamps,
+        includePrevious,
+        fileName,
+      })
+      setSaveStatus({ text: `Downloaded to ${path}`, error: false })
+      setTimeout(() => setSaveStatus(null), 5000)
+    } catch (e) {
+      setSaveStatus({ text: `Download failed: ${e instanceof Error ? e.message : String(e)}`, error: true })
+      setTimeout(() => setSaveStatus(null), 8000)
+    }
+    setIsDownloading(false)
+    setDownloadMenuOpen(false)
+    refocusLogs()
+  }, [resourceType, resourceName, context, namespace, containerName, timestamps, includePrevious, buildLogFileName, refocusLogs])
+
+  // Close the download menu when clicking outside of it
+  useEffect(() => {
+    if (!downloadMenuOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) {
+        setDownloadMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [downloadMenuOpen])
+
   // Refresh (restart stream)
   const handleRefresh = useCallback(() => {
     startStream()
@@ -970,6 +1045,13 @@ export function LogViewer({
       // Escape - clear filter first, then go back
       // Note: FilterInput handles its own Escape (blur/clear) and stops propagation
       if (e.key === 'Escape') {
+        // Close the download menu first if it is open
+        if (downloadMenuOpen) {
+          e.preventDefault()
+          setDownloadMenuOpen(false)
+          refocusLogs()
+          return
+        }
         // If in an input, let it handle its own Escape
         if (isInput) {
           return
@@ -985,6 +1067,25 @@ export function LogViewer({
       }
 
       if (isInput) return
+
+      // When the download menu is open, single keys pick its options
+      if (downloadMenuOpen) {
+        if (e.code === 'KeyA' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault()
+          if (!isDownloading) downloadAll()
+          return
+        }
+        if (e.code === 'KeyV' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault()
+          if (!isDownloading) downloadVisible()
+          return
+        }
+        if (e.code === 'KeyP' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault()
+          setIncludePrevious((prev) => !prev)
+          return
+        }
+      }
 
       // "/" - Focus filter input
       if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -1025,6 +1126,13 @@ export function LogViewer({
       if (e.code === 'KeyC' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
         handleCopy()
+        return
+      }
+
+      // D - Toggle the download options menu
+      if (e.code === 'KeyD' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        setDownloadMenuOpen((open) => !open)
         return
       }
 
@@ -1089,7 +1197,7 @@ export function LogViewer({
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll, handleToggleLogMode, filteredLogs.length, filterText])
+  }, [onBack, handleRefresh, handleCopy, handleToggleWrap, handleToggleTimestamps, handleToggleAutoscroll, handleToggleLogMode, filteredLogs.length, filterText, downloadMenuOpen, downloadAll, downloadVisible, isDownloading, refocusLogs])
 
   return (
     <div class={classes.LogViewer}>
@@ -1207,6 +1315,69 @@ export function LogViewer({
           onClick={handleCopy}
           tabIndex={0}
         />
+        <div class={classes.downloadWrapper} ref={downloadRef}>
+          <Button
+            label="Download"
+            shortcut="D"
+            onClick={() => setDownloadMenuOpen((open) => !open)}
+            tabIndex={0}
+            className={downloadMenuOpen ? classes.activeButton : undefined}
+            tooltip="Download logs to ~/Downloads"
+          />
+          {downloadMenuOpen && (
+            <div class={classes.downloadMenu} role="dialog" aria-label="Download logs">
+              <button
+                type="button"
+                class={classes.downloadOption}
+                onClick={downloadAll}
+                disabled={isDownloading}
+              >
+                <span class={classes.downloadOptionRow}>
+                  <span class={classes.downloadOptionTitle}>
+                    {isDownloading ? 'Downloading…' : 'All logs'}
+                  </span>
+                  <kbd class={classes.downloadShortcut}>A</kbd>
+                </span>
+                <span class={classes.downloadOptionHint}>
+                  Fetch the complete log from the cluster
+                  {includePrevious ? ', including the previous container' : ''}
+                </span>
+              </button>
+              <button
+                type="button"
+                class={classes.downloadOption}
+                onClick={downloadVisible}
+                disabled={isDownloading || logs.length === 0}
+              >
+                <span class={classes.downloadOptionRow}>
+                  <span class={classes.downloadOptionTitle}>Visible logs</span>
+                  <kbd class={classes.downloadShortcut}>V</kbd>
+                </span>
+                <span class={classes.downloadOptionHint}>
+                  {filterText.trim() ? 'Only the filtered lines shown' : 'Only what is loaded in the viewer'}
+                </span>
+              </button>
+              <label class={classes.downloadCheckbox}>
+                <input
+                  type="checkbox"
+                  aria-label="Show logs from previous terminated container"
+                  checked={includePrevious}
+                  onChange={(e) => setIncludePrevious((e.target as HTMLInputElement).checked)}
+                />
+                <span class={classes.downloadCheckboxLabel}>Show logs from previous terminated container</span>
+                <kbd class={classes.downloadShortcut}>P</kbd>
+              </label>
+            </div>
+          )}
+        </div>
+        {saveStatus && (
+          <span
+            class={`${classes.saveStatus} ${saveStatus.error ? classes.saveError : ''}`}
+            title={saveStatus.text}
+          >
+            {saveStatus.text}
+          </span>
+        )}
         <span class={classes.lineCount}>
           {filterText ? (
             <>

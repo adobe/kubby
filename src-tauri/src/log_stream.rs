@@ -287,3 +287,136 @@ pub async fn fetch_historical_logs(
     
     Ok(filtered)
 }
+
+/// Write log contents to a file in the user's Downloads directory (falling back
+/// to the home directory). Returns the absolute path of the written file.
+async fn write_to_downloads(file_name: &str, contents: &str) -> Result<String, String> {
+    // Resolve the home directory (HOME on macOS/Linux, USERPROFILE on Windows)
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Could not resolve home directory".to_string())?;
+
+    // Prefer ~/Downloads, fall back to the home directory itself
+    let downloads = std::path::Path::new(&home).join("Downloads");
+    let dir = if downloads.is_dir() {
+        downloads
+    } else {
+        std::path::PathBuf::from(&home)
+    };
+
+    // Sanitize the file name so it can't escape the target directory
+    let safe_name = file_name.replace(['/', '\\'], "-");
+    let path = dir.join(safe_name);
+
+    tokio::fs::write(&path, contents)
+        .await
+        .map_err(|e| format!("Failed to save logs: {}", e))?;
+
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// Save already-loaded log contents to a file in the user's Downloads directory.
+/// Returns the absolute path of the written file.
+#[tauri::command]
+pub async fn save_pod_logs(file_name: String, contents: String) -> Result<String, String> {
+    write_to_downloads(&file_name, &contents).await
+}
+
+/// Fetch the complete log for a resource in a single (non-streaming) call.
+/// `previous` targets the previously terminated container instance.
+async fn fetch_full_logs(
+    resource_type: &str,
+    resource_name: &str,
+    context: &str,
+    namespace: &str,
+    container_name: &Option<String>,
+    timestamps: bool,
+    previous: bool,
+) -> Result<String, String> {
+    let mut args = vec![
+        "logs".to_string(),
+        "--tail=-1".to_string(), // -1 = all lines
+        format!("{}/{}", resource_type, resource_name),
+        "--context".to_string(),
+        context.to_string(),
+        "--namespace".to_string(),
+        namespace.to_string(),
+    ];
+
+    if timestamps {
+        args.push("--timestamps".to_string());
+    }
+    if previous {
+        args.push("--previous".to_string());
+    }
+    if let Some(container) = container_name {
+        args.push("-c".to_string());
+        args.push(container.clone());
+    } else {
+        // Show logs from all containers when viewing a pod or higher-level resource
+        args.push("--all-containers".to_string());
+        args.push("--prefix".to_string());
+    }
+
+    let result = kubectl::run(&args).await?;
+    if !result.output.status.success() {
+        let stderr = String::from_utf8_lossy(&result.output.stderr);
+        return Err(format!("kubectl logs failed: {}", stderr.trim()));
+    }
+    Ok(String::from_utf8_lossy(&result.output.stdout).to_string())
+}
+
+/// Fetch the full container log from the cluster and write it to the user's
+/// Downloads directory. When `include_previous` is set, the previously
+/// terminated container's log is prepended (when one exists). Returns the
+/// absolute path of the written file.
+#[tauri::command]
+pub async fn download_pod_logs(
+    resource_type: String,
+    resource_name: String,
+    context: String,
+    namespace: String,
+    container_name: Option<String>,
+    timestamps: bool,
+    include_previous: bool,
+    file_name: String,
+) -> Result<String, String> {
+    let current = fetch_full_logs(
+        &resource_type,
+        &resource_name,
+        &context,
+        &namespace,
+        &container_name,
+        timestamps,
+        false,
+    )
+    .await?;
+
+    let contents = if include_previous {
+        // The previous container may not exist (never restarted); if the call
+        // fails or returns nothing, fall back to the current log rather than
+        // failing the whole download.
+        match fetch_full_logs(
+            &resource_type,
+            &resource_name,
+            &context,
+            &namespace,
+            &container_name,
+            timestamps,
+            true,
+        )
+        .await
+        {
+            Ok(previous) if !previous.trim().is_empty() => format!(
+                "===== previous terminated container =====\n{}\n===== current container =====\n{}",
+                previous.trim_end(),
+                current
+            ),
+            _ => current,
+        }
+    } else {
+        current
+    };
+
+    write_to_downloads(&file_name, &contents).await
+}

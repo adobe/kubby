@@ -59,6 +59,21 @@ The hotbar is a toggle-able sidebar of saved screen shortcuts (resource type + c
 
 See [Navigation → Hotbar](./navigation.md#hotbar) for adding, renaming, and removing slots. The hotbar also holds a **Read-only toggle** (session-only; starts from the config value) that disables mutating actions across the resource screens.
 
+## Log Viewer
+
+| Shortcut | Action                          |
+|----------|---------------------------------|
+| `W`      | Toggle line wrap                |
+| `T`      | Toggle timestamps               |
+| `A`      | Toggle auto-scroll              |
+| `P`      | Toggle current / previous logs  |
+| `C`      | Copy logs                       |
+| `D`      | Open the download menu          |
+| `Ctrl+R` | Restart the log stream          |
+| `Esc`    | Close the log viewer            |
+
+While the download menu (`D`) is open: `A` downloads all logs, `V` downloads the visible logs, `P` toggles including the previous terminated container, and `Esc` closes the menu.
+
 ## Modals & Dialogs
 
 | Shortcut | Action         |
