@@ -152,24 +152,38 @@ namespaces:
 #### Namespace Labels
 
 Generated namespace names can be long and hard to read. Add an optional `label`
-to give a namespace a short, human-friendly badge. The badge is shown before the
-full name in the dashboard rows, and as a prefix inside the resource list
-namespace selector (the input keeps only the real namespace name, so copying it
-yields the actual name and not the label):
+to give a namespace a short, human-friendly name. In the dashboard, a labeled
+namespace row shows only the label. Hover a cell to see its label, namespace and
+context, or hover the row to list its namespaces. In the resource list namespace
+selector the label is shown as a badge prefix (the input keeps only the real
+namespace name, so copying it yields the actual name and not the label).
+
+Generated names often differ per cluster. Give each one the same label and
+restrict it to its contexts, and the dashboard merges them into a single row,
+where each cell opens the namespace configured for that context:
 
 ```yaml
 namespaces:
-  - name: "ns-team-oneadobe--semantic-profile-query-deploy--ab93-05a1b20f"
-    label: "query-api"
-  - name: "ns-team-oneadobe--semantic-profile-query-deploy--65a5-e3a99418"
-    label: "obs-enm"
+  - name: "shop-checkout-deploy-4f1a9c2e"
+    label: "checkout-api"
+    contexts: ["prod-us-east"]
+  - name: "shop-checkout-deploy-b83d2a6f"
+    label: "checkout-api"
+    contexts: ["prod-us-west"]
+  - name: "shop-checkout-deploy-7c09e41d"
+    label: "checkout-worker"
+    contexts: ["prod-us-east"]
 ```
+
+Rows merge only within the same namespace group. If two namespaces with the
+same label share a context (or one has no `contexts` list, so it applies to all
+of them), they stay on separate rows so that every cell still maps to exactly
+one namespace.
 
 The label is matched by exact namespace name, so different namespaces sharing a
 common prefix can each have their own label. The label is display-only and does
-not change the namespace passed to `kubectl`. In the resource list namespace
-selector you can also filter by the label: type part of it and the dropdown
-narrows to the matching namespaces.
+not change the namespace passed to `kubectl`. You can filter by the label in the
+dashboard filter and in the resource list namespace selector.
 
 ## Context Name Parsing
 
@@ -183,7 +197,7 @@ The built-in default pattern matches the `<env>-<region>-<cluster>` format:
 ^(?<env>[^-]+)-(?<region>[^-]+)-(?<cluster>.+)$
 ```
 
-For example, `prod-va7-ethos320-prod-va7` → `env=prod`, `region=va7`, `cluster=ethos320-prod-va7`.
+For example, `prod-useast1-k8s12-blue` → `env=prod`, `region=useast1`, `cluster=k8s12-blue`.
 
 ### Custom Patterns
 
@@ -196,9 +210,9 @@ contextNamePattern: "^(?<env>[^-]+)-(?<region>[^-]+)-(?<cluster>.+)$"
 
 contexts:
   groups:
-    - name: "Ethos Clusters"
+    - name: "Platform Clusters"
       # Group-level override — takes priority over root
-      contextNamePattern: "^(?<cluster>ethos[^-]+)-(?<env>[^-]+)-(?<region>.+)$"
+      contextNamePattern: "^(?<cluster>k8s[^-]+)-(?<env>[^-]+)-(?<region>.+)$"
       contexts: [...]
       namespaces: [...]
 
@@ -217,8 +231,8 @@ The pattern must define these three named groups (all are required for a match t
 | Group             | Description               | Example                |
 |-------------------|---------------------------|------------------------|
 | `(?<env>...)`     | Environment identifier    | `prod`, `stage`, `dev` |
-| `(?<region>...)`  | Region or location        | `va7`, `us-east-1`     |
-| `(?<cluster>...)` | Cluster name or remainder | `ethos11`, `aks-0`     |
+| `(?<region>...)`  | Region or location        | `useast1`, `us-east-1` |
+| `(?<cluster>...)` | Cluster name or remainder | `k8s12`, `aks-0`       |
 
 ::: tip Unmatched patterns
 If the pattern doesn't match a context name, Kubby falls back to splitting on `-` and assigning the first part as `env`,
@@ -241,28 +255,28 @@ Configure a regex with named capture groups `(?<lowlight>...)` and `(?<highlight
 
 ```yaml
 # Root-level — applies to all namespace groups unless overridden
-namespaceNamePattern: "^(?<lowlight>ns-team-[^-]+-)(?<highlight>.+)$"
+namespaceNamePattern: "^(?<lowlight>team-[^-]+-)(?<highlight>.+)$"
 
 contexts:
   groups:
     - name: "Services"
       # Group-level override — takes priority over root
-      namespaceNamePattern: "^(?<lowlight>ns-team-ups-)(?<highlight>.+)$"
+      namespaceNamePattern: "^(?<lowlight>team-shop-)(?<highlight>.+)$"
       namespaces:
-        - group: "Lookup"
+        - group: "Checkout"
           # Namespace-group-level override — takes priority over group and root
-          namespaceNamePattern: "^(?<lowlight>ns-team-ups-lookup-)(?<highlight>.+)$"
+          namespaceNamePattern: "^(?<lowlight>team-shop-checkout-)(?<highlight>.+)$"
           namespaces:
-            - name: ns-team-ups-lookup-prod
-            - name: ns-team-ups-lookup-stage
+            - name: team-shop-checkout-prod
+            - name: team-shop-checkout-stage
 ```
 
 ### Named Capture Groups
 
-| Group               | Description                      | Example                        |
-|---------------------|----------------------------------|--------------------------------|
-| `(?<lowlight>...)`  | Dimmed prefix part (optional)    | `ns-team-ups-`, `ns-team-`     |
-| `(?<highlight>...)` | Bold main part (always rendered) | `lookup-prod`, `accessx-stage` |
+| Group               | Description                      | Example                           |
+|---------------------|----------------------------------|-----------------------------------|
+| `(?<lowlight>...)`  | Dimmed prefix part (optional)    | `team-shop-`, `team-`             |
+| `(?<highlight>...)` | Bold main part (always rendered) | `checkout-prod`, `payments-stage` |
 
 - Both groups are optional in the match — if `lowlight` is absent, only `highlight` is shown.
 - The render order follows the order they appear in the namespace string (left to right).
@@ -272,10 +286,10 @@ contexts:
 To keep a trailing dash as part of `lowlight`, include it in the group:
 
 ```
-^(?<lowlight>ns-team-ups-)(?<highlight>.+)$
+^(?<lowlight>team-shop-)(?<highlight>.+)$
 ```
 
-This renders `ns-team-ups-` dimmed and `lookup-prod` bold.
+This renders `team-shop-` dimmed and `checkout-prod` bold.
 :::
 
 ::: tip Unmatched patterns
