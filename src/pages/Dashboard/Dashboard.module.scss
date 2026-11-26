@@ -261,6 +261,42 @@
   color: var(--fgColor-default);
 }
 
+// Floating details card shown when hovering a matrix cell
+.cellTooltip {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.75rem;
+  row-gap: 0.35rem;
+  align-items: baseline;
+  padding: 0.5rem 0.65rem;
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.cellTooltipKey {
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fgColor-muted);
+}
+
+.cellTooltipValue {
+  font-size: 0.7rem;
+  color: var(--fgColor-default);
+}
+
+.cellTooltipLabel {
+  font-weight: 600;
+  color: var(--kubby-accent-fgColor-rest);
+}
+
 // Matrix cells
 .cell {
   padding: 0.2rem;

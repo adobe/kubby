@@ -10,11 +10,10 @@
  * governing permissions and limitations under the License.
  */
 
-import {useEffect, useRef, useState} from 'preact/hooks'
+import {useEffect, useLayoutEffect, useRef, useState} from 'preact/hooks'
 import {getVersion} from '@tauri-apps/api/app'
 import classes from './Dashboard.module.scss'
 import {NavigationBar} from '../../components/NavigationBar/NavigationBar.tsx'
-import {NamespaceBadge} from '../../components/NamespaceBadge/NamespaceBadge.tsx'
 import {DashboardShortcutsBar} from './DashboardShortcutsBar.tsx'
 import type {ButtonHandle} from '../../components/Button/Button.tsx'
 import {isAltModifierPressed} from '../../navigation/keyboardShortcuts.ts'
@@ -188,7 +187,42 @@ function findCommonPrefix(strings: string[]): string {
 }
 
 function getNamespacePrefixForGroup(namespaces: NamespaceItem[]): string {
-  return findCommonPrefix(namespaces.map((ns) => ns.name))
+  // Labeled namespaces render their label instead of the name, so they don't take part in the prefix.
+  return findCommonPrefix(namespaces.filter((ns) => !ns.label).map((ns) => ns.name))
+}
+
+/** One dashboard row: a single namespace, or all namespaces sharing a label (one per context). */
+interface NamespaceRow {
+  key: string;
+  label: string | null;
+  namespaces: NamespaceItem[];
+}
+
+function namespacesShareContext(a: NamespaceItem, b: NamespaceItem): boolean {
+  if (a.contexts === null || b.contexts === null) return true
+  return a.contexts.some((ctx) => b.contexts!.includes(ctx))
+}
+
+/**
+ * Collapse namespaces with the same label into one row, so generated per-region names
+ * (one namespace per context) show up as a single labeled row. A namespace joins the
+ * first row with its label that has no namespace in any of its contexts; otherwise it
+ * starts a new row, so every cell still resolves to exactly one namespace.
+ */
+function buildNamespaceRows(namespaces: NamespaceItem[]): NamespaceRow[] {
+  const rows: NamespaceRow[] = []
+  for (const ns of namespaces) {
+    const label = ns.label || null
+    const row = label
+      ? rows.find((r) => r.label === label && !r.namespaces.some((other) => namespacesShareContext(other, ns)))
+      : undefined
+    if (row) {
+      row.namespaces.push(ns)
+    } else {
+      rows.push({key: ns.name, label, namespaces: [ns]})
+    }
+  }
+  return rows
 }
 
 interface ParsedNamespace {
@@ -421,7 +455,7 @@ function filterNamespaces(
     return {filtered: namespaceGroups, hasMatches: true}
   }
 
-  const allNamespaces = namespaceGroups.flatMap(ng => ng.namespaces.map(ns => ns.name))
+  const allNamespaces = namespaceGroups.flatMap(ng => ng.namespaces.map(ns => `${ns.name} ${ns.label ?? ''}`))
 
   const applicableWords = filterWords.filter(word =>
     allNamespaces.some(ns => textContainsWord(ns, word)),
@@ -433,7 +467,7 @@ function filterNamespaces(
 
   const filtered: NamespaceGroup[] = namespaceGroups.map(ng => ({
     ...ng,
-    namespaces: ng.namespaces.filter(ns => matchesFilter(ns.name, applicableWords)),
+    namespaces: ng.namespaces.filter(ns => matchesFilter(`${ns.name} ${ns.label ?? ''}`, applicableWords)),
   }))
 
   return {filtered, hasMatches: true}
@@ -967,10 +1001,19 @@ function DashboardTable({group, groupIndex, filterWords, groupPositionsRef, onCe
     }
   }, [])
 
-  // Track column hover within this table
+  // Track column hover and the hovered cell's tooltip within this table
+  const [cellTooltip, setCellTooltip] = useState<CellTooltipData | null>(null)
   useEffect(() => {
     const table = tableRef.current
     if (!table) return
+
+    let showTimer: number | undefined
+    let shown: CellTooltipData | null = null
+    const showTooltip = (data: CellTooltipData | null) => {
+      clearTimeout(showTimer)
+      shown = data
+      setCellTooltip(data)
+    }
 
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement
@@ -982,17 +1025,43 @@ function DashboardTable({group, groupIndex, filterWords, groupPositionsRef, onCe
         // Clear when hovering over non-cell areas (headers, etc.)
         setHoveredCol(null)
       }
+
+      const button = target.closest(`.${classes.cellButton}`) as HTMLElement | null
+      if (!button) {
+        showTooltip(null)
+        return
+      }
+      const {namespace = '', context = '', label} = button.dataset
+      if (shown?.namespace === namespace && shown.context === context) return
+      const data = {namespace, context, label: label ?? null, anchor: button.getBoundingClientRect()}
+      if (shown) {
+        // Already showing a tooltip: follow the pointer from cell to cell without a delay
+        showTooltip(data)
+      } else {
+        clearTimeout(showTimer)
+        showTimer = window.setTimeout(() => showTooltip(data), 400)
+      }
     }
 
     const handleMouseLeave = () => {
       setHoveredCol(null)
+      showTooltip(null)
     }
+    // The tooltip is anchored to the cell's viewport position, so hide it once anything moves
+    const hideTooltip = () => showTooltip(null)
 
     table.addEventListener('mouseover', handleMouseOver)
     table.addEventListener('mouseleave', handleMouseLeave)
+    table.addEventListener('mousedown', hideTooltip)
+    document.addEventListener('scroll', hideTooltip, true)
+    document.addEventListener('keydown', hideTooltip, true)
     return () => {
+      clearTimeout(showTimer)
       table.removeEventListener('mouseover', handleMouseOver)
       table.removeEventListener('mouseleave', handleMouseLeave)
+      table.removeEventListener('mousedown', hideTooltip)
+      document.removeEventListener('scroll', hideTooltip, true)
+      document.removeEventListener('keydown', hideTooltip, true)
     }
   }, [])
 
@@ -1089,13 +1158,15 @@ function DashboardTable({group, groupIndex, filterWords, groupPositionsRef, onCe
           <tbody>
           {filteredNamespaceGroups.map((ng, ngIndex) => {
             if (ng.namespaces.length === 0) return null
+            const rows = buildNamespaceRows(ng.namespaces)
             const startRowIndex = runningRowIndex
-            runningRowIndex += ng.namespaces.length
+            runningRowIndex += rows.length
             const namespaceLowlight = ng.namespaceNamePattern ? '' : getNamespacePrefixForGroup(ng.namespaces)
             return (
               <NamespaceGroupRows
                 key={ng.name ?? ngIndex}
                 namespaceGroup={ng}
+                rows={rows}
                 filteredContextGroups={filteredContextGroups}
                 showGroupHeader={hasNamespaceGroups}
                 namespaceNamePattern={ng.namespaceNamePattern}
@@ -1112,12 +1183,61 @@ function DashboardTable({group, groupIndex, filterWords, groupPositionsRef, onCe
           </tbody>
         </table>
       </div>
+      {cellTooltip && <CellTooltip tooltip={cellTooltip}/>}
     </section>
+  )
+}
+
+interface CellTooltipData {
+  namespace: string;
+  context: string;
+  label: string | null;
+  anchor: DOMRect;
+}
+
+/** Floating details card for a dashboard cell, placed below the cell (above it when there is no room). */
+function CellTooltip({tooltip}: { tooltip: CellTooltipData }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
+
+  // Measure before paint so the card never flashes at the wrong position
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const {width, height} = el.getBoundingClientRect()
+    const {anchor} = tooltip
+    const margin = 8
+    const gap = 6
+    const left = Math.max(margin, Math.min(anchor.left + anchor.width / 2 - width / 2, window.innerWidth - width - margin))
+    const below = anchor.bottom + gap
+    const top = below + height > window.innerHeight - margin ? anchor.top - gap - height : below
+    setPosition({left, top})
+  }, [tooltip])
+
+  return (
+    <div
+      ref={ref}
+      role="tooltip"
+      class={classes.cellTooltip}
+      style={position ? {left: `${position.left}px`, top: `${position.top}px`} : {visibility: 'hidden'}}
+    >
+      {tooltip.label && (
+        <>
+          <span class={classes.cellTooltipKey}>Label</span>
+          <span class={`${classes.cellTooltipValue} ${classes.cellTooltipLabel}`}>{tooltip.label}</span>
+        </>
+      )}
+      <span class={classes.cellTooltipKey}>Namespace</span>
+      <span class={classes.cellTooltipValue}>{tooltip.namespace}</span>
+      <span class={classes.cellTooltipKey}>Context</span>
+      <span class={classes.cellTooltipValue}>{tooltip.context}</span>
+    </div>
   )
 }
 
 interface NamespaceGroupRowsProps {
   namespaceGroup: NamespaceGroup;
+  rows: NamespaceRow[];
   filteredContextGroups: FilteredContextGroup[];
   showGroupHeader: boolean;
   namespaceNamePattern: string | null;
@@ -1132,6 +1252,7 @@ interface NamespaceGroupRowsProps {
 
 function NamespaceGroupRows({
                               namespaceGroup,
+                              rows,
                               filteredContextGroups,
                               showGroupHeader,
                               namespaceNamePattern,
@@ -1171,48 +1292,56 @@ function NamespaceGroupRows({
           <td colSpan={contextsWithBoundary.length} class={classes.namespaceGroupFill}></td>
         </tr>
       )}
-      {namespaceGroup.namespaces.map((ns, nsIndex) => {
-        const {lowlight, highlight, lowlightFirst} = namespaceNamePattern
-          ? parseNamespaceName(ns.name, namespaceNamePattern)
-          : {
-            lowlight: namespaceLowlight && ns.name.startsWith(namespaceLowlight) ? namespaceLowlight : '',
-            highlight: namespaceLowlight && ns.name.startsWith(namespaceLowlight) ? ns.name.slice(namespaceLowlight.length) : ns.name,
-            lowlightFirst: true,
-          }
-        const rowIndex = startRowIndex + nsIndex
+      {rows.map((row, rowOffset) => {
+        const rowIndex = startRowIndex + rowOffset
         const isRowHighlighted = focusedCell?.row === rowIndex
+        let rowHeader
+        if (row.label) {
+          rowHeader = <span class={classes.namespaceHighlight}>{row.label}</span>
+        } else {
+          const name = row.namespaces[0].name
+          const {lowlight, highlight, lowlightFirst} = namespaceNamePattern
+            ? parseNamespaceName(name, namespaceNamePattern)
+            : {
+              lowlight: namespaceLowlight && name.startsWith(namespaceLowlight) ? namespaceLowlight : '',
+              highlight: namespaceLowlight && name.startsWith(namespaceLowlight) ? name.slice(namespaceLowlight.length) : name,
+              lowlightFirst: true,
+            }
+          rowHeader = lowlightFirst ? (
+            <>{lowlight && <span class={classes.namespaceLowlight}>{lowlight}</span>}<span
+              class={classes.namespaceHighlight}>{highlight}</span></>
+          ) : (
+            <><span class={classes.namespaceHighlight}>{highlight}</span>{lowlight &&
+                <span class={classes.namespaceLowlight}>{lowlight}</span>}</>
+          )
+        }
 
         return (
-          <tr key={ns.name} class={classes.namespaceRow}>
-            <td class={`${classes.stickyCol} ${isRowHighlighted ? classes.headerHighlight : ''}`} title={ns.name}>
-              <NamespaceBadge label={ns.label} />
-              <span class={classes.namespaceLabel}>
-                {lowlightFirst ? (
-                  <>{lowlight && <span class={classes.namespaceLowlight}>{lowlight}</span>}<span
-                    class={classes.namespaceHighlight}>{highlight}</span></>
-                ) : (
-                  <><span class={classes.namespaceHighlight}>{highlight}</span>{lowlight &&
-                      <span class={classes.namespaceLowlight}>{lowlight}</span>}</>
-                )}
-              </span>
+          <tr key={row.key} class={classes.namespaceRow}>
+            <td
+              class={`${classes.stickyCol} ${isRowHighlighted ? classes.headerHighlight : ''}`}
+              title={row.namespaces.map((ns) => ns.name).join('\n')}
+            >
+              <span class={classes.namespaceLabel}>{rowHeader}</span>
             </td>
             {contextsWithBoundary.map(({ctx, isFirstInGroup, colIndex: col}) => {
-              const isAvailable = ns.contexts === null || ns.contexts.includes(ctx)
+              const ns = row.namespaces.find((n) => n.contexts === null || n.contexts.includes(ctx))
 
               return (
                 <td
-                  key={`${ns.name}-${ctx}`}
+                  key={`${row.key}-${ctx}`}
                   class={`${classes.cell} ${isFirstInGroup ? classes.groupBorder : ''}`}
                   data-col={col}
                 >
-                  {isAvailable ? (
+                  {ns ? (
                     <button
                       class={classes.cellButton}
-                      title={`${ns.name} @ ${ctx}`}
+                      aria-label={`${ns.name} @ ${ctx}`}
                       data-row={rowIndex}
                       data-col={col}
                       data-context={ctx}
                       data-namespace={ns.name}
+                      data-label={row.label ?? undefined}
                       onClick={() => onCellClick(ctx, ns.name)}
                       onKeyDown={(e) => handleCellKeyDown(e as unknown as KeyboardEvent, tableRef.current, groupIndex, groupPositionsRef)}
                     >

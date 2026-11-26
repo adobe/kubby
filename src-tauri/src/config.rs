@@ -208,7 +208,8 @@ pub struct NamespaceItem {
     pub name: String,
     #[serde(default)]
     pub contexts: Option<Vec<String>>,
-    /// Optional human-friendly label displayed as a badge before the namespace name.
+    /// Optional human-friendly label shown instead of the namespace name on the dashboard;
+    /// namespaces sharing a label are merged into one dashboard row.
     #[serde(default)]
     pub label: Option<String>,
 }
@@ -269,7 +270,8 @@ pub struct NormalizedNamespaceItem {
     pub name: String,
     /// If None, namespace is available in all contexts. If Some, only in listed contexts.
     pub contexts: Option<Vec<String>>,
-    /// Optional human-friendly label displayed as a badge before the namespace name.
+    /// Optional human-friendly label shown instead of the namespace name on the dashboard;
+    /// namespaces sharing a label are merged into one dashboard row.
     pub label: Option<String>,
 }
 
