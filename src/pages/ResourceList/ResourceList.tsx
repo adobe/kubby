@@ -33,6 +33,13 @@ import {executeShell, MODIFICATION_ACTIONS} from './resourceActions.ts'
 import {evaluateColumnColor} from '../../kubectl/columnColorEvaluator.ts'
 import {getRelatedResources, buildFiltersForRelation} from './relatedResources.ts'
 import {
+  rankResourceTypes,
+  sortByUsage,
+  getResourceTypeAliases,
+  loadResourceTypeUsage,
+  recordResourceTypeUsage,
+} from '../../kubectl/resourceTypeSearch.ts'
+import {
   useDeleteAction,
   useEditAction,
   useRollingRestartAction,
@@ -58,48 +65,6 @@ function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
       // Single letter shortcuts use e.code (e.g., "D" → "KeyD")
       return e.code === `Key${shortcut.toUpperCase()}`
   }
-}
-
-/**
- * Filter and sort resource types by relevance to the input.
- * Prioritizes: exact match > singular/plural match > starts with > contains
- */
-function filterResourceTypes(items: string[], inputValue: string): string[] {
-  const lowerInput = inputValue.toLowerCase()
-
-  return items
-    .filter(item => item.toLowerCase().includes(lowerInput))
-    .sort((a, b) => {
-      const lowerA = a.toLowerCase()
-      const lowerB = b.toLowerCase()
-
-      // Exact match comes first
-      const aExact = lowerA === lowerInput
-      const bExact = lowerB === lowerInput
-      if (aExact && !bExact) return -1
-      if (!aExact && bExact) return 1
-
-      // Match without final 's' (singular/plural)
-      const aWithoutS = lowerA === lowerInput + 's'
-      const bWithoutS = lowerB === lowerInput + 's'
-      const aInputWithoutS = lowerA + 's' === lowerInput
-      const bInputWithoutS = lowerB + 's' === lowerInput
-
-      const aSingularPlural = aWithoutS || aInputWithoutS
-      const bSingularPlural = bWithoutS || bInputWithoutS
-
-      if (aSingularPlural && !bSingularPlural) return -1
-      if (!aSingularPlural && bSingularPlural) return 1
-
-      // Starts with the input comes next
-      const aStarts = lowerA.startsWith(lowerInput)
-      const bStarts = lowerB.startsWith(lowerInput)
-      if (aStarts && !bStarts) return -1
-      if (!aStarts && bStarts) return 1
-
-      // Otherwise maintain alphabetical order
-      return a.localeCompare(b)
-    })
 }
 
 /**
@@ -280,6 +245,26 @@ export function ResourceList({
   }, [columns, resources])
 
   const [resourceTypes, setResourceTypes] = useState<string[]>([])
+
+  // Resource-type search: rank by most-used and match short-name aliases (e.g. "hpa")
+  const [resourceTypeUsage, setResourceTypeUsage] = useState<Record<string, number>>(() => loadResourceTypeUsage())
+  const rankedResourceTypes = useMemo(
+    () => sortByUsage(resourceTypes, resourceTypeUsage),
+    [resourceTypes, resourceTypeUsage],
+  )
+  const filterResourceTypes = useCallback(
+    (items: string[], inputValue: string) => rankResourceTypes(items, inputValue, resourceTypeUsage),
+    [resourceTypeUsage],
+  )
+  const renderResourceTypeItem = useCallback((item: string) => {
+    const aliases = getResourceTypeAliases(item)
+    return (
+      <span class={classes.resourceTypeItem}>
+        <span>{item}</span>
+        {aliases.length > 0 && <span class={classes.resourceTypeAlias}>{aliases.join(', ')}</span>}
+      </span>
+    )
+  }, [])
 
   // Extract contexts and namespaces from dashboard config
   const allContexts = useMemo(() => getAllContexts(dashboardConfig), [dashboardConfig])
@@ -670,6 +655,8 @@ export function ResourceList({
   // Handle resource type selection from combobox
   const handleResourceTypeSelect = useCallback((newResourceType: string | null) => {
     if (newResourceType && newResourceType !== resourceType && onResourceTypeChange) {
+      recordResourceTypeUsage(newResourceType)
+      setResourceTypeUsage(loadResourceTypeUsage())
       onResourceTypeChange(newResourceType)
     }
   }, [resourceType, onResourceTypeChange])
@@ -884,11 +871,12 @@ export function ResourceList({
           <div className={classes.headerSwitchers}>
             <Combobox
               ref={resourceComboboxRef}
-              items={resourceTypes}
+              items={rankedResourceTypes}
               selectedItem={resourceType}
               onSelectedItemChange={handleResourceTypeSelect}
               itemToString={(item) => item || ''}
               filterItems={filterResourceTypes}
+              renderItem={renderResourceTypeItem}
               width={250}
               placeholder="Select resource type..."
               emptyMessage="No resource types found"
