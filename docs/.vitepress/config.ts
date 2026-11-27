@@ -15,7 +15,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'Kubby',
   description: 'A fast, keyboard-driven desktop app for managing Kubernetes clusters',
-  base: '/',  // Use root-relative paths for local HTTP server
+  base: '/kubby/',  // Served from https://adobe.github.io/kubby/
 
   head: [
     ['link', { rel: 'icon', href: '/favicon.ico' }],
