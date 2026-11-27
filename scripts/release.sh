@@ -7,6 +7,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+REPO="adobe/kubby"
 VERSION=$(node -p "require('./package.json').version")
 TAG="v${VERSION}"
 
@@ -16,6 +17,11 @@ echo -e "${YELLOW}🚀 Releasing kubby ${TAG}${NC}"
 BRANCH=$(git branch --show-current)
 [ "$BRANCH" != "main" ] && echo -e "${RED}Error: Must be on main branch${NC}" && exit 1
 git rev-parse "$TAG" >/dev/null 2>&1 && echo -e "${RED}Error: Tag ${TAG} already exists${NC}" && exit 1
+GH_USER=$(gh api user --jq .login 2>/dev/null || true)
+if [ "$(gh api "repos/${REPO}" --jq .permissions.push 2>/dev/null)" != "true" ]; then
+    echo -e "${RED}Error: gh account '${GH_USER}' cannot publish releases to ${REPO}. Switch with: gh auth switch -u <account>${NC}"
+    exit 1
+fi
 
 # Apply / refresh license headers and auto-commit any drift before tagging
 echo -e "${YELLOW}📝 Updating license headers...${NC}"
@@ -52,7 +58,7 @@ git tag -a "$TAG" -m "Release ${TAG}"
 git push upstream "$TAG"
 
 gh release create "$TAG" \
-    --repo OneAdobe/kubby \
+    --repo "$REPO" \
     --title "Release ${TAG}" \
     --generate-notes \
     "$DMG"
@@ -84,8 +90,8 @@ cd gh-pages-deploy
 git rm -rf . 2>/dev/null || true
 cp -r "${TEMP_DIR}/"* .
 git add .
-git commit -m "docs: deploy for ${TAG}"
-git push upstream gh-pages --force
+KUBBY_VERSION_HOOK=1 git commit -m "docs: deploy for ${TAG}"
+git push upstream HEAD:gh-pages --force
 cd ..
 
 # Cleanup
@@ -93,4 +99,4 @@ git worktree remove gh-pages-deploy --force
 rm -rf "${TEMP_DIR}"
 
 echo -e "${GREEN}✅ Docs deployed to GitHub Pages${NC}"
-echo -e "${GREEN}📖 View at: https://oneadobe.github.io/kubby/${NC}"
+echo -e "${GREEN}📖 View at: https://adobe.github.io/kubby/${NC}"

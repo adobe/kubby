@@ -65,7 +65,7 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      // { icon: 'github', link: 'https://github.com/OneAdobe/kubby' }
+      // { icon: 'github', link: 'https://github.com/adobe/kubby' }
     ],
 
     footer: {

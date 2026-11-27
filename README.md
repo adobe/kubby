@@ -53,7 +53,7 @@ By default, Kubby looks in these locations:
 
 ### Download MacOS Installer
 
-Download the latest `.dmg` from [GitHub Releases](https://github.com/OneAdobe/kubby/releases).
+Download the latest `.dmg` from [GitHub Releases](https://github.com/adobe/kubby/releases).
 
 > [!IMPORTANT]
 > App is not notarized.
