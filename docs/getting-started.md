@@ -14,7 +14,7 @@ Before using Kubby, ensure you have:
 
 ### Download
 
-Download the latest release from the [GitHub Releases](https://github.com/OneAdobe/kubby/releases) page.
+Download the latest release from the [GitHub Releases](https://github.com/adobe/kubby/releases) page.
 
 1. Download the `.dmg` file for your Mac
 2. Open the DMG and drag Kubby to your Applications folder
